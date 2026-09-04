@@ -5,7 +5,11 @@ const optionalString = z
   .trim()
   .optional()
   .transform((v) => (v === '' ? undefined : v));
-const intWithDefault = (def: number) => z.coerce.number().int().nonnegative().default(def);
+const intWithDefault = (def: number) =>
+  z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : v),
+    z.coerce.number().int().nonnegative().default(def),
+  );
 const csv = z
   .string()
   .default('')
