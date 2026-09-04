@@ -28,6 +28,7 @@ jobs:
       SHADOW_DATABASE_URL: postgresql://rac3011:rac3011@localhost:5434/rac3011_shadow
       NODE_ENV: test
       TESTCONTAINERS_RYUK_DISABLED: 'true'
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
