@@ -48,7 +48,10 @@ export class RbacRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findGrantsForUser(userId: string): Promise<UserRoleGrant[]> {
-    const rows = await this.prisma.userRole.findMany({ where: { userId }, include: { role: { include: roleInclude } } });
+    const rows = await this.prisma.userRole.findMany({
+      where: { userId },
+      include: { role: { include: roleInclude } },
+    });
     return rows.map((ur) => ({
       roleKey: ur.role.key,
       scopeType: ur.scopeType,
@@ -58,7 +61,10 @@ export class RbacRepository {
   }
 
   async listPermissions(): Promise<{ key: string; description: string }[]> {
-    return this.prisma.permission.findMany({ orderBy: { key: 'asc' }, select: { key: true, description: true } });
+    return this.prisma.permission.findMany({
+      orderBy: { key: 'asc' },
+      select: { key: true, description: true },
+    });
   }
 
   async listRoles(): Promise<RoleRecord[]> {
@@ -81,19 +87,31 @@ export class RbacRepository {
     return new Map(rows.map((p) => [p.key, p.id]));
   }
 
-  async createRole(data: { key: string; name: string; description?: string; scopeType: ScopeType }, permissionIds: string[]): Promise<RoleRecord> {
+  async createRole(
+    data: { key: string; name: string; description?: string; scopeType: ScopeType },
+    permissionIds: string[],
+  ): Promise<RoleRecord> {
     const row = await this.prisma.role.create({
-      data: { ...data, permissions: { create: permissionIds.map((permissionId) => ({ permissionId })) } },
+      data: {
+        ...data,
+        permissions: { create: permissionIds.map((permissionId) => ({ permissionId })) },
+      },
       include: roleInclude,
     });
     return toRole(row);
   }
 
-  async updateRole(id: string, data: { name?: string; description?: string | null; scopeType?: ScopeType }, permissionIds?: string[]): Promise<RoleRecord> {
+  async updateRole(
+    id: string,
+    data: { name?: string; description?: string | null; scopeType?: ScopeType },
+    permissionIds?: string[],
+  ): Promise<RoleRecord> {
     const row = await this.prisma.$transaction(async (tx) => {
       if (permissionIds) {
         await tx.rolePermission.deleteMany({ where: { roleId: id } });
-        await tx.rolePermission.createMany({ data: permissionIds.map((permissionId) => ({ roleId: id, permissionId })) });
+        await tx.rolePermission.createMany({
+          data: permissionIds.map((permissionId) => ({ roleId: id, permissionId })),
+        });
       }
       return tx.role.update({ where: { id }, data, include: roleInclude });
     });
@@ -104,8 +122,16 @@ export class RbacRepository {
     await this.prisma.role.delete({ where: { id } });
   }
 
+  async countUserRolesByRole(roleId: string): Promise<number> {
+    return this.prisma.userRole.count({ where: { roleId } });
+  }
+
   async listUserRoles(userId?: string): Promise<UserRoleRecord[]> {
-    const rows = await this.prisma.userRole.findMany({ where: userId ? { userId } : {}, include: { role: true }, orderBy: { createdAt: 'asc' } });
+    const rows = await this.prisma.userRole.findMany({
+      where: userId ? { userId } : {},
+      include: { role: true },
+      orderBy: { createdAt: 'asc' },
+    });
     return rows.map((r) => ({ ...r, roleKey: r.role.key }));
   }
 
@@ -114,12 +140,26 @@ export class RbacRepository {
     return r ? { ...r, roleKey: r.role.key } : null;
   }
 
-  async findExistingUserRole(userId: string, roleId: string, scopeType: ScopeType, scopeId: string | null): Promise<UserRoleRecord | null> {
-    const r = await this.prisma.userRole.findFirst({ where: { userId, roleId, scopeType, scopeId }, include: { role: true } });
+  async findExistingUserRole(
+    userId: string,
+    roleId: string,
+    scopeType: ScopeType,
+    scopeId: string | null,
+  ): Promise<UserRoleRecord | null> {
+    const r = await this.prisma.userRole.findFirst({
+      where: { userId, roleId, scopeType, scopeId },
+      include: { role: true },
+    });
     return r ? { ...r, roleKey: r.role.key } : null;
   }
 
-  async createUserRole(data: { userId: string; roleId: string; scopeType: ScopeType; scopeId: string | null; grantedById: string }): Promise<UserRoleRecord> {
+  async createUserRole(data: {
+    userId: string;
+    roleId: string;
+    scopeType: ScopeType;
+    scopeId: string | null;
+    grantedById: string;
+  }): Promise<UserRoleRecord> {
     const r = await this.prisma.userRole.create({ data, include: { role: true } });
     return { ...r, roleKey: r.role.key };
   }
