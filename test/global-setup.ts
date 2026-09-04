@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
+import { PrismaClient } from '@prisma/client';
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { seedSystemData } from '../prisma/seed-system';
 
 let container: StartedPostgreSqlContainer | undefined;
 
@@ -16,6 +18,14 @@ export async function setup(): Promise<void> {
     env: { ...process.env, DATABASE_URL: url },
     stdio: 'inherit',
   });
+
+  // Seeded once here, not per file: e2e beforeAll hooks can overlap, so a per-file TRUNCATE would race.
+  const prisma = new PrismaClient({ datasources: { db: { url } } });
+  try {
+    await seedSystemData(prisma);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 export async function teardown(): Promise<void> {
