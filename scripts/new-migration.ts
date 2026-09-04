@@ -17,7 +17,18 @@ const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
 const dir = join('prisma', 'migrations', `${stamp}_${name}`);
 const sql = execFileSync(
   'npx',
-  ['prisma', 'migrate', 'diff', '--from-migrations', 'prisma/migrations', '--to-schema-datamodel', 'prisma/schema', '--shadow-database-url', shadow, '--script'],
+  [
+    'prisma',
+    'migrate',
+    'diff',
+    '--from-migrations',
+    'prisma/migrations',
+    '--to-schema-datamodel',
+    'prisma/schema',
+    '--shadow-database-url',
+    shadow,
+    '--script',
+  ],
   { encoding: 'utf8' },
 );
 mkdirSync(dir, { recursive: true });
