@@ -8,3 +8,4 @@ openapi.json
 scripts/out/
 *.log
 .DS_Store
+.tmp/
