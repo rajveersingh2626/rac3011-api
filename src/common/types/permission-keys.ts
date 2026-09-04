@@ -1,0 +1,45 @@
+export const PERMISSION_KEYS = [
+  'profile:edit',
+  'directory:view',
+  'showcase:submit',
+  'showcase:publish',
+  'reports:submit',
+  'reports:review',
+  'reports:score',
+  'requests:manage',
+  'members:approve',
+  'members:import',
+  'members:view',
+  'roles:manage',
+  'content:edit',
+  'content:publish',
+  'point_rules:manage',
+  'club_facts:edit',
+  'effort:log',
+  'effort:approve',
+  'events:manage',
+  'events:checkin',
+  'club_events:log',
+  'feedback:submit',
+  'feedback:review',
+  'announcements:send',
+  'announcements:send_all',
+  'settings:manage',
+  'drr_calendar:manage',
+  'audit:view',
+  'clubs:view',
+  'clubs:edit',
+  'resources:manage',
+  'public_content:manage',
+  'subdomain:mission3011:manage',
+  'subdomain:drishti:manage',
+  'subdomain:rcl:manage',
+  'subdomain:careerbridge:manage',
+  'subdomain:ride:manage',
+] as const;
+
+export type PermissionKey = (typeof PERMISSION_KEYS)[number];
+
+export function isPermissionKey(value: string): value is PermissionKey {
+  return (PERMISSION_KEYS as readonly string[]).includes(value);
+}
