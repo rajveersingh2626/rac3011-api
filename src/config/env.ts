@@ -29,6 +29,11 @@ export const envSchema = z.object({
   MAIL_DRIVER: z.enum(['console', 'pool']).default('console'),
   MAIL_FROM: z.string().default('Rotaract District 3011 <no-reply@rotaract3011.org>'),
   MAIL_ALLOWLIST: csv,
+  ORACLE_SMTP_HOST: optionalString,
+  ORACLE_SMTP_PORT: intWithDefault(587),
+  ORACLE_SMTP_USER: optionalString,
+  ORACLE_SMTP_PASSWORD: optionalString,
+  ORACLE_DAILY_CAP: intWithDefault(100),
   RESEND_API_KEY: optionalString,
   RESEND_DAILY_CAP: intWithDefault(100),
   MAILGUN_API_KEY: optionalString,
@@ -45,6 +50,14 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: optionalString,
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-5'),
   DRISHTI_PII_KEY: optionalString.pipe(z.string().regex(/^[0-9a-fA-F]{64}$/).optional()),
+  STORAGE_DRIVER: z.enum(['live', 'stub']).default('stub'),
+  UPLOADTHING_TOKEN_PERMANENT: optionalString,
+  UPLOADTHING_TOKEN_DYNAMIC: optionalString,
+  R2_ACCOUNT_ID: optionalString,
+  R2_ACCESS_KEY_ID: optionalString,
+  R2_SECRET_ACCESS_KEY: optionalString,
+  R2_BUCKET_PRIVATE: z.string().default('rac3011-private'),
+  R2_BUCKET_BACKUPS: z.string().default('rac3011-backups'),
   SENTRY_DSN: optionalString,
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   SEED_DEV: z
@@ -66,6 +79,13 @@ export function parseEnv(source: NodeJS.ProcessEnv): Env {
     const missing: string[] = [];
     if (env.AUTH_SECRET.startsWith('dev-only')) missing.push('AUTH_SECRET');
     if (env.WEB_ORIGINS.length === 0) missing.push('WEB_ORIGINS');
+    if (env.STORAGE_DRIVER === 'live') {
+      if (!env.UPLOADTHING_TOKEN_PERMANENT) missing.push('UPLOADTHING_TOKEN_PERMANENT');
+      if (!env.UPLOADTHING_TOKEN_DYNAMIC) missing.push('UPLOADTHING_TOKEN_DYNAMIC');
+      for (const k of ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'] as const) {
+        if (!env[k]) missing.push(k);
+      }
+    }
     if (missing.length) throw new Error(`Invalid environment: production requires ${missing.join(', ')}`);
   }
   return env;
