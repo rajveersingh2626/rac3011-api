@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { HttpErrorFilter } from './common/errors/http-exception.filter';
 import { env } from './config/env';
 
 async function bootstrap() {
@@ -13,6 +14,7 @@ async function bootstrap() {
   app.use(helmet());
   app.enableCors({ origin: env.WEB_ORIGINS, credentials: true });
   app.useGlobalPipes(new ZodValidationPipe());
+  app.useGlobalFilters(new HttpErrorFilter());
   const doc = SwaggerModule.createDocument(
     app,
     new DocumentBuilder().setTitle('rac3011').setVersion('1').build(),
