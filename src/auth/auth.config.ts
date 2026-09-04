@@ -35,9 +35,10 @@ export function createAuthInstance(deps: AuthConfigDeps) {
           name: 'rac3011.session',
           attributes: {
             httpOnly: true,
-            secure: env.NODE_ENV !== 'development',
+            // 'test' runs e2e requests over plain HTTP, so Secure/scoped-domain cookies never replay.
+            secure: env.NODE_ENV === 'production',
             sameSite: 'lax',
-            domain: env.COOKIE_DOMAIN,
+            domain: env.NODE_ENV === 'test' ? undefined : env.COOKIE_DOMAIN,
           },
         },
       },

@@ -33,8 +33,8 @@ export class EmailProviderPool {
   private readonly failedAt = new Map<EmailProviderName, number>();
 
   constructor(
-    private readonly usage: EmailUsageRepository,
-    private readonly clock: ClockPort,
+    @Inject(EmailUsageRepository) private readonly usage: EmailUsageRepository,
+    @Inject(ClockPort) private readonly clock: ClockPort,
     @Inject(EMAIL_TRANSPORTS) private readonly transports: readonly EmailTransport[],
     @Inject(EMAIL_POOL_CONFIG) private readonly config: EmailPoolConfig,
   ) {}

@@ -58,12 +58,14 @@ async function seedPoints(prisma: PrismaClient): Promise<void> {
       perUnitCap: rule.perUnitCap ?? null,
       ryYear: POINT_RULES_RY_YEAR,
     };
-    const existing = await prisma.pointRule.findUnique({ where: { key: rule.key } });
-    const saved = existing
-      ? await prisma.pointRule.update({ where: { key: rule.key }, data })
-      : await prisma.pointRule.create({ data: { key: rule.key, ...data } });
-    if (!existing) {
-      await prisma.pointRuleTier.createMany({ data: (rule.tiers ?? []).map((t) => ({ ruleId: saved.id, ...t })) });
+    const saved = await prisma.pointRule.upsert({
+      where: { key: rule.key },
+      create: { key: rule.key, ...data },
+      update: data,
+    });
+    await prisma.pointRuleTier.deleteMany({ where: { ruleId: saved.id } });
+    if (rule.tiers?.length) {
+      await prisma.pointRuleTier.createMany({ data: rule.tiers.map((t) => ({ ruleId: saved.id, ...t })) });
     }
   }
 }

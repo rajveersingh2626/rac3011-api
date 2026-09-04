@@ -6,7 +6,7 @@ import type { RequestContext } from '../common/types/access';
 import { TrustedDevicesService } from './trusted-devices.service';
 
 @ApiTags('auth')
-@Controller('auth/trusted-devices')
+@Controller('trusted-devices')
 export class TrustedDevicesController {
   constructor(private readonly trustedDevices: TrustedDevicesService) {}
 

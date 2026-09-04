@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { MODULE_PATH, PATH_METADATA } from '@nestjs/common/constants';
 import { ModulesContainer, Reflector } from '@nestjs/core';
 import {
@@ -20,8 +20,8 @@ export class RbacRouteAudit implements OnApplicationBootstrap {
   private readonly logger = new Logger('RbacRouteAudit');
 
   constructor(
-    private readonly modules: ModulesContainer,
-    private readonly reflector: Reflector,
+    @Inject(ModulesContainer) private readonly modules: ModulesContainer,
+    @Inject(Reflector) private readonly reflector: Reflector,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -37,7 +37,7 @@ export class RbacRouteAudit implements OnApplicationBootstrap {
   findUndecoratedRoutes(): string[] {
     const offenders: string[] = [];
     for (const module of this.modules.values()) {
-      for (const wrapper of module.controllers.values()) {
+      for (const wrapper of module.controllers?.values() ?? []) {
         const controller = wrapper.metatype;
         if (typeof controller !== 'function') continue;
         const basePath = String(Reflect.getMetadata(PATH_METADATA, controller) ?? '');

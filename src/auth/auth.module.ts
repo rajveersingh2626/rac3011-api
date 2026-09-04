@@ -32,5 +32,6 @@ import { TrustedDevicesService } from './trusted-devices.service';
     TrustedDevicesService,
     { provide: SessionContextPort, useClass: SessionContextAdapter },
   ],
+  exports: [SessionContextPort],
 })
 export class AuthModule {}

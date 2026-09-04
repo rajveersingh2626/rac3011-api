@@ -18,10 +18,11 @@ export class ClubsController {
   constructor(private readonly clubs: ClubsService) {}
 
   @Get()
-  @Authenticated()
-  async list(@Query() raw: Record<string, unknown>) {
+  @RequirePermission('clubs:view')
+  async list(@CurrentUser() ctx: RequestContext, @Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS, includes: INCLUDES });
     const { items, total } = await this.clubs.list(
+      ctx.access,
       { zoneId: q.filter.zoneId, q: q.q },
       { board: q.include.includes('board'), facts: q.include.includes('facts') },
       q.page,

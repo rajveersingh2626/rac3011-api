@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { AuthModule } from '../auth/auth.module';
 import { PermissionGuard } from './permission.guard';
 import { PermissionsController } from './permissions.controller';
 import { RbacRepository } from './rbac.repository';
@@ -11,6 +12,7 @@ import { UserRolesController } from './user-roles.controller';
 
 @Global()
 @Module({
+  imports: [AuthModule],
   controllers: [RolesController, PermissionsController, UserRolesController],
   providers: [
     RbacRepository,

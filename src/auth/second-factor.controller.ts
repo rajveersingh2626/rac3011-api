@@ -8,7 +8,7 @@ import { VerifySecondFactorDto } from './dto/second-factor.dto';
 import { SecondFactorService } from './second-factor.service';
 
 @ApiTags('auth')
-@Controller('auth/second-factor')
+@Controller('second-factor')
 export class SecondFactorController {
   constructor(private readonly secondFactor: SecondFactorService) {}
 

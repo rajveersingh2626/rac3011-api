@@ -14,13 +14,16 @@ export class ClubsService {
     private readonly scope: ScopeService,
   ) {}
 
-  list(
+  async list(
+    access: ResolvedAccess,
     filter: ClubListFilter,
     include: ClubIncludes,
     page: number,
     pageSize: number,
   ): Promise<{ items: ClubWithRelations[]; total: number }> {
-    return this.repo.findMany(filter, { all: true }, include, page, pageSize);
+    const scope = await this.scope.clubFilter(access, 'clubs:view');
+    if ('clubIds' in scope && scope.clubIds.length === 0) return { items: [], total: 0 };
+    return this.repo.findMany(filter, scope, include, page, pageSize);
   }
 
   async get(access: ResolvedAccess, id: string, include: ClubIncludes): Promise<ClubWithRelations> {
