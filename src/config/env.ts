@@ -78,6 +78,11 @@ export const envSchema = z.object({
   CLOUDFLARE_API_KEY: optionalString,
   CLOUDFLARE_ZONE_ID: optionalString,
   CACHE_INVALIDATION: z.enum(['on', 'off']).default('on'),
+  SITE_REBUILD_ENABLED: z.enum(['on', 'off']).default('off'),
+  SITE_REBUILD_GITHUB_TOKEN: optionalString,
+  SITE_REBUILD_REPO: z.string().default('round-robin-solutions/rac3011-web'),
+  SITE_REBUILD_WORKFLOW: z.string().default('ci.yml'),
+  SITE_REBUILD_DEBOUNCE_MS: intWithDefault(300000),
   SEED_DEV: z
     .string()
     .optional()

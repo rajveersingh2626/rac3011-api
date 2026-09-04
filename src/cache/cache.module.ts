@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { env } from '../config/env';
+import { SiteRebuildModule } from '../site-rebuild/site-rebuild.module';
 import { CacheInvalidator } from './cache-invalidator.service';
 import { CachePurgeProcessor } from './cache-purge.processor';
 import { CacheInterceptor } from './cache.interceptor';
@@ -20,6 +21,7 @@ const cloudflareConfigured =
   imports: [
     BullModule.forRoot({ connection: createCacheRedis() }),
     BullModule.registerQueue({ name: CACHE_PURGE_QUEUE }),
+    SiteRebuildModule,
   ],
   providers: [
     { provide: CACHE_REDIS, useFactory: createCacheRedis },
