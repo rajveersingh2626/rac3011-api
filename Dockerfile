@@ -15,7 +15,9 @@ RUN npm ci --omit=dev --no-audit --no-fund
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=build /app/dist ./dist
-COPY prisma/schema.prisma prisma/migrations ./prisma/
+COPY prisma.config.ts ./
+COPY prisma/schema ./prisma/schema
+COPY prisma/migrations ./prisma/migrations
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 EXPOSE 3000
