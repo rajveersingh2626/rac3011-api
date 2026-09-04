@@ -36,5 +36,7 @@ export class RbacResolverService {
 }
 
 function toScope(row: UserRoleGrant): Scope {
-  return row.scopeType === 'none' ? { type: 'none' } : { type: row.scopeType, id: row.scopeId ?? undefined };
+  return row.scopeType === 'none'
+    ? { type: 'none' }
+    : { type: row.scopeType, id: row.scopeId ?? undefined };
 }

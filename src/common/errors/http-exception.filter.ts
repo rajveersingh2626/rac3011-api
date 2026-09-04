@@ -3,7 +3,13 @@ import type { Response } from 'express';
 import { ZodValidationException } from 'nestjs-zod';
 import { ZodError } from 'zod';
 
-type ErrorBody = { statusCode: number; error: string; message?: string; code?: string; details?: unknown };
+type ErrorBody = {
+  statusCode: number;
+  error: string;
+  message?: string;
+  code?: string;
+  details?: unknown;
+};
 
 const NAMES: Record<number, string> = {
   400: 'BadRequest',

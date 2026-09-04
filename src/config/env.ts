@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-const optionalString = z.string().trim().optional().transform((v) => (v === '' ? undefined : v));
+const optionalString = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v === '' ? undefined : v));
 const intWithDefault = (def: number) => z.coerce.number().int().nonnegative().default(def);
 const csv = z
   .string()
@@ -49,7 +53,12 @@ export const envSchema = z.object({
   DRR_CALENDAR_ID: optionalString,
   ANTHROPIC_API_KEY: optionalString,
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-5'),
-  DRISHTI_PII_KEY: optionalString.pipe(z.string().regex(/^[0-9a-fA-F]{64}$/).optional()),
+  DRISHTI_PII_KEY: optionalString.pipe(
+    z
+      .string()
+      .regex(/^[0-9a-fA-F]{64}$/)
+      .optional(),
+  ),
   STORAGE_DRIVER: z.enum(['live', 'stub']).default('stub'),
   UPLOADTHING_TOKEN_PERMANENT: optionalString,
   UPLOADTHING_TOKEN_DYNAMIC: optionalString,
@@ -86,7 +95,8 @@ export function parseEnv(source: NodeJS.ProcessEnv): Env {
         if (!env[k]) missing.push(k);
       }
     }
-    if (missing.length) throw new Error(`Invalid environment: production requires ${missing.join(', ')}`);
+    if (missing.length)
+      throw new Error(`Invalid environment: production requires ${missing.join(', ')}`);
   }
   return env;
 }

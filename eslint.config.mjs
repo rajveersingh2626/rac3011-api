@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 
 const prismaOnlyInRepositories = {
   files: ['src/**/*.ts'],
-  ignores: ['src/**/*.repository.ts', 'src/prisma/**'],
+  ignores: ['src/**/*.repository.ts', 'src/prisma/**', 'src/app.module.ts'],
   rules: {
     'no-restricted-imports': [
       'error',

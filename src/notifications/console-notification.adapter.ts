@@ -15,6 +15,8 @@ export class ConsoleNotificationAdapter extends NotificationPort {
   }
 
   lastFor(email: string, template: NotifyInput['template']): NotifyInput | undefined {
-    return [...this.sent].reverse().find((n) => n.template === template && n.to.some((t) => t.email === email));
+    return [...this.sent]
+      .reverse()
+      .find((n) => n.template === template && n.to.some((t) => t.email === email));
   }
 }

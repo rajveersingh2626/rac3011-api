@@ -25,7 +25,11 @@ export class AuditService {
     });
   }
 
-  list(filter: AuditFilter, page: number, pageSize: number): Promise<{ items: AuditRow[]; total: number }> {
+  list(
+    filter: AuditFilter,
+    page: number,
+    pageSize: number,
+  ): Promise<{ items: AuditRow[]; total: number }> {
     return this.repo.list(filter, page, pageSize);
   }
 }

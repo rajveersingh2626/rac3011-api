@@ -33,11 +33,15 @@ function parseIntParam(raw: unknown, name: string, fallback: number, max?: numbe
   const s = asString(raw);
   if (s === undefined || s === '') return fallback;
   const n = Number(s);
-  if (!Number.isInteger(n) || n < 1) throw new BadRequestException(`${name} must be a positive integer`);
+  if (!Number.isInteger(n) || n < 1)
+    throw new BadRequestException(`${name} must be a positive integer`);
   return max !== undefined ? Math.min(n, max) : n;
 }
 
-function collectFilters<F extends string>(raw: RawQuery, allowed: readonly F[]): Partial<Record<F, string>> {
+function collectFilters<F extends string>(
+  raw: RawQuery,
+  allowed: readonly F[],
+): Partial<Record<F, string>> {
   const out: Partial<Record<F, string>> = {};
   const nested = raw.filter;
   const pairs: [string, unknown][] = [];
@@ -69,14 +73,16 @@ export function parseListQuery<F extends string, I extends string = never>(
         .filter(Boolean)
     : [];
   for (const inc of include) {
-    if (!(options.includes ?? []).includes(inc as I)) throw new BadRequestException(`Unknown include "${inc}"`);
+    if (!(options.includes ?? []).includes(inc as I))
+      throw new BadRequestException(`Unknown include "${inc}"`);
   }
   let sort = options.defaultSort;
   const sortRaw = asString(raw.sort);
   if (sortRaw) {
     const direction: 'asc' | 'desc' = sortRaw.startsWith('-') ? 'desc' : 'asc';
     const field = sortRaw.replace(/^-/, '');
-    if (!(options.sortable ?? []).includes(field)) throw new BadRequestException(`Cannot sort by "${field}"`);
+    if (!(options.sortable ?? []).includes(field))
+      throw new BadRequestException(`Cannot sort by "${field}"`);
     sort = { field, direction };
   }
   const q = asString(raw.q);
@@ -90,6 +96,10 @@ export function parseListQuery<F extends string, I extends string = never>(
   };
 }
 
-export function paginate<T>(items: T[], total: number, query: { page: number; pageSize: number }): Paginated<T> {
+export function paginate<T>(
+  items: T[],
+  total: number,
+  query: { page: number; pageSize: number },
+): Paginated<T> {
   return { items, total, page: query.page, pageSize: query.pageSize };
 }

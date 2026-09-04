@@ -2,12 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
 import { parseListQuery } from './list-query';
 
-const opts = { filters: ['status', 'clubId'] as const, includes: ['club'] as const, sortable: ['createdAt'] };
+const opts = {
+  filters: ['status', 'clubId'] as const,
+  includes: ['club'] as const,
+  sortable: ['createdAt'],
+};
 
 describe('parseListQuery', () => {
   it('parses bracket filters, sort, paging and include', () => {
     const q = parseListQuery(
-      { 'filter[status]': 'submitted', filter: { clubId: 'A' }, sort: '-createdAt', page: '2', pageSize: '10', include: 'club' },
+      {
+        'filter[status]': 'submitted',
+        filter: { clubId: 'A' },
+        sort: '-createdAt',
+        page: '2',
+        pageSize: '10',
+        include: 'club',
+      },
       opts,
     );
     expect(q.filter).toEqual({ status: 'submitted', clubId: 'A' });

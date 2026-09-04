@@ -4,7 +4,10 @@ import { NotificationPort } from './notification.port';
 
 @Global()
 @Module({
-  providers: [ConsoleNotificationAdapter, { provide: NotificationPort, useExisting: ConsoleNotificationAdapter }],
+  providers: [
+    ConsoleNotificationAdapter,
+    { provide: NotificationPort, useExisting: ConsoleNotificationAdapter },
+  ],
   exports: [NotificationPort, ConsoleNotificationAdapter],
 })
 export class NotificationsModule {}

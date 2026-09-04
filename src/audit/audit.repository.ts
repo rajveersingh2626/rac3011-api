@@ -11,7 +11,13 @@ export type AuditRecordInput = {
   after: unknown;
 };
 
-export type AuditFilter = { resourceType?: string; resourceId?: string; actorId?: string; from?: Date; to?: Date };
+export type AuditFilter = {
+  resourceType?: string;
+  resourceId?: string;
+  actorId?: string;
+  from?: Date;
+  to?: Date;
+};
 
 export type AuditRow = {
   id: string;
@@ -25,7 +31,7 @@ export type AuditRow = {
 };
 
 const toJson = (v: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull =>
-  v === undefined || v === null ? ('JsonNull' as unknown as typeof Prisma.JsonNull) : (v as Prisma.InputJsonValue);
+  v === undefined || v === null ? 'JsonNull' : v;
 
 @Injectable()
 export class AuditRepository {
@@ -44,7 +50,11 @@ export class AuditRepository {
     });
   }
 
-  async list(filter: AuditFilter, page: number, pageSize: number): Promise<{ items: AuditRow[]; total: number }> {
+  async list(
+    filter: AuditFilter,
+    page: number,
+    pageSize: number,
+  ): Promise<{ items: AuditRow[]; total: number }> {
     const where: Prisma.AuditLogWhereInput = {
       resourceType: filter.resourceType,
       resourceId: filter.resourceId,
@@ -52,7 +62,12 @@ export class AuditRepository {
       at: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
     };
     const [items, total] = await this.prisma.$transaction([
-      this.prisma.auditLog.findMany({ where, orderBy: { at: 'desc' }, skip: (page - 1) * pageSize, take: pageSize }),
+      this.prisma.auditLog.findMany({
+        where,
+        orderBy: { at: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
       this.prisma.auditLog.count({ where }),
     ]);
     return { items, total };

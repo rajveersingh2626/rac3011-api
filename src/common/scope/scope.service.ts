@@ -13,7 +13,11 @@ export class ScopeService {
     return access.grants[permission] ?? [];
   }
 
-  async canAccessClub(access: ResolvedAccess, permission: PermissionKey, clubId: string): Promise<boolean> {
+  async canAccessClub(
+    access: ResolvedAccess,
+    permission: PermissionKey,
+    clubId: string,
+  ): Promise<boolean> {
     if (access.isSuperAdmin) return true;
     const scopes = this.scopesFor(access, permission);
     if (scopes.some((s) => s.type === 'none')) return true;
@@ -24,18 +28,30 @@ export class ScopeService {
     return !!zoneId && zoneIds.includes(zoneId);
   }
 
-  async assertCanAccessClub(access: ResolvedAccess, permission: PermissionKey, clubId: string): Promise<void> {
+  async assertCanAccessClub(
+    access: ResolvedAccess,
+    permission: PermissionKey,
+    clubId: string,
+  ): Promise<void> {
     if (!(await this.canAccessClub(access, permission, clubId))) throw new NotFoundException();
   }
 
-  canAccessProject(access: ResolvedAccess, permission: PermissionKey, projectKey: ProjectKey): boolean {
+  canAccessProject(
+    access: ResolvedAccess,
+    permission: PermissionKey,
+    projectKey: ProjectKey,
+  ): boolean {
     if (access.isSuperAdmin) return true;
     return this.scopesFor(access, permission).some(
       (s) => s.type === 'none' || (s.type === 'project' && s.id === projectKey),
     );
   }
 
-  assertCanAccessProject(access: ResolvedAccess, permission: PermissionKey, projectKey: ProjectKey): void {
+  assertCanAccessProject(
+    access: ResolvedAccess,
+    permission: PermissionKey,
+    projectKey: ProjectKey,
+  ): void {
     if (!this.canAccessProject(access, permission, projectKey)) throw new NotFoundException();
   }
 
@@ -43,13 +59,18 @@ export class ScopeService {
     if (access.isSuperAdmin) return { all: true };
     const scopes = this.scopesFor(access, permission);
     if (scopes.some((s) => s.type === 'none')) return { all: true };
-    const clubIds = new Set(scopes.filter((s) => s.type === 'club' && s.id).map((s) => s.id as string));
+    const clubIds = new Set(
+      scopes.filter((s) => s.type === 'club' && s.id).map((s) => s.id as string),
+    );
     const zoneIds = scopes.filter((s) => s.type === 'zone' && s.id).map((s) => s.id as string);
     for (const id of await this.repo.findClubIdsInZones(zoneIds)) clubIds.add(id);
     return { clubIds: [...clubIds] };
   }
 
-  static narrowClubs(filter: ClubScopeFilter, requestedClubId: string | undefined): ClubScopeFilter {
+  static narrowClubs(
+    filter: ClubScopeFilter,
+    requestedClubId: string | undefined,
+  ): ClubScopeFilter {
     if (!requestedClubId) return filter;
     if ('all' in filter) return { clubIds: [requestedClubId] };
     return { clubIds: filter.clubIds.includes(requestedClubId) ? [requestedClubId] : [] };
@@ -59,6 +80,10 @@ export class ScopeService {
     if (access.isSuperAdmin) return { all: true };
     const scopes = access.grants[permission] ?? [];
     if (scopes.some((s) => s.type === 'none')) return { all: true };
-    return { projectKeys: scopes.filter((s) => s.type === 'project' && s.id).map((s) => s.id as ProjectKey) };
+    return {
+      projectKeys: scopes
+        .filter((s) => s.type === 'project' && s.id)
+        .map((s) => s.id as ProjectKey),
+    };
   }
 }

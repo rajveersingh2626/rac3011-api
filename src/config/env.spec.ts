@@ -12,7 +12,11 @@ describe('parseEnv', () => {
   });
 
   it('parses csv lists and flags', () => {
-    const env = parseEnv({ WEB_ORIGINS: 'http://a.test, http://b.test', WORKER: '1', SEED_DEV: '1' });
+    const env = parseEnv({
+      WEB_ORIGINS: 'http://a.test, http://b.test',
+      WORKER: '1',
+      SEED_DEV: '1',
+    });
     expect(env.WEB_ORIGINS).toEqual(['http://a.test', 'http://b.test']);
     expect(env.WORKER).toBe(true);
     expect(env.SEED_DEV).toBe(true);
@@ -25,6 +29,8 @@ describe('parseEnv', () => {
   });
 
   it('refuses production with dev secret or no origins', () => {
-    expect(() => parseEnv({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://x/y' })).toThrow(/production/);
+    expect(() => parseEnv({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://x/y' })).toThrow(
+      /production/,
+    );
   });
 });

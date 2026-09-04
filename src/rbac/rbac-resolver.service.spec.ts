@@ -5,13 +5,31 @@ import { PERMISSION_KEYS } from '../common/types/permission-keys';
 describe('RbacResolverService.fromGrants', () => {
   it('unions grants across roles and collects scopes per permission', () => {
     const access = RbacResolverService.fromGrants('u1', [
-      { roleKey: 'member', scopeType: 'club', scopeId: 'A', permissionKeys: ['clubs:view', 'profile:edit'] },
-      { roleKey: 'president', scopeType: 'club', scopeId: 'A', permissionKeys: ['clubs:view', 'reports:submit'] },
-      { roleKey: 'zrr', scopeType: 'zone', scopeId: 'Z1', permissionKeys: ['clubs:view', 'reports:review'] },
+      {
+        roleKey: 'member',
+        scopeType: 'club',
+        scopeId: 'A',
+        permissionKeys: ['clubs:view', 'profile:edit'],
+      },
+      {
+        roleKey: 'president',
+        scopeType: 'club',
+        scopeId: 'A',
+        permissionKeys: ['clubs:view', 'reports:submit'],
+      },
+      {
+        roleKey: 'zrr',
+        scopeType: 'zone',
+        scopeId: 'Z1',
+        permissionKeys: ['clubs:view', 'reports:review'],
+      },
     ]);
     expect(access.isSuperAdmin).toBe(false);
     expect(access.roles).toHaveLength(3);
-    expect(access.grants['clubs:view']).toEqual([{ type: 'club', id: 'A' }, { type: 'zone', id: 'Z1' }]);
+    expect(access.grants['clubs:view']).toEqual([
+      { type: 'club', id: 'A' },
+      { type: 'zone', id: 'Z1' },
+    ]);
     expect(access.grants['reports:submit']).toEqual([{ type: 'club', id: 'A' }]);
     expect(access.grants['reports:review']).toEqual([{ type: 'zone', id: 'Z1' }]);
     expect(access.grants['audit:view']).toBeUndefined();
@@ -27,7 +45,12 @@ describe('RbacResolverService.fromGrants', () => {
 
   it('ignores unknown permission keys and maps none scope without id', () => {
     const access = RbacResolverService.fromGrants('u1', [
-      { roleKey: 'dsc', scopeType: 'none', scopeId: null, permissionKeys: ['audit:view', 'not:a_key'] },
+      {
+        roleKey: 'dsc',
+        scopeType: 'none',
+        scopeId: null,
+        permissionKeys: ['audit:view', 'not:a_key'],
+      },
     ]);
     expect(access.grants['audit:view']).toEqual([{ type: 'none' }]);
     expect(Object.keys(access.grants)).toEqual(['audit:view']);
