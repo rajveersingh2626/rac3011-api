@@ -67,6 +67,38 @@ export class ScopeService {
     return { clubIds: [...clubIds] };
   }
 
+  /** Union of clubFilter across several permissions, for routes gated by @RequirePermission(a, b). */
+  async clubFilterAny(
+    access: ResolvedAccess,
+    permissions: PermissionKey[],
+  ): Promise<ClubScopeFilter> {
+    if (access.isSuperAdmin) return { all: true };
+    const filters = await Promise.all(permissions.map((p) => this.clubFilter(access, p)));
+    if (filters.some((f) => 'all' in f)) return { all: true };
+    const clubIds = new Set<string>();
+    for (const f of filters) if ('clubIds' in f) for (const id of f.clubIds) clubIds.add(id);
+    return { clubIds: [...clubIds] };
+  }
+
+  async canAccessClubAny(
+    access: ResolvedAccess,
+    permissions: PermissionKey[],
+    clubId: string,
+  ): Promise<boolean> {
+    for (const permission of permissions) {
+      if (await this.canAccessClub(access, permission, clubId)) return true;
+    }
+    return false;
+  }
+
+  async assertCanAccessClubAny(
+    access: ResolvedAccess,
+    permissions: PermissionKey[],
+    clubId: string,
+  ): Promise<void> {
+    if (!(await this.canAccessClubAny(access, permissions, clubId))) throw new NotFoundException();
+  }
+
   static narrowClubs(
     filter: ClubScopeFilter,
     requestedClubId: string | undefined,

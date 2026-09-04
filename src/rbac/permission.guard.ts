@@ -47,13 +47,14 @@ export class PermissionGuard implements CanActivate {
     const access = await this.resolver.resolve(session.user.id);
     req.rac3011 = { user: session.user, sessionId: session.sessionId, access };
 
-    const permission = this.meta<PermissionKey>(REQUIRE_PERMISSION_KEY, ctx);
-    if (!permission) {
+    const permissions = this.meta<PermissionKey[]>(REQUIRE_PERMISSION_KEY, ctx);
+    if (!permissions || permissions.length === 0) {
       if (secondFactorStage || this.meta<boolean>(AUTHENTICATED_KEY, ctx)) return true;
       throw new ForbiddenException();
     }
     if (access.isSuperAdmin) return true;
-    if ((access.grants[permission] ?? []).length === 0) throw new ForbiddenException();
+    if (!permissions.some((p) => (access.grants[p] ?? []).length > 0))
+      throw new ForbiddenException();
     return true;
   }
 }

@@ -60,6 +60,7 @@ export const envSchema = z.object({
       .optional(),
   ),
   STORAGE_DRIVER: z.enum(['live', 'stub']).default('stub'),
+  ASSIST_DRIVER: z.enum(['live', 'stub']).default('stub'),
   UPLOADTHING_TOKEN_PERMANENT: optionalString,
   UPLOADTHING_TOKEN_DYNAMIC: optionalString,
   R2_ACCOUNT_ID: optionalString,
