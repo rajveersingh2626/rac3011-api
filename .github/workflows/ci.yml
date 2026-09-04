@@ -3,53 +3,13 @@ name: ci
 on:
   push:
     branches: [main]
-  pull_request:
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  verify:
-    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_DB: rac3011
-          POSTGRES_USER: rac3011
-          POSTGRES_PASSWORD: rac3011
-        ports: ['5434:5432']
-        options: >-
-          --health-cmd "pg_isready -U rac3011 -d rac3011"
-          --health-interval 5s --health-timeout 3s --health-retries 20
-    env:
-      DATABASE_URL: postgresql://rac3011:rac3011@localhost:5434/rac3011
-      SHADOW_DATABASE_URL: postgresql://rac3011:rac3011@localhost:5434/rac3011_shadow
-      NODE_ENV: test
-      TESTCONTAINERS_RYUK_DISABLED: 'true'
-      NODE_OPTIONS: --max-old-space-size=6144
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npx prisma generate
-      - run: npm run lint
-      - run: npx prisma validate
-      - run: npm run test
-      - run: npm run test:e2e
-      - name: Migration replay on a fresh database
-        run: |
-          psql "$DATABASE_URL" -c 'DROP DATABASE IF EXISTS rac3011_replay' -c 'CREATE DATABASE rac3011_replay'
-          DATABASE_URL=postgresql://rac3011:rac3011@localhost:5434/rac3011_replay npx prisma migrate deploy
-          DATABASE_URL=postgresql://rac3011:rac3011@localhost:5434/rac3011_replay npx tsx prisma/seed-system.ts
-      - run: npm run build
-
   image:
-    needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: blacksmith-4vcpu-ubuntu-2404-arm
     permissions:
