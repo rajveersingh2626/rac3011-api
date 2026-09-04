@@ -69,3 +69,34 @@ export async function createUser(input: {
   }
   return { id: userId, email: input.email };
 }
+
+export async function createPublishedProject(input: {
+  id: string;
+  slug: string;
+  title: string;
+  clubIds: string[];
+}): Promise<{ id: string }> {
+  const prisma = testPrisma();
+  await prisma.project.create({
+    data: {
+      id: input.id,
+      slug: input.slug,
+      title: input.title,
+      category: 'community_service',
+      date: new Date('2026-01-01'),
+      summary: input.title,
+      status: 'published',
+      consentConfirmed: true,
+      publishedAt: new Date(),
+      publishedTitle: input.title,
+      publishedSummary: input.title,
+      clubs: {
+        create: input.clubIds.map((clubId, i) => ({
+          clubId,
+          role: i === 0 ? 'lead' : 'collaborator',
+        })),
+      },
+    },
+  });
+  return { id: input.id };
+}
