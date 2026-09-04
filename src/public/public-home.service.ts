@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { AnalyticsService } from '../analytics/analytics.service';
 import { ContentService } from '../content/content.service';
 import { publicProjectSummaryDto } from '../showcase/showcase.transformer';
 import { ShowcaseService } from '../showcase/showcase.service';
@@ -12,15 +11,13 @@ export class PublicHomeService {
   constructor(
     private readonly content: ContentService,
     private readonly showcase: ShowcaseService,
-    private readonly analytics: AnalyticsService,
   ) {}
 
   async build() {
-    const [blocks, stats, latest, visits] = await Promise.all([
+    const [blocks, stats, latest] = await Promise.all([
       this.content.publishedBlocks('home'),
       this.content.setting<HomeStats>('home.stats', FALLBACK_STATS),
       this.showcase.latest(4),
-      this.analytics.currentVisits(),
     ]);
     return {
       hero: {
@@ -34,7 +31,6 @@ export class PublicHomeService {
       stats,
       flagship: blocks.flagship?.value ?? [],
       latestProjects: latest.map(publicProjectSummaryDto),
-      visits,
     };
   }
 }

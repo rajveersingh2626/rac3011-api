@@ -16,6 +16,7 @@ import type { Response } from 'express';
 import { AchievementsService } from '../achievements/achievements.service';
 import { achievementDto } from '../achievements/achievements.transformer';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { CacheTags } from '../cache/cache-tags.decorator';
 import { Public } from '../common/decorators/access.decorators';
 import { parseListQuery } from '../common/query/list-query';
 import { ContentService } from '../content/content.service';
@@ -36,7 +37,7 @@ import { ResourcesService } from '../resources/resources.service';
 import { publicResourceDto } from '../resources/resources.transformer';
 import { publicProjectDetailDto, publicProjectSummaryDto } from '../showcase/showcase.transformer';
 import { ShowcaseService } from '../showcase/showcase.service';
-import { setNoCache, setPublicCache } from './cache.util';
+import { setLiveCache, setNoCache, setPublicCache } from './cache.util';
 import {
   publicBoardMemberDto,
   publicClubDetailDto,
@@ -45,9 +46,7 @@ import {
 import { PublicClubsService } from './public-clubs.service';
 import { PublicHomeService } from './public-home.service';
 import { PublicInitiativesService } from './public-initiatives.service';
-import type { ProjectKey } from './project-summary.registry';
-
-const PROJECT_KEYS: ProjectKey[] = ['mission3011', 'drishti', 'rcl', 'careerbridge', 'ride'];
+import { PROJECT_KEYS, type ProjectKey } from './project-summary.registry';
 
 function parseDateParam(value: unknown): Date | undefined {
   if (typeof value !== 'string' || !value) return undefined;
@@ -77,9 +76,16 @@ export class PublicController {
 
   @Get('home')
   @Public()
-  async getHome(@Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('content', 'settings', 'projects')
+  async getHome() {
     return this.home.build();
+  }
+
+  @Get('live')
+  @Public()
+  async getLive(@Res({ passthrough: true }) res: Response) {
+    setLiveCache(res);
+    return this.analytics.currentVisits();
   }
 
   @Post('visits')
@@ -93,23 +99,16 @@ export class PublicController {
 
   @Get('clubs')
   @Public()
-  async listClubs(
-    @Query('zoneId') zoneId: string | undefined,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    setPublicCache(res);
+  @CacheTags('clubs')
+  async listClubs(@Query('zoneId') zoneId: string | undefined) {
     const items = await this.clubs.list(zoneId);
     return { items: items.map(publicClubSummaryDto), total: items.length };
   }
 
   @Get('clubs/:slug')
   @Public()
-  async getClub(
-    @Param('slug') slug: string,
-    @Query('include') include: string | undefined,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    setPublicCache(res);
+  @CacheTags('clubs', 'projects')
+  async getClub(@Param('slug') slug: string, @Query('include') include: string | undefined) {
     const includes = (include ?? '').split(',').map((s) => s.trim());
     const { club, board, projects } = await this.clubs.bySlug(slug, {
       board: includes.includes('board'),
@@ -124,11 +123,8 @@ export class PublicController {
 
   @Get('projects')
   @Public()
-  async listProjects(
-    @Query() raw: Record<string, unknown>,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    setPublicCache(res);
+  @CacheTags('projects')
+  async listProjects(@Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: ['category', 'clubSlug'] as const });
     const { items, total } = await this.showcase.list(
       { category: q.filter.category, clubSlug: q.filter.clubSlug },
@@ -140,98 +136,94 @@ export class PublicController {
 
   @Get('projects/:slug')
   @Public()
-  async getProject(@Param('slug') slug: string, @Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('projects')
+  async getProject(@Param('slug') slug: string) {
     return publicProjectDetailDto(await this.showcase.bySlug(slug));
   }
 
   @Get('past-drrs')
   @Public()
-  async listPastDrrs(@Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('heritage')
+  async listPastDrrs() {
     return { items: (await this.heritage.list()).map(pastDrrDto) };
   }
 
   @Get('past-drrs/:slug')
   @Public()
-  async getPastDrr(@Param('slug') slug: string, @Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('heritage')
+  async getPastDrr(@Param('slug') slug: string) {
     return pastDrrDto(await this.heritage.bySlug(slug));
   }
 
   @Get('district-team')
   @Public()
-  async getDistrictTeam(@Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('district-team')
+  async getDistrictTeam() {
     return { items: (await this.leadership.currentTeam()).map(districtTeamMemberDto) };
   }
 
   @Get('achievements')
   @Public()
-  async listAchievements(@Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('achievements')
+  async listAchievements() {
     return { items: (await this.achievements.list()).map(achievementDto) };
   }
 
   @Get('partners')
   @Public()
-  async listPartners(@Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('partners')
+  async listPartners() {
     return { items: (await this.partners.list()).map(partnerDto) };
   }
 
   @Get('publications')
   @Public()
-  async listPublications(@Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('publications')
+  async listPublications() {
     return { items: (await this.publications.list()).map(publicationDto) };
   }
 
   @Get('resources')
   @Public()
-  async listResources(@Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('resources')
+  async listResources() {
     return { items: (await this.resources.list()).map(publicResourceDto) };
   }
 
   @Get('content/:pageKey')
   @Public()
-  async getContent(@Param('pageKey') pageKey: string, @Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('content')
+  async getContent(@Param('pageKey') pageKey: string) {
     return this.content.publishedBlocks(pageKey);
   }
 
   @Get('initiatives')
   @Public()
-  async listInitiatives(@Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('settings', 'initiatives')
+  async listInitiatives() {
     return { items: await this.initiatives.list() };
   }
 
   @Get('projects-summary/:key')
   @Public()
-  async getInitiativeSummary(@Param('key') key: string, @Res({ passthrough: true }) res: Response) {
+  @CacheTags('settings', 'initiatives')
+  async getInitiativeSummary(@Param('key') key: string) {
     if (!PROJECT_KEYS.includes(key as ProjectKey)) throw new NotFoundException();
-    setPublicCache(res);
     return this.initiatives.card(key as ProjectKey);
   }
 
   @Get('events')
   @Public()
-  async listEvents(
-    @Query('from') from: string | undefined,
-    @Query('to') to: string | undefined,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    setPublicCache(res);
+  @CacheTags('events')
+  async listEvents(@Query('from') from: string | undefined, @Query('to') to: string | undefined) {
     const items = await this.events.listInRange(parseDateParam(from), parseDateParam(to));
     return { items: items.map(publicEventDto) };
   }
 
   @Get('events/:slug')
   @Public()
-  async getEvent(@Param('slug') slug: string, @Res({ passthrough: true }) res: Response) {
-    setPublicCache(res);
+  @CacheTags('events')
+  async getEvent(@Param('slug') slug: string) {
     return publicEventDto(await this.events.bySlug(slug));
   }
 
