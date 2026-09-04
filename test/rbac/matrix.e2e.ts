@@ -150,4 +150,51 @@ describe('RBAC denial matrix', () => {
       await dsc.patch('/clubs/MX-CLUB-A').send({ meetingInfo: 'x' }).expect(403);
     });
   });
+
+  describe('reports (§4.8 denial matrix rows)', () => {
+    let reportId: string;
+
+    beforeAll(async () => {
+      const created = await president
+        .post('/reports')
+        .send({ clubId: 'MX-CLUB-A', month: '2026-10' })
+        .expect(201);
+      reportId = (created.body as { id: string }).id;
+    });
+
+    it('GET /reports?filter[clubId]=A: member and editing_team hold neither reports:submit nor reports:review -> 403 (docs/decisions.md); president/zrr(same zone)/dsc -> 200; zrr(other zone) -> empty', async () => {
+      await member.get('/reports').query({ 'filter[clubId]': 'MX-CLUB-A' }).expect(403);
+      await editingTeam.get('/reports').query({ 'filter[clubId]': 'MX-CLUB-A' }).expect(403);
+      await president.get('/reports').query({ 'filter[clubId]': 'MX-CLUB-A' }).expect(200);
+      await zrrSameZone.get('/reports').query({ 'filter[clubId]': 'MX-CLUB-A' }).expect(200);
+      await dsc.get('/reports').query({ 'filter[clubId]': 'MX-CLUB-A' }).expect(200);
+      const otherZoneRes = await zrrOtherZone
+        .get('/reports')
+        .query({ 'filter[clubId]': 'MX-CLUB-A' })
+        .expect(200);
+      expect((otherZoneRes.body as { items: unknown[] }).items).toHaveLength(0);
+    });
+
+    it('PATCH /reports/:idA {status:submitted}: only president (own club) succeeds', async () => {
+      await member.patch(`/reports/${reportId}`).send({ status: 'submitted' }).expect(403);
+      await zrrSameZone.patch(`/reports/${reportId}`).send({ status: 'submitted' }).expect(403);
+      await dsc.patch(`/reports/${reportId}`).send({ status: 'submitted' }).expect(403);
+      await editingTeam.patch(`/reports/${reportId}`).send({ status: 'submitted' }).expect(403);
+      await president
+        .patch(`/reports/${reportId}`)
+        .send({ values: { physical_meetings: 1, activities: [] }, status: 'submitted' })
+        .expect(200);
+    });
+
+    it('POST /reports/:idA/queries: member/president/editing_team 403 (no reports:review); zrr(same zone)/dsc 200; zrr(other zone) 404', async () => {
+      await member.post(`/reports/${reportId}/queries`).send({ question: 'x' }).expect(403);
+      await president.post(`/reports/${reportId}/queries`).send({ question: 'x' }).expect(403);
+      await editingTeam.post(`/reports/${reportId}/queries`).send({ question: 'x' }).expect(403);
+      await zrrOtherZone.post(`/reports/${reportId}/queries`).send({ question: 'x' }).expect(404);
+      await zrrSameZone
+        .post(`/reports/${reportId}/queries`)
+        .send({ question: 'Please clarify' })
+        .expect(201);
+    });
+  });
 });
