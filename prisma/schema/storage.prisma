@@ -1,0 +1,58 @@
+enum StorageTier {
+  permanent
+  dynamic
+  private
+}
+
+model StoredFileRow {
+  id           String      @id @default(cuid())
+  tier         StorageTier
+  provider     String
+  providerKey  String      @map("provider_key")
+  url          String?
+  name         String
+  mimeType     String      @map("mime_type")
+  size         Int
+  resourceType String      @map("resource_type")
+  resourceId   String?     @map("resource_id")
+  uploadedById String      @map("uploaded_by_id")
+  clubId       String?     @map("club_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  @@index([resourceType, resourceId])
+  @@index([tier])
+  @@index([clubId])
+  @@index([uploadedById])
+  @@map("files")
+}
+
+enum UploadGrantStatus {
+  pending
+  finalised
+  expired
+}
+
+model UploadGrant {
+  id           String            @id @default(cuid())
+  tier         StorageTier
+  provider     String
+  mimeType     String            @map("mime_type")
+  size         Int
+  name         String
+  resourceType String            @map("resource_type")
+  resourceId   String?           @map("resource_id")
+  clubId       String?           @map("club_id")
+  userId       String            @map("user_id")
+  uploadUrl    String            @map("upload_url")
+  status       UploadGrantStatus @default(pending)
+  expiresAt    DateTime          @map("expires_at")
+  fileId       String?           @unique @map("file_id")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("upload_grants")
+}
