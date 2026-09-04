@@ -22,6 +22,7 @@ const workerModules = [
   NotificationsModule,
   StorageModule,
   LinkHealthModule,
+  HealthModule,
 ];
 const httpModules = [
   PrismaModule,
