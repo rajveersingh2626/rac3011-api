@@ -11,6 +11,8 @@ export type ProjectSummary = {
 
 export type ProjectKey = 'mission3011' | 'drishti' | 'rcl' | 'careerbridge' | 'ride';
 
+export const PROJECT_KEYS: ProjectKey[] = ['mission3011', 'drishti', 'rcl', 'careerbridge', 'ride'];
+
 // Empty until each subdomain (steps 12-13) registers its own summary() provider (spec §10).
 @Injectable()
 export class ProjectSummaryRegistry {

@@ -3,6 +3,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { LoggerModule } from 'nestjs-pino';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { CacheModule } from './cache/cache.module';
 import { ClubsModule } from './clubs/clubs.module';
 import { CommonModule } from './common/common.module';
 import { HealthModule } from './health/health.module';
@@ -18,6 +19,7 @@ import { env } from './config/env';
 
 const workerModules = [
   PrismaModule,
+  CacheModule,
   CommonModule,
   NotificationsModule,
   StorageModule,
@@ -26,6 +28,7 @@ const workerModules = [
 ];
 const httpModules = [
   PrismaModule,
+  CacheModule,
   CommonModule,
   NotificationsModule,
   StorageModule,

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { purgeAllStandalone } from '../src/cache/purge-all.standalone';
 import { PERMISSIONS } from './seed/permissions';
 import { ROLES } from './seed/roles';
 import { JUDGED_CATEGORY_ORDER, POINT_CATEGORIES, POINT_RULES_2026 } from './seed/points';
@@ -213,6 +214,7 @@ export async function seedSystemData(
 if (require.main === module) {
   const prisma = new PrismaClient();
   seedSystemData(prisma, console.log)
+    .then(() => purgeAllStandalone())
     .then(() => console.log('system seed complete'))
     .catch((err) => {
       console.error(err);

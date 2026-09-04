@@ -74,6 +74,10 @@ export const envSchema = z.object({
   R2_BUCKET_BACKUPS: z.string().default('rac3011-backups'),
   SENTRY_DSN: optionalString,
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  CLOUDFLARE_API_EMAIL: optionalString,
+  CLOUDFLARE_API_KEY: optionalString,
+  CLOUDFLARE_ZONE_ID: optionalString,
+  CACHE_INVALIDATION: z.enum(['on', 'off']).default('on'),
   SEED_DEV: z
     .string()
     .optional()
