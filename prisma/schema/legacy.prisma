@@ -1,0 +1,77 @@
+model LegacyUserProfile {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rotaryId            String?   @map("rotary_id")
+  fullName            String    @map("full_name")
+  email               String
+  role                String    @default("president")
+  post                String?   @default("Club President")
+  clubName            String?   @default("District 3011") @map("club_name")
+  phone               String?
+  password            String
+  totpSecret          String?   @map("totp_secret")
+  createdAt           DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  resetToken          String?   @map("reset_token")
+  resetTokenExpiresAt DateTime? @map("reset_token_expires_at") @db.Timestamptz(6)
+  isTestGroup         Boolean?  @default(false) @map("is_test_group")
+
+  @@index([role], map: "idx_user_profiles_role")
+  @@index([rotaryId], map: "idx_user_profiles_rotary_id")
+  @@map("legacy_user_profiles")
+}
+
+model LegacyMonthlyReport {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  month        String
+  clubName     String    @map("club_name")
+  clubEmail    String    @map("club_email")
+  submittedBy  String    @map("submitted_by")
+  status       String?   @default("reported")
+  flagComment  String?   @map("flag_comment")
+  sectionsJson Json      @map("sections_json")
+  submittedAt  DateTime? @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  flagReason   String?   @map("flag_reason")
+  flaggedBy    String?   @map("flagged_by")
+  flaggedAt    DateTime? @map("flagged_at") @db.Timestamptz(6)
+  sectionFlags Json?     @default("{}") @map("section_flags")
+
+  @@index([clubEmail, month], map: "idx_monthly_reports_club_month")
+  @@index([status], map: "idx_monthly_reports_status")
+  @@index([submittedAt(sort: Desc)], map: "idx_monthly_reports_submitted_at")
+  @@map("legacy_monthly_reports")
+}
+
+model LegacyProjectSubmission {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clubId        String?   @map("club_id") @db.Uuid
+  clubName      String    @map("club_name")
+  clubEmail     String?   @map("club_email")
+  submittedBy   String?   @map("submitted_by")
+  title         String
+  category      String
+  description   String?
+  budget        String?
+  beneficiaries String?
+  proofUrl      String?   @map("proof_url")
+  status        String?   @default("reported")
+  flagComment   String?   @map("flag_comment")
+  submittedAt   DateTime? @default(now()) @map("submitted_at") @db.Timestamptz(6)
+
+  @@index([clubEmail], map: "idx_project_submissions_club_email")
+  @@index([submittedAt(sort: Desc)], map: "idx_project_submissions_submitted_at")
+  @@map("legacy_project_submissions")
+}
+
+model LegacyAnnouncement {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title          String
+  category       String?
+  content        String
+  authorName     String?   @default("District Secretariat") @map("author_name")
+  sentViaEmail   Boolean?  @default(false) @map("sent_via_email")
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  targetAudience String?   @default("all") @map("target_audience")
+
+  @@index([targetAudience], map: "idx_announcements_audience")
+  @@index([createdAt(sort: Desc)], map: "idx_announcements_created_at")
+  @@map("legacy_announcements")
+}

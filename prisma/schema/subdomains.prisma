@@ -1,0 +1,297 @@
+enum CampStatus {
+  submitted
+  approved
+  rejected
+}
+
+model M3011Camp {
+  id               String          @id @default(cuid())
+  leadClubId       String          @map("lead_club_id")
+  leadClub         Club            @relation(fields: [leadClubId], references: [id])
+  date             DateTime        @db.Date
+  venue            String
+  city             String?
+  unitsCollected   Int             @map("units_collected")
+  donorsRegistered Int?            @map("donors_registered")
+  partnerBloodBank String?         @map("partner_blood_bank")
+  photos           String[]        @default([])
+  status           CampStatus      @default(submitted)
+  submittedById    String          @map("submitted_by_id")
+  reviewedById     String?         @map("reviewed_by_id")
+  reviewedAt       DateTime?       @map("reviewed_at")
+  rejectionReason  String?         @map("rejection_reason")
+  clubs            M3011CampClub[]
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([leadClubId])
+  @@index([date])
+  @@map("m3011_camps")
+}
+
+model M3011CampClub {
+  campId    String    @map("camp_id")
+  camp      M3011Camp @relation(fields: [campId], references: [id], onDelete: Cascade)
+  clubId    String    @map("club_id")
+  club      Club      @relation(fields: [clubId], references: [id])
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@id([campId, clubId])
+  @@index([clubId])
+  @@map("m3011_camp_clubs")
+}
+
+enum DrishtiStage {
+  screened
+  scheduled
+  operated
+  followup
+  closed
+}
+
+model DrishtiBeneficiary {
+  id             String           @id @default(cuid())
+  clubId         String           @map("club_id")
+  club           Club             @relation(fields: [clubId], references: [id])
+  name           String
+  age            Int?
+  gender         String?
+  phoneEncrypted String?          @map("phone_encrypted")
+  eye            String
+  screenedOn     DateTime         @map("screened_on") @db.Date
+  campLocation   String?          @map("camp_location")
+  stage          DrishtiStage     @default(screened)
+  notes          String?
+  createdById    String           @map("created_by_id")
+  surgeries      DrishtiSurgery[]
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  @@index([clubId])
+  @@index([stage])
+  @@map("drishti_beneficiaries")
+}
+
+model DrishtiSurgery {
+  id            String             @id @default(cuid())
+  beneficiaryId String             @map("beneficiary_id")
+  beneficiary   DrishtiBeneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  hospital      String
+  operatedOn    DateTime           @map("operated_on") @db.Date
+  outcome       String?
+  followupOn    DateTime?          @map("followup_on") @db.Date
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  @@index([beneficiaryId])
+  @@map("drishti_surgeries")
+}
+
+enum TeamStatus {
+  registered
+  confirmed
+  withdrawn
+}
+
+model RclTeam {
+  id           String       @id @default(cuid())
+  season       Int
+  clubId       String       @map("club_id")
+  club         Club         @relation(fields: [clubId], references: [id])
+  name         String
+  captainName  String       @map("captain_name")
+  captainPhone String       @map("captain_phone")
+  status       TeamStatus   @default(registered)
+  players      RclPlayer[]
+  homeFixtures RclFixture[] @relation("homeTeam")
+  awayFixtures RclFixture[] @relation("awayTeam")
+  createdById  String       @map("created_by_id")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  @@unique([season, clubId])
+  @@index([clubId])
+  @@index([status])
+  @@map("rcl_teams")
+}
+
+model RclPlayer {
+  id        String   @id @default(cuid())
+  teamId    String   @map("team_id")
+  team      RclTeam  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  memberId  String?  @map("member_id")
+  name      String
+  role      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([teamId])
+  @@map("rcl_players")
+}
+
+enum FixtureStatus {
+  scheduled
+  completed
+  abandoned
+}
+
+model RclFixture {
+  id          String        @id @default(cuid())
+  season      Int
+  homeTeamId  String        @map("home_team_id")
+  homeTeam    RclTeam       @relation("homeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId  String        @map("away_team_id")
+  awayTeam    RclTeam       @relation("awayTeam", fields: [awayTeamId], references: [id])
+  scheduledAt DateTime      @map("scheduled_at")
+  venue       String?
+  status      FixtureStatus @default(scheduled)
+  result      RclResult?
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@index([season, scheduledAt])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@map("rcl_fixtures")
+}
+
+model RclResult {
+  fixtureId    String     @id @map("fixture_id")
+  fixture      RclFixture @relation(fields: [fixtureId], references: [id], onDelete: Cascade)
+  homeRuns     Int        @map("home_runs")
+  homeWickets  Int        @map("home_wickets")
+  homeOvers    Decimal    @map("home_overs") @db.Decimal(4, 1)
+  awayRuns     Int        @map("away_runs")
+  awayWickets  Int        @map("away_wickets")
+  awayOvers    Decimal    @map("away_overs") @db.Decimal(4, 1)
+  winnerTeamId String?    @map("winner_team_id")
+  notes        String?
+  enteredById  String     @map("entered_by_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@map("rcl_results")
+}
+
+enum ListingType {
+  job
+  internship
+  mentorship
+}
+
+enum ListingStatus {
+  pending_email
+  pending
+  verified
+  filled
+  expired
+  rejected
+}
+
+model CbListing {
+  id                String        @id @default(cuid())
+  title             String
+  company           String
+  type              ListingType
+  location          String
+  mode              String
+  stipend           String?
+  description       String
+  applyUrl          String?       @map("apply_url")
+  contactEmail      String        @map("contact_email")
+  postedByName      String        @map("posted_by_name")
+  postedByEmail     String        @map("posted_by_email")
+  rotaryAffiliation String?       @map("rotary_affiliation")
+  status            ListingStatus @default(pending_email)
+  verifyToken       String?       @unique @map("verify_token")
+  verifiedById      String?       @map("verified_by_id")
+  verifiedAt        DateTime?     @map("verified_at")
+  filledAt          DateTime?     @map("filled_at")
+  expiresAt         DateTime?     @map("expires_at")
+  rejectionReason   String?       @map("rejection_reason")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("cb_listings")
+}
+
+model RideSupportClub {
+  id                String   @id @default(cuid())
+  ryYear            Int      @map("ry_year")
+  clubId            String   @map("club_id")
+  club              Club     @relation(fields: [clubId], references: [id])
+  capacityDelegates Int      @map("capacity_delegates")
+  homestayAvailable Boolean  @map("homestay_available")
+  preferredMonths   Int[]    @map("preferred_months")
+  contactMemberId   String?  @map("contact_member_id")
+  contactPhone      String   @map("contact_phone")
+  notes             String?
+  createdById       String   @map("created_by_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([ryYear, clubId])
+  @@index([clubId])
+  @@map("ride_support_clubs")
+}
+
+enum DelegationStatus {
+  planned
+  confirmed
+  completed
+  cancelled
+}
+
+model RideDelegation {
+  id               String               @id @default(cuid())
+  ryYear           Int                  @map("ry_year")
+  visitingDistrict String               @map("visiting_district")
+  country          String
+  startsAt         DateTime             @map("starts_at") @db.Date
+  endsAt           DateTime             @map("ends_at") @db.Date
+  headcount        Int
+  contactName      String               @map("contact_name")
+  contactEmail     String?              @map("contact_email")
+  status           DelegationStatus     @default(planned)
+  hosts            RideDelegationHost[]
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([ryYear, startsAt])
+  @@map("ride_delegations")
+}
+
+model RideDelegationHost {
+  id           String         @id @default(cuid())
+  delegationId String         @map("delegation_id")
+  delegation   RideDelegation @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+  clubId       String         @map("club_id")
+  club         Club           @relation(fields: [clubId], references: [id])
+  daysHosted   Int            @map("days_hosted")
+  membersSent  Int            @default(0) @map("members_sent")
+  assignedById String         @map("assigned_by_id")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  @@unique([delegationId, clubId])
+  @@index([clubId])
+  @@map("ride_delegation_hosts")
+}
+
+model RideGalleryItem {
+  id        String   @id @default(cuid())
+  year      Int
+  url       String
+  kind      String
+  caption   String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([year])
+  @@map("ride_gallery_items")
+}

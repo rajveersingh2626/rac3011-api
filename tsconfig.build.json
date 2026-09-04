@@ -1,4 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  "include": ["src/**/*", "prisma/seed-system.ts", "prisma/seed.ts", "prisma/seed-dev.ts", "prisma/seed/**/*"],
+  "exclude": ["node_modules", "test", "dist", "**/*.spec.ts"]
 }

@@ -1,0 +1,126 @@
+enum MemberStatus {
+  pending
+  approved
+  suspended
+}
+
+model MemberProfile {
+  id                    String       @id @default(cuid())
+  userId                String       @unique @map("user_id")
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName              String       @map("full_name")
+  email                 String       @unique
+  phone                 String?
+  rotaryId              String?      @map("rotary_id")
+  clubId                String       @map("club_id")
+  club                  Club         @relation(fields: [clubId], references: [id])
+  photoUrl              String?      @map("photo_url")
+  bio                   String?
+  skills                String[]     @default([])
+  interests             String[]     @default([])
+  membershipAnniversary DateTime?    @map("membership_anniversary") @db.Date
+  status                MemberStatus @default(pending)
+  approvedById          String?      @map("approved_by_id")
+  approvedAt            DateTime?    @map("approved_at")
+  rejectionReason       String?      @map("rejection_reason")
+  qrToken               String       @unique @default(cuid()) @map("qr_token")
+  directoryOptIn        Boolean      @default(false) @map("directory_opt_in")
+  isDacMember           Boolean      @default(false) @map("is_dac_member")
+  themePreference       String       @default("system") @map("theme_preference")
+  legacyId              String?      @unique @map("legacy_id")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+
+  rsvps              EventRsvp[]
+  checkins           EventCheckin[]
+  badges             MemberBadge[]
+  certificates       Certificate[]
+  privacyAcceptances MemberPrivacyAcceptance[]
+
+  @@index([clubId])
+  @@index([status])
+  @@map("member_profiles")
+}
+
+enum ScopeType {
+  none
+  club
+  zone
+  project
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  name        String
+  description String?
+  isSystem    Boolean          @default(false) @map("is_system")
+  scopeType   ScopeType        @default(none) @map("scope_type")
+  permissions RolePermission[]
+  userRoles   UserRole[]
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id")
+  permissionId String     @map("permission_id")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  roleId      String    @map("role_id")
+  scopeType   ScopeType @map("scope_type")
+  scopeId     String?   @map("scope_id")
+  grantedById String?   @map("granted_by_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([userId, roleId, scopeType, scopeId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([scopeType, scopeId])
+  @@map("user_roles")
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorId      String?  @map("actor_id")
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String?  @map("resource_id")
+  before       Json?
+  after        Json?
+  at           DateTime @default(now())
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([resourceType, resourceId])
+  @@index([actorId])
+  @@index([at])
+  @@map("audit_log")
+}

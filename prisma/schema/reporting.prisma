@@ -1,0 +1,134 @@
+enum SchemaStatus {
+  draft
+  active
+  retired
+}
+
+model ReportFormSchema {
+  id          String            @id @default(cuid())
+  version     Int               @unique
+  status      SchemaStatus      @default(draft)
+  publishedAt DateTime?         @map("published_at")
+  createdById String?           @map("created_by_id")
+  fields      ReportFormField[]
+  reports     Report[]
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  @@map("report_form_schemas")
+}
+
+enum FieldType {
+  text
+  textarea
+  number
+  select
+  multiselect
+  link
+  date
+  boolean
+  clubs
+}
+
+model ReportFormField {
+  id             String           @id @default(cuid())
+  schemaId       String           @map("schema_id")
+  schema         ReportFormSchema @relation(fields: [schemaId], references: [id], onDelete: Cascade)
+  section        String
+  fieldKey       String           @map("field_key")
+  label          String
+  type           FieldType
+  options        Json?
+  required       Boolean          @default(false)
+  order          Int
+  helpText       String?          @map("help_text")
+  perActivity    Boolean          @default(false) @map("per_activity")
+  pointSourceKey String?          @map("point_source_key")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  @@unique([schemaId, fieldKey])
+  @@map("report_form_fields")
+}
+
+enum ReportStatus {
+  draft
+  submitted
+  queried
+  scored
+}
+
+model Report {
+  id            String           @id @default(cuid())
+  clubId        String           @map("club_id")
+  club          Club             @relation(fields: [clubId], references: [id])
+  ryYear        Int              @map("ry_year")
+  month         DateTime         @db.Date
+  schemaVersion Int              @map("schema_version")
+  schema        ReportFormSchema @relation(fields: [schemaVersion], references: [version])
+  status        ReportStatus     @default(draft)
+  values        Json
+  notes         String?
+  submittedById String?          @map("submitted_by_id")
+  submittedAt   DateTime?        @map("submitted_at")
+  filedOnTime   Boolean?         @map("filed_on_time")
+  scoredAt      DateTime?        @map("scored_at")
+  legacyId      String?          @unique @map("legacy_id")
+  queries       ReportQuery[]
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  @@unique([clubId, month])
+  @@index([status])
+  @@index([ryYear, month])
+  @@index([schemaVersion])
+  @@map("reports")
+}
+
+model ReportQuery {
+  id          String    @id @default(cuid())
+  reportId    String    @map("report_id")
+  report      Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  askedById   String    @map("asked_by_id")
+  question    String
+  reply       String?
+  repliedById String?   @map("replied_by_id")
+  repliedAt   DateTime? @map("replied_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([reportId])
+  @@map("report_queries")
+}
+
+model ReportRequest {
+  id          String                  @id @default(cuid())
+  title       String
+  description String?
+  questions   Json
+  audience    Json
+  dueAt       DateTime                @map("due_at")
+  createdById String                  @map("created_by_id")
+  responses   ReportRequestResponse[]
+  createdAt   DateTime                @default(now()) @map("created_at")
+  updatedAt   DateTime                @updatedAt @map("updated_at")
+
+  @@index([dueAt])
+  @@map("report_requests")
+}
+
+model ReportRequestResponse {
+  id            String        @id @default(cuid())
+  requestId     String        @map("request_id")
+  request       ReportRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  clubId        String        @map("club_id")
+  club          Club          @relation(fields: [clubId], references: [id])
+  answers       Json
+  submittedById String        @map("submitted_by_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@unique([requestId, clubId])
+  @@index([clubId])
+  @@map("report_request_responses")
+}

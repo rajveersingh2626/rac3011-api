@@ -1,0 +1,240 @@
+enum ContentType {
+  text
+  richtext
+  image
+  link
+  list
+}
+
+model ContentBlock {
+  id             String      @id @default(cuid())
+  pageKey        String      @map("page_key")
+  sectionKey     String      @map("section_key")
+  type           ContentType
+  draftValue     Json        @map("draft_value")
+  publishedValue Json?       @map("published_value")
+  publishedAt    DateTime?   @map("published_at")
+  updatedById    String?     @map("updated_by_id")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  @@unique([pageKey, sectionKey])
+  @@map("content_blocks")
+}
+
+model Setting {
+  key         String   @id
+  value       Json
+  updatedById String?  @map("updated_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+enum LinkStatus {
+  unchecked
+  ok
+  broken
+  private
+}
+
+model AssetLink {
+  id            String     @id @default(cuid())
+  url           String
+  kind          String
+  status        LinkStatus @default(unchecked)
+  lastCheckedAt DateTime?  @map("last_checked_at")
+  lastError     String?    @map("last_error")
+  ownerUserId   String?    @map("owner_user_id")
+  resourceType  String     @map("resource_type")
+  resourceId    String     @map("resource_id")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  @@unique([resourceType, resourceId, url])
+  @@index([status])
+  @@map("asset_links")
+}
+
+model PastDrr {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  terms         String[]
+  homeClubId    String?  @map("home_club_id")
+  photoUrl      String?  @map("photo_url")
+  bio           String?
+  order         Int
+  isLowResPhoto Boolean  @default(false) @map("is_low_res_photo")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("past_drrs")
+}
+
+enum TeamKind {
+  core
+  dsc
+}
+
+model DistrictTeamMember {
+  id          String   @id @default(cuid())
+  memberId    String?  @map("member_id")
+  name        String
+  designation String
+  kind        TeamKind
+  order       Int
+  photoUrl    String?  @map("photo_url")
+  phone       String?
+  email       String?
+  bio         String?
+  clubId      String?  @map("club_id")
+  club        Club?    @relation(fields: [clubId], references: [id])
+  ryYear      Int      @map("ry_year")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([clubId])
+  @@index([ryYear])
+  @@map("district_team")
+}
+
+enum AchievementType {
+  chartered_club
+  award
+  milestone
+}
+
+model Achievement {
+  id             String          @id @default(cuid())
+  type           AchievementType
+  title          String
+  clubId         String?         @map("club_id")
+  club           Club?           @relation(fields: [clubId], references: [id])
+  date           DateTime        @db.Date
+  certificateUrl String?         @map("certificate_url")
+  description    String?
+  order          Int             @default(0)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@index([clubId])
+  @@index([date])
+  @@map("achievements")
+}
+
+enum PermissionStatus {
+  pending
+  granted
+}
+
+model Partner {
+  id               String           @id @default(cuid())
+  name             String
+  logoUrl          String?          @map("logo_url")
+  tier             String
+  website          String?
+  permissionStatus PermissionStatus @default(pending) @map("permission_status")
+  order            Int              @default(0)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@map("partners")
+}
+
+enum PublicationType {
+  directory
+  newsletter
+}
+
+model Publication {
+  id        String          @id @default(cuid())
+  title     String
+  type      PublicationType
+  url       String
+  month     DateTime        @db.Date
+  coverUrl  String?         @map("cover_url")
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  @@map("publications")
+}
+
+enum ResourceCategory {
+  documents
+  forms
+  logos
+  photos
+  guest_kit
+  templates
+}
+
+model Resource {
+  id                 String           @id @default(cuid())
+  category           ResourceCategory
+  title              String
+  description        String?
+  url                String
+  isLocked           Boolean          @default(false) @map("is_locked")
+  requiredPermission String?          @map("required_permission")
+  comingSoonMonth    String?          @map("coming_soon_month")
+  order              Int              @default(0)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  @@map("resources")
+}
+
+model SisterClubRequest {
+  id              String    @id @default(cuid())
+  clubId          String    @map("club_id")
+  club            Club      @relation(fields: [clubId], references: [id])
+  partnerClubName String    @map("partner_club_name")
+  partnerDistrict String    @map("partner_district")
+  country         String
+  contactName     String    @map("contact_name")
+  contactEmail    String    @map("contact_email")
+  status          String    @default("submitted")
+  signedOn        DateTime? @map("signed_on") @db.Date
+  submittedById   String?   @map("submitted_by_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([clubId])
+  @@map("sister_club_requests")
+}
+
+enum EnquiryKind {
+  new_club
+  sponsor
+  contact
+}
+
+model Enquiry {
+  id           String      @id @default(cuid())
+  kind         EnquiryKind
+  name         String
+  email        String
+  phone        String?
+  organisation String?
+  message      String
+  payload      Json?
+  routedTo     String      @map("routed_to")
+  status       String      @default("new")
+  assignedToId String?     @map("assigned_to_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("enquiries")
+}
+
+model PageView {
+  year      Int      @id
+  count     BigInt   @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("page_views")
+}

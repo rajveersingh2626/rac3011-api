@@ -1,0 +1,112 @@
+model Zone {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  order     Int      @default(0)
+  clubs     Club[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("zones")
+}
+
+model Club {
+  id             String    @id
+  name           String
+  shortName      String?   @map("short_name")
+  slug           String?   @unique
+  zone           String?
+  zoneId         String?   @map("zone_id")
+  zoneRef        Zone?     @relation(fields: [zoneId], references: [id])
+  lat            Float?
+  lng            Float?
+  president      String?
+  isDirector     String?   @default("") @map("is_director")
+  phone          String?
+  email          String?
+  rotaryId       String?   @map("rotary_id")
+  secretary      String?
+  secretaryEmail String?   @map("secretary_email")
+  secretaryPhone String?   @map("secretary_phone")
+  initiatives    Json      @default("[]")
+  charterDate    DateTime? @map("charter_date") @db.Date
+  isActive       Boolean   @default(true) @map("is_active")
+  meetingInfo    String?   @map("meeting_info")
+  socialLinks    Json?     @map("social_links")
+  logoUrl        String?   @map("logo_url")
+  memberCount    Int       @default(0) @map("member_count")
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  members                MemberProfile[]
+  board                  ClubBoardMember[]
+  facts                  ClubFacts[]
+  reports                Report[]
+  reportRequestResponses ReportRequestResponse[]
+  pointEntries           ClubPointEntry[]
+  projectClubs           ProjectClub[]
+  effortLogs             EffortLog[]
+  events                 Event[]
+  checkins               EventCheckin[]
+  drrBookings            DrrBooking[]
+  feedback               Feedback[]
+  districtTeam           DistrictTeamMember[]
+  achievements           Achievement[]
+  sisterClubRequests     SisterClubRequest[]
+  m3011LeadCamps         M3011Camp[]
+  m3011CampClubs         M3011CampClub[]
+  drishtiBeneficiaries   DrishtiBeneficiary[]
+  rclTeams               RclTeam[]
+  rideSupportClubs       RideSupportClub[]
+  rideDelegationHosts    RideDelegationHost[]
+
+  @@index([email], map: "idx_clubs_email")
+  @@index([rotaryId], map: "idx_clubs_rotary_id")
+  @@index([zone], map: "idx_clubs_zone")
+  @@index([zoneId])
+  @@map("clubs")
+}
+
+model ClubBoardMember {
+  id         String   @id @default(cuid())
+  clubId     String   @map("club_id")
+  club       Club     @relation(fields: [clubId], references: [id])
+  memberId   String?  @map("member_id")
+  name       String
+  position   String
+  bloodGroup String?  @map("blood_group")
+  phone      String?
+  email      String?
+  ryYear     Int      @map("ry_year")
+  order      Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([clubId, ryYear])
+  @@map("club_board_members")
+}
+
+model ClubFacts {
+  id                   String    @id @default(cuid())
+  clubId               String    @map("club_id")
+  club                 Club      @relation(fields: [clubId], references: [id])
+  ryYear               Int       @map("ry_year")
+  duesPaidOn           DateTime? @map("dues_paid_on") @db.Date
+  riCitationCompleted  Boolean   @default(false) @map("ri_citation_completed")
+  paulHarrisFellows    Int       @default(0) @map("paul_harris_fellows")
+  dualMembers          Int       @default(0) @map("dual_members")
+  mdioCommitteeMembers Int       @default(0) @map("mdio_committee_members")
+  mdioEventsAttended   Int       @default(0) @map("mdio_events_attended")
+  sisterClubSignedOn   DateTime? @map("sister_club_signed_on") @db.Date
+  drrVisitOn           DateTime? @map("drr_visit_on") @db.Date
+  vocationalCentreOn   DateTime? @map("vocational_centre_on") @db.Date
+  activeSocialHandles  Int       @default(0) @map("active_social_handles")
+  clubMerchandise      Boolean   @default(false) @map("club_merchandise")
+  clubWebsiteUrl       String?   @map("club_website_url")
+  priorYearMemberCount Int?      @map("prior_year_member_count")
+  updatedById          String?   @map("updated_by_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@unique([clubId, ryYear])
+  @@map("club_facts")
+}

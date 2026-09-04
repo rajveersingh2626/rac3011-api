@@ -1,0 +1,105 @@
+model PointCategory {
+  id        String           @id @default(cuid())
+  key       String           @unique
+  name      String
+  order     Int
+  rules     PointRule[]
+  entries   ClubPointEntry[]
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  @@map("point_categories")
+}
+
+enum RuleType {
+  flat
+  per_unit
+  tiered
+  penalty
+}
+
+enum RulePeriod {
+  monthly
+  yearly
+  once
+}
+
+enum SourceType {
+  report_field
+  club_fact
+  event_attendance
+  project_collaboration
+  ride_hosting
+  club_events
+}
+
+model PointRule {
+  id             String           @id @default(cuid())
+  categoryId     String           @map("category_id")
+  category       PointCategory    @relation(fields: [categoryId], references: [id])
+  key            String           @unique
+  label          String
+  ruleType       RuleType         @map("rule_type")
+  period         RulePeriod
+  sourceType     SourceType       @map("source_type")
+  sourceKey      String           @map("source_key")
+  numeratorKey   String?          @map("numerator_key")
+  denominatorKey String?          @map("denominator_key")
+  points         Decimal?         @db.Decimal(10, 2)
+  perUnitCap     Int?             @map("per_unit_cap")
+  isActive       Boolean          @default(true) @map("is_active")
+  ryYear         Int              @map("ry_year")
+  tiers          PointRuleTier[]
+  entries        ClubPointEntry[]
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  @@index([categoryId])
+  @@index([ryYear, isActive])
+  @@map("point_rules")
+}
+
+model PointRuleTier {
+  id        String    @id @default(cuid())
+  ruleId    String    @map("rule_id")
+  rule      PointRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  min       Decimal   @db.Decimal(10, 2)
+  max       Decimal?  @db.Decimal(10, 2)
+  points    Decimal   @db.Decimal(10, 2)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([ruleId])
+  @@map("point_rule_tiers")
+}
+
+enum EntryKind {
+  computed
+  judged
+}
+
+model ClubPointEntry {
+  id          String        @id @default(cuid())
+  clubId      String        @map("club_id")
+  club        Club          @relation(fields: [clubId], references: [id])
+  ryYear      Int           @map("ry_year")
+  periodKey   String        @map("period_key")
+  ruleId      String?       @map("rule_id")
+  rule        PointRule?    @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  categoryId  String        @map("category_id")
+  category    PointCategory @relation(fields: [categoryId], references: [id])
+  kind        EntryKind
+  points      Decimal       @db.Decimal(10, 2)
+  reason      String?
+  trace       Json?
+  sourceType  String?       @map("source_type")
+  sourceId    String?       @map("source_id")
+  createdById String?       @map("created_by_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@index([clubId, ryYear])
+  @@index([ruleId])
+  @@index([categoryId])
+  @@map("club_point_entries")
+}

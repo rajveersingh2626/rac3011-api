@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: rac3011-postgres-dev
+    environment:
+      POSTGRES_DB: rac3011
+      POSTGRES_USER: rac3011
+      POSTGRES_PASSWORD: rac3011
+    ports:
+      - '5434:5432'
+    volumes:
+      - rac3011_pg:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U rac3011 -d rac3011']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7
+    container_name: rac3011-redis-dev
+    ports:
+      - '6379:6379'
+volumes:
+  rac3011_pg:
