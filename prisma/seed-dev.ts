@@ -3,7 +3,11 @@ import { hash } from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { CANONICAL_ZONES, seedZonesFromClubs, slugify } from './seed/zones';
 
-export const DEV_ADMIN = { email: 'admin@rotaract3011.org', password: 'Admin@12345', name: 'Dev Super Admin' };
+export const DEV_ADMIN = {
+  email: 'admin@rotaract3011.org',
+  password: 'Admin@12345',
+  name: 'Dev Super Admin',
+};
 export const DEV_PASSWORD = 'Member@12345';
 
 const DEV_CLUBS = [
@@ -16,24 +20,51 @@ const DEV_CLUBS = [
 
 type Ctx = { prisma: PrismaClient; log: (msg: string) => void; passwordHash: string };
 
-async function ensureUser(ctx: Ctx, email: string, name: string, passwordHash: string): Promise<string> {
+async function ensureUser(
+  ctx: Ctx,
+  email: string,
+  name: string,
+  passwordHash: string,
+): Promise<string> {
   const existing = await ctx.prisma.user.findUnique({ where: { email } });
   if (existing) return existing.id;
   const id = randomUUID();
   await ctx.prisma.user.create({ data: { id, email, name, emailVerified: true } });
   await ctx.prisma.account.create({
-    data: { id: randomUUID(), userId: id, accountId: id, providerId: 'credential', issuer: 'local:credential', password: passwordHash },
+    data: {
+      id: randomUUID(),
+      userId: id,
+      accountId: id,
+      providerId: 'credential',
+      issuer: 'local:credential',
+      password: passwordHash,
+    },
   });
   return id;
 }
 
-async function grant(ctx: Ctx, userId: string, roleKey: string, scopeType: 'none' | 'club' | 'zone' | 'project', scopeId: string | null): Promise<void> {
+async function grant(
+  ctx: Ctx,
+  userId: string,
+  roleKey: string,
+  scopeType: 'none' | 'club' | 'zone' | 'project',
+  scopeId: string | null,
+): Promise<void> {
   const role = await ctx.prisma.role.findUniqueOrThrow({ where: { key: roleKey } });
-  const existing = await ctx.prisma.userRole.findFirst({ where: { userId, roleId: role.id, scopeType, scopeId } });
-  if (!existing) await ctx.prisma.userRole.create({ data: { userId, roleId: role.id, scopeType, scopeId } });
+  const existing = await ctx.prisma.userRole.findFirst({
+    where: { userId, roleId: role.id, scopeType, scopeId },
+  });
+  if (!existing)
+    await ctx.prisma.userRole.create({ data: { userId, roleId: role.id, scopeType, scopeId } });
 }
 
-async function ensureMember(ctx: Ctx, email: string, name: string, clubId: string, roleKey: 'president' | 'secretary' | 'member'): Promise<string> {
+async function ensureMember(
+  ctx: Ctx,
+  email: string,
+  name: string,
+  clubId: string,
+  roleKey: 'president' | 'secretary' | 'member',
+): Promise<string> {
   const userId = await ensureUser(ctx, email, name, ctx.passwordHash);
   await ctx.prisma.memberProfile.upsert({
     where: { userId },
@@ -49,7 +80,14 @@ async function ensureClubs(ctx: Ctx): Promise<string[]> {
   const count = await ctx.prisma.club.count();
   if (count === 0) {
     for (const [name, zone] of DEV_CLUBS) {
-      await ctx.prisma.club.create({ data: { id: slugify(name).toUpperCase(), name, zone, email: `${slugify(name)}@example.org` } });
+      await ctx.prisma.club.create({
+        data: {
+          id: slugify(name).toUpperCase(),
+          name,
+          zone,
+          email: `${slugify(name)}@example.org`,
+        },
+      });
     }
   }
   await seedZonesFromClubs(ctx.prisma, ctx.log);
@@ -57,14 +95,63 @@ async function ensureClubs(ctx: Ctx): Promise<string[]> {
   return clubs.map((c) => c.id);
 }
 
-async function seedReportsAndProjects(ctx: Ctx, clubIds: string[], submitterId: string): Promise<void> {
-  const months = ['2026-07-01', '2026-08-01', '2026-09-01'];
-  for (const [i, m] of months.entries()) {
-    const clubId = clubIds[i % clubIds.length];
+async function seedReportsAndProjects(
+  ctx: Ctx,
+  clubIds: string[],
+  submitterId: string,
+): Promise<void> {
+  const legacyMonth = new Date('2026-07-01T00:00:00Z');
+  await ctx.prisma.report.upsert({
+    where: { clubId_month: { clubId: clubIds[0], month: legacyMonth } },
+    create: {
+      clubId: clubIds[0],
+      month: legacyMonth,
+      ryYear: 2026,
+      schemaVersion: 1,
+      status: 'submitted',
+      values: { legacySections: {} },
+      submittedById: submitterId,
+      submittedAt: new Date('2026-08-04T00:00:00Z'),
+      filedOnTime: true,
+    },
+    update: {},
+  });
+
+  const v2Months = ['2026-08-01', '2026-09-01'];
+  for (const [i, m] of v2Months.entries()) {
+    const clubId = clubIds[(i + 1) % clubIds.length];
     const month = new Date(`${m}T00:00:00Z`);
     await ctx.prisma.report.upsert({
       where: { clubId_month: { clubId, month } },
-      create: { clubId, month, ryYear: 2026, schemaVersion: 1, status: 'submitted', values: { legacySections: {} }, submittedById: submitterId, submittedAt: new Date() },
+      create: {
+        clubId,
+        month,
+        ryYear: 2026,
+        schemaVersion: 2,
+        status: 'submitted',
+        values: {
+          physical_meetings: 4,
+          virtual_meetings: 1,
+          new_members_inducted: 2,
+          social_posts: 6,
+          activities: [
+            {
+              activity_title: 'Blood donation camp',
+              activity_date: `${m.slice(0, 7)}-10`,
+              avenue: 'community',
+              area_of_focus: 'Disease prevention and treatment',
+              initiated_by: 'rotaract',
+              members_participated: 12,
+              people_reached: 80,
+              collaborating_clubs: clubIds.filter((c) => c !== clubId).slice(0, 2),
+              is_physical: true,
+            },
+          ],
+        },
+        submittedById: submitterId,
+        submittedAt: new Date(`${m.slice(0, 7)}-31T12:00:00Z`),
+        filedOnTime: true,
+      },
       update: {},
     });
   }
@@ -95,19 +182,38 @@ async function seedReportsAndProjects(ctx: Ctx, clubIds: string[], submitterId: 
   }
 }
 
-async function seedEventsAndAnnouncements(ctx: Ctx, clubIds: string[], adminId: string): Promise<void> {
+async function seedEventsAndAnnouncements(
+  ctx: Ctx,
+  clubIds: string[],
+  adminId: string,
+): Promise<void> {
   for (const [i, title] of ['District Installation', 'Leadership Assembly'].entries()) {
     const slug = slugify(title);
     const event = await ctx.prisma.event.upsert({
       where: { slug },
-      create: { slug, title, startsAt: new Date(`2026-0${8 + i}-20T10:00:00Z`), isDistrictEvent: true, createdById: adminId },
+      create: {
+        slug,
+        title,
+        startsAt: new Date(`2026-0${8 + i}-20T10:00:00Z`),
+        isDistrictEvent: true,
+        createdById: adminId,
+      },
       update: {},
     });
-    const members = await ctx.prisma.memberProfile.findMany({ where: { clubId: clubIds[i] }, take: 3 });
+    const members = await ctx.prisma.memberProfile.findMany({
+      where: { clubId: clubIds[i] },
+      take: 3,
+    });
     for (const m of members) {
       await ctx.prisma.eventCheckin.upsert({
         where: { eventId_memberId: { eventId: event.id, memberId: m.id } },
-        create: { eventId: event.id, memberId: m.id, clubId: m.clubId, method: 'manual', checkedInById: adminId },
+        create: {
+          eventId: event.id,
+          memberId: m.id,
+          clubId: m.clubId,
+          method: 'manual',
+          checkedInById: adminId,
+        },
         update: {},
       });
     }
@@ -116,23 +222,62 @@ async function seedEventsAndAnnouncements(ctx: Ctx, clubIds: string[], adminId: 
   if (count === 0) {
     await ctx.prisma.announcement.createMany({
       data: [
-        { title: 'Welcome to the new portal', body: 'Reports for July are due by the 5th.', audience: { roleKeys: ['member'] }, createdById: adminId, sentAt: new Date() },
-        { title: 'Installation ceremony', body: 'Join us on 20 August.', audience: { roleKeys: ['member'] }, createdById: adminId, sentAt: new Date() },
+        {
+          title: 'Welcome to the new portal',
+          body: 'Reports for July are due by the 5th.',
+          audience: { roleKeys: ['member'] },
+          createdById: adminId,
+          sentAt: new Date(),
+        },
+        {
+          title: 'Installation ceremony',
+          body: 'Join us on 20 August.',
+          audience: { roleKeys: ['member'] },
+          createdById: adminId,
+          sentAt: new Date(),
+        },
       ],
     });
   }
 }
 
-export async function seedDevData(prisma: PrismaClient, log: (msg: string) => void = () => undefined): Promise<void> {
+export async function seedDevData(
+  prisma: PrismaClient,
+  log: (msg: string) => void = () => undefined,
+): Promise<void> {
   const ctx: Ctx = { prisma, log, passwordHash: await hash(DEV_PASSWORD, 12) };
-  const adminId = await ensureUser(ctx, DEV_ADMIN.email, DEV_ADMIN.name, await hash(DEV_ADMIN.password, 12));
+  const adminId = await ensureUser(
+    ctx,
+    DEV_ADMIN.email,
+    DEV_ADMIN.name,
+    await hash(DEV_ADMIN.password, 12),
+  );
   await grant(ctx, adminId, 'super_admin', 'none', null);
   const clubIds = await ensureClubs(ctx);
   for (const [i, clubId] of clubIds.entries()) {
     const tag = clubId.toLowerCase();
-    await ensureMember(ctx, `president.${tag}@example.org`, `President ${i + 1}`, clubId, 'president');
-    await ensureMember(ctx, `secretary.${tag}@example.org`, `Secretary ${i + 1}`, clubId, 'secretary');
-    for (const n of [1, 2, 3]) await ensureMember(ctx, `member${n}.${tag}@example.org`, `Member ${n} of ${i + 1}`, clubId, 'member');
+    await ensureMember(
+      ctx,
+      `president.${tag}@example.org`,
+      `President ${i + 1}`,
+      clubId,
+      'president',
+    );
+    await ensureMember(
+      ctx,
+      `secretary.${tag}@example.org`,
+      `Secretary ${i + 1}`,
+      clubId,
+      'secretary',
+    );
+    for (const n of [1, 2, 3])
+      await ensureMember(
+        ctx,
+        `member${n}.${tag}@example.org`,
+        `Member ${n} of ${i + 1}`,
+        clubId,
+        'member',
+      );
   }
   const zones = await prisma.zone.findMany({ where: { name: { in: CANONICAL_ZONES } } });
   if (zones[0]) {
@@ -141,7 +286,9 @@ export async function seedDevData(prisma: PrismaClient, log: (msg: string) => vo
   }
   const dsc = await ensureUser(ctx, 'dsc@example.org', 'District Secretary', ctx.passwordHash);
   await grant(ctx, dsc, 'dsc', 'none', null);
-  const firstPresident = await prisma.memberProfile.findFirstOrThrow({ where: { clubId: clubIds[0] } });
+  const firstPresident = await prisma.memberProfile.findFirstOrThrow({
+    where: { clubId: clubIds[0] },
+  });
   await seedReportsAndProjects(ctx, clubIds, firstPresident.userId);
   await seedEventsAndAnnouncements(ctx, clubIds, adminId);
   log(`dev seed complete: ${DEV_ADMIN.email} / ${DEV_ADMIN.password}`);
