@@ -55,7 +55,7 @@ class TieredStoragePort extends StoragePort {
 const portProvider =
   env.STORAGE_DRIVER === 'live'
     ? { provide: StoragePort, useClass: TieredStoragePort }
-    : { provide: StoragePort, useClass: StubStorageAdapter };
+    : { provide: StoragePort, useExisting: StubStorageAdapter };
 
 @Module({
   controllers: [StorageController],
