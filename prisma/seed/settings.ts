@@ -29,4 +29,5 @@ export const SETTINGS: Record<string, unknown> = {
   'rcl.season': 2026,
   'careerbridge.expiryDays': 45,
   'home.stats': { zones: 4, focusAreas: 7, foundedYear: 1968, ageRange: '18–30' },
+  'sponsor.ratios': { perRupee: 1, mealsPerThousand: 40, kitsPerThousand: 8, unitsPerThousand: 2 },
 };
