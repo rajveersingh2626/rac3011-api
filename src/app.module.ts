@@ -8,12 +8,17 @@ import { ClubsModule } from './clubs/clubs.module';
 import { CommonModule } from './common/common.module';
 import { HealthModule } from './health/health.module';
 import { LinkHealthModule } from './link-health/link-health.module';
+import { LinkHealthAdminModule } from './link-health/link-health-admin.module';
 import { MeModule } from './me/me.module';
+import { MembersModule } from './members/members.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { PointsModule } from './points/points.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PublicModule } from './public/public.module';
 import { RbacModule } from './rbac/rbac.module';
 import { ReportsModule } from './reports/reports.module';
+import { SettingsModule } from './settings/settings.module';
+import { SisterClubRequestsModule } from './sister-club-requests/sister-club-requests.module';
 import { StorageModule } from './storage/storage.module';
 import { env } from './config/env';
 
@@ -36,10 +41,15 @@ const httpModules = [
   RbacModule,
   AuditModule,
   MeModule,
+  MembersModule,
   ClubsModule,
   HealthModule,
   PublicModule,
   ReportsModule,
+  PointsModule,
+  SettingsModule,
+  LinkHealthAdminModule,
+  SisterClubRequestsModule,
 ];
 
 @Module({
