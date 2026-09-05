@@ -197,4 +197,221 @@ describe('RBAC denial matrix', () => {
         .expect(201);
     });
   });
+
+  describe('showcase (§4.8 denial matrix rows)', () => {
+    let projectId: string;
+
+    beforeAll(async () => {
+      const created = await member
+        .post('/projects')
+        .send({
+          title: 'Blood Donation Camp',
+          category: 'community_service',
+          date: '2026-08-15',
+          summary: 'A club blood donation drive.',
+          consentConfirmed: true,
+        })
+        .expect(201);
+      projectId = (created.body as { id: string }).id;
+    });
+
+    it('POST /projects (submit): any approved member can submit; editing_team cannot', async () => {
+      await editingTeam
+        .post('/projects')
+        .send({ title: 'x', category: 'y', date: '2026-08-15', summary: 'z' })
+        .expect(403);
+      await president
+        .post('/projects')
+        .send({
+          title: 'President-filed project',
+          category: 'community_service',
+          date: '2026-08-15',
+          summary: 'z',
+        })
+        .expect(201);
+    });
+
+    it('GET /projects/:idA: member (owner) sees it; zrr(other zone) 404s an out-of-scope submission', async () => {
+      await member.get(`/projects/${projectId}`).expect(200);
+      await zrrOtherZone.get(`/projects/${projectId}`).expect(404);
+    });
+
+    it('PATCH /projects/:idA {status:published}: only showcase:publish holders in scope succeed', async () => {
+      await member.patch(`/projects/${projectId}`).send({ status: 'published' }).expect(403);
+      await president.patch(`/projects/${projectId}`).send({ status: 'published' }).expect(403);
+      await editingTeam.patch(`/projects/${projectId}`).send({ status: 'published' }).expect(403);
+      await zrrOtherZone.patch(`/projects/${projectId}`).send({ status: 'published' }).expect(404);
+
+      await member.patch(`/projects/${projectId}`).send({ status: 'submitted' }).expect(200);
+
+      await zrrSameZone
+        .patch(`/projects/${projectId}`)
+        .send({
+          publishedTitle: 'Blood Donation Camp',
+          publishedSummary: 'A club blood donation drive.',
+          status: 'published',
+        })
+        .expect(200);
+    });
+
+    it('the consent tick can only be set by the submitter, even by an officer of the same club', async () => {
+      await president.patch(`/projects/${projectId}`).send({ consentConfirmed: true }).expect(404);
+    });
+  });
+
+  describe('members (§4.8 denial matrix rows)', () => {
+    let pendingIdInA: string;
+
+    beforeAll(async () => {
+      const res = await member
+        .post('/members/register')
+        .send({
+          fullName: 'RBAC Test Registrant',
+          email: 'mx-registrant-a@example.com',
+          password: 'Correct-Horse-Battery-2',
+          clubId: 'MX-CLUB-A',
+        })
+        .expect(201);
+      pendingIdInA = (res.body as { id: string }).id;
+    });
+
+    it('PATCH /members/:idInA {status:approved}: member/zrr(any zone)/editing_team 403 (missing members:approve); president/dsc 200', async () => {
+      await member.patch(`/members/${pendingIdInA}`).send({ status: 'approved' }).expect(403);
+      await zrrSameZone.patch(`/members/${pendingIdInA}`).send({ status: 'approved' }).expect(403);
+      await zrrOtherZone.patch(`/members/${pendingIdInA}`).send({ status: 'approved' }).expect(403);
+      await editingTeam.patch(`/members/${pendingIdInA}`).send({ status: 'approved' }).expect(403);
+      await dsc.patch(`/members/${pendingIdInA}`).send({ status: 'approved' }).expect(200);
+    });
+
+    it('PATCH /members/:idInB {status:approved} (as president A): 404, not 403 (out-of-scope existing resource)', async () => {
+      const res = await member
+        .post('/members/register')
+        .send({
+          fullName: 'RBAC Test Registrant B',
+          email: 'mx-registrant-b@example.com',
+          password: 'Correct-Horse-Battery-2',
+          clubId: 'MX-CLUB-B',
+        })
+        .expect(201);
+      const pendingIdInB = (res.body as { id: string }).id;
+      await president.patch(`/members/${pendingIdInB}`).send({ status: 'approved' }).expect(404);
+    });
+
+    it('GET /members?filter[clubId]=A: president/dsc see it, zrr(other zone) sees an empty list, editing_team is 403', async () => {
+      await editingTeam.get('/members').query({ 'filter[clubId]': 'MX-CLUB-A' }).expect(403);
+      const otherZone = await zrrOtherZone
+        .get('/members')
+        .query({ 'filter[clubId]': 'MX-CLUB-A' })
+        .expect(200);
+      expect((otherZone.body as { items: unknown[] }).items).toHaveLength(0);
+      const asPresident = await president
+        .get('/members')
+        .query({ 'filter[clubId]': 'MX-CLUB-A' })
+        .expect(200);
+      expect(
+        (asPresident.body as { items: { email: string }[] }).items.some(
+          (m) => m.email === 'mx-registrant-a@example.com',
+        ),
+      ).toBe(true);
+    });
+  });
+
+  describe('points and club facts (§4.8, §5.2, §6.1)', () => {
+    it('GET /clubs/:id/points: own club member/president/zrr(same zone)/dsc succeed, zrr(other zone) 404s, editing_team 403s', async () => {
+      await member.get('/clubs/MX-CLUB-A/points').expect(200);
+      await president.get('/clubs/MX-CLUB-A/points').expect(200);
+      await zrrSameZone.get('/clubs/MX-CLUB-A/points').expect(200);
+      await dsc.get('/clubs/MX-CLUB-A/points').expect(200);
+      await zrrOtherZone.get('/clubs/MX-CLUB-A/points').expect(404);
+      await editingTeam.get('/clubs/MX-CLUB-A/points').expect(403);
+    });
+
+    it("GET /clubs/B/points as president of A: 404, not another club's numbers", async () => {
+      await president.get('/clubs/MX-CLUB-B/points').expect(404);
+    });
+
+    it("dsc alone sees both clubs' points; zrr is limited to clubs in their own zone", async () => {
+      await dsc.get('/clubs/MX-CLUB-A/points').expect(200);
+      await dsc.get('/clubs/MX-CLUB-B/points').expect(200);
+      await zrrSameZone.get('/clubs/MX-CLUB-A/points').expect(200);
+      await zrrSameZone.get('/clubs/MX-CLUB-B/points').expect(404);
+      await zrrOtherZone.get('/clubs/MX-CLUB-B/points').expect(200);
+    });
+
+    it('PATCH /clubs/:id/points (judged): only dsc (reports:score) can set a judged score', async () => {
+      await member
+        .patch('/clubs/MX-CLUB-A/points')
+        .query({ month: '2026-08' })
+        .send({ judgedPoints: 6, reason: 'Joint camp with two Rotary clubs' })
+        .expect(403);
+      await president
+        .patch('/clubs/MX-CLUB-A/points')
+        .query({ month: '2026-08' })
+        .send({ judgedPoints: 6, reason: 'Joint camp with two Rotary clubs' })
+        .expect(403);
+      await zrrSameZone
+        .patch('/clubs/MX-CLUB-A/points')
+        .query({ month: '2026-08' })
+        .send({ judgedPoints: 6, reason: 'Joint camp with two Rotary clubs' })
+        .expect(403);
+      await editingTeam
+        .patch('/clubs/MX-CLUB-A/points')
+        .query({ month: '2026-08' })
+        .send({ judgedPoints: 6, reason: 'Joint camp with two Rotary clubs' })
+        .expect(403);
+
+      const res = await dsc
+        .patch('/clubs/MX-CLUB-A/points')
+        .query({ month: '2026-08' })
+        .send({ judgedPoints: 6, reason: 'Joint camp with two Rotary clubs' })
+        .expect(200);
+      const body = res.body as {
+        judged: { points: number; reason: string } | null;
+        entries: unknown[];
+      };
+      expect(body.judged?.points).toBe(6);
+      expect(body.judged?.reason).toBe('Joint camp with two Rotary clubs');
+
+      const reread = await president
+        .get('/clubs/MX-CLUB-A/points')
+        .query({ ryYear: 2026, month: '2026-08' })
+        .expect(200);
+      expect((reread.body as { judged: { points: number } | null }).judged?.points).toBe(6);
+    });
+
+    it('PATCH /clubs/:id/points rejects a judged reason shorter than 10 characters', async () => {
+      await dsc
+        .patch('/clubs/MX-CLUB-A/points')
+        .query({ month: '2026-09' })
+        .send({ judgedPoints: 5, reason: 'too short' })
+        .expect(400);
+    });
+
+    it('GET /clubs/:id/facts: own club member and dsc can read; zrr(other zone) 404s; editing_team 403s', async () => {
+      await member.get('/clubs/MX-CLUB-A/facts').expect(200);
+      await dsc.get('/clubs/MX-CLUB-A/facts').expect(200);
+      await zrrOtherZone.get('/clubs/MX-CLUB-A/facts').expect(404);
+      await editingTeam.get('/clubs/MX-CLUB-A/facts').expect(403);
+    });
+
+    it('PATCH /clubs/:id/facts (club_facts:edit): only dsc can write; a club officer cannot edit their own facts', async () => {
+      await president
+        .patch('/clubs/MX-CLUB-A/facts')
+        .send({ ryYear: 2026, paulHarrisFellows: 2 })
+        .expect(403);
+      await zrrSameZone
+        .patch('/clubs/MX-CLUB-A/facts')
+        .send({ ryYear: 2026, paulHarrisFellows: 2 })
+        .expect(403);
+
+      const res = await dsc
+        .patch('/clubs/MX-CLUB-A/facts')
+        .send({ ryYear: 2026, paulHarrisFellows: 2, dualMembers: 1 })
+        .expect(200);
+      expect((res.body as { paulHarrisFellows: number }).paulHarrisFellows).toBe(2);
+
+      const reread = await dsc.get('/clubs/MX-CLUB-A/facts').query({ ryYear: 2026 }).expect(200);
+      expect((reread.body as { dualMembers: number }).dualMembers).toBe(1);
+    });
+  });
 });
