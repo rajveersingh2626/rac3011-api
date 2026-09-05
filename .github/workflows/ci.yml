@@ -42,16 +42,17 @@ jobs:
         if: ${{ vars.DOKPLOY_BASE_URL != '' }}
         env:
           IMAGE: ghcr.io/${{ github.repository_owner }}/rac3011-api:main
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
         run: |
           docker rmi -f "$IMAGE" || true
-          # GHCR briefly denies pulls of a tag just pushed with attestations
-          # (eventual-consistency lag on the manifest list); retry with backoff.
-          for i in 1 2 3 4 5; do
-            docker pull "$IMAGE" && break
-            echo "pull attempt $i failed, retrying in 10s..."
-            sleep 10
-            [ "$i" -eq 5 ] && exit 1
-          done
+          # The build/push GITHUB_TOKEN can push new package versions but is
+          # denied on plain pulls of this org-owned package (verified: push
+          # succeeds, then an immediate GITHUB_TOKEN pull 401s every time,
+          # not a propagation-lag issue). Use the same PAT Dokploy already
+          # uses to pull this image in production.
+          echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u rbansal42 --password-stdin
+          docker pull "$IMAGE"
+          docker logout ghcr.io
 
       - name: Point Dokploy apps to the new image and redeploy
         if: ${{ vars.DOKPLOY_BASE_URL != '' }}
