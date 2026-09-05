@@ -909,6 +909,176 @@ async function seedPublicContentDemoData(ctx: Ctx, fallbackClubIds: string[]): P
   });
 }
 
+// @example.com emails make these identifiable/purgeable later: DELETE FROM member_profiles WHERE email LIKE '%@example.com'.
+type DemoMemberSpec = {
+  email: string;
+  fullName: string;
+  phone?: string;
+  bio?: string;
+  skills?: string[];
+  interests?: string[];
+  photoUrl?: string;
+  membershipAnniversary?: string;
+  directoryOptIn: boolean;
+  status: 'pending' | 'approved' | 'suspended';
+  rejectionReason?: string;
+  createdDaysAgo?: number;
+  role?: 'president' | 'secretary' | 'member';
+};
+
+async function upsertDemoMember(ctx: Ctx, clubId: string, spec: DemoMemberSpec): Promise<void> {
+  const existingProfile = await ctx.prisma.memberProfile.findUnique({
+    where: { email: spec.email },
+  });
+  const userId =
+    existingProfile?.userId ?? (await ensureUser(ctx, spec.email, spec.fullName, ctx.passwordHash));
+  const createdAt = spec.createdDaysAgo
+    ? new Date(Date.now() - spec.createdDaysAgo * 24 * 60 * 60 * 1000)
+    : undefined;
+  const isApproved = spec.status === 'approved';
+
+  await ctx.prisma.memberProfile.upsert({
+    where: { userId },
+    create: {
+      userId,
+      fullName: spec.fullName,
+      email: spec.email,
+      phone: spec.phone ?? null,
+      clubId,
+      bio: spec.bio ?? null,
+      skills: spec.skills ?? [],
+      interests: spec.interests ?? [],
+      photoUrl: spec.photoUrl ?? null,
+      membershipAnniversary: spec.membershipAnniversary
+        ? new Date(spec.membershipAnniversary)
+        : null,
+      directoryOptIn: spec.directoryOptIn,
+      status: spec.status,
+      approvedAt: isApproved ? new Date() : null,
+      rejectionReason: spec.rejectionReason ?? null,
+      createdAt,
+    },
+    update: {
+      bio: spec.bio ?? null,
+      skills: spec.skills ?? [],
+      interests: spec.interests ?? [],
+      photoUrl: spec.photoUrl ?? null,
+      directoryOptIn: spec.directoryOptIn,
+      status: spec.status,
+      rejectionReason: spec.rejectionReason ?? null,
+    },
+  });
+
+  if (isApproved) {
+    await grant(ctx, userId, 'member', 'club', clubId);
+    if (spec.role && spec.role !== 'member') await grant(ctx, userId, spec.role, 'club', clubId);
+  }
+}
+
+async function seedMembersDemoData(ctx: Ctx, fallbackClubIds: string[]): Promise<void> {
+  const racddl = await findRealClub(ctx.prisma, 'Dynamic Leaders');
+  const racddlId = racddl?.id ?? fallbackClubIds[0];
+  const rajdhani = await findRealClub(ctx.prisma, 'Delhi Rajdhani', [racddlId]);
+  const lsr = await findRealClub(ctx.prisma, 'Lady Shri Ram', [
+    racddlId,
+    ...(rajdhani ? [rajdhani.id] : []),
+  ]);
+  const secondClubId = rajdhani?.id ?? fallbackClubIds[1] ?? racddlId;
+  const thirdClubId = lsr?.id ?? fallbackClubIds[2] ?? racddlId;
+
+  // RACDDL roster: officers + approved members with skills/interests filled in (directory search fodder).
+  await upsertDemoMember(ctx, racddlId, {
+    email: 'dhruv.jha.demo@example.com',
+    fullName: 'Rtr. Dhruv Kumar Jha',
+    directoryOptIn: true,
+    status: 'approved',
+    role: 'president',
+    skills: ['Design', 'Public speaking'],
+    membershipAnniversary: '2022-07-01',
+  });
+  await upsertDemoMember(ctx, racddlId, {
+    email: 'kartik.kumar.demo@example.com',
+    fullName: 'Rtr. Kartik Kumar',
+    directoryOptIn: true,
+    status: 'approved',
+    role: 'secretary',
+    skills: ['Data', 'Photography'],
+    membershipAnniversary: '2022-09-01',
+  });
+  await upsertDemoMember(ctx, racddlId, {
+    email: 'meera.nair.demo@example.com',
+    fullName: 'Rtr. Meera Nair',
+    directoryOptIn: true,
+    status: 'approved',
+    bio: 'Event management, and the one who remembers the checklist.',
+    skills: ['Event management', 'Photography', 'Public speaking'],
+    interests: ['Community service', 'Environment'],
+    membershipAnniversary: '2023-07-01',
+  });
+  await upsertDemoMember(ctx, racddlId, {
+    email: 'aman.verma.demo@example.com',
+    fullName: 'Rtr. Aman Verma',
+    directoryOptIn: true,
+    status: 'approved',
+    photoUrl: 'https://picsum.photos/seed/demo-member-aman/200/200',
+    skills: ['Video editing', 'Cricket', 'Event management'],
+    interests: ['Environment'],
+    membershipAnniversary: '2024-01-15',
+  });
+  // Opted out on purpose: exercises "directory search excludes opt-outs" without a special fixture.
+  await upsertDemoMember(ctx, racddlId, {
+    email: 'nikhil.arora.demo@example.com',
+    fullName: 'Rtr. Nikhil Arora',
+    directoryOptIn: false,
+    status: 'approved',
+    skills: ['Fundraising'],
+    membershipAnniversary: '2023-11-01',
+  });
+
+  // Pending approvals (Members & approvals screen, RACDDL president's queue).
+  await upsertDemoMember(ctx, racddlId, {
+    email: 'ishita.rao.demo@example.com',
+    fullName: 'Ishita Rao',
+    directoryOptIn: false,
+    status: 'pending',
+    createdDaysAgo: 2,
+  });
+  await upsertDemoMember(ctx, racddlId, {
+    email: 'sana.qureshi.pending.demo@example.com',
+    fullName: 'Sana Qureshi',
+    directoryOptIn: false,
+    status: 'pending',
+    createdDaysAgo: 0,
+  });
+
+  // Suspended: previously approved, then declined - exercises the "reinstate" action.
+  await upsertDemoMember(ctx, racddlId, {
+    email: 'not.ours.demo@example.com',
+    fullName: 'Rahul Mehta',
+    directoryOptIn: false,
+    status: 'suspended',
+    rejectionReason: 'Signed up under the wrong club',
+  });
+
+  // Cross-club directory breadth: same skill ("video editing") findable across clubs/zones.
+  await upsertDemoMember(ctx, secondClubId, {
+    email: 'tanay.bose.demo@example.com',
+    fullName: 'Rtr. Tanay Bose',
+    directoryOptIn: true,
+    status: 'approved',
+    skills: ['Video editing', 'Photography'],
+    membershipAnniversary: '2023-08-01',
+  });
+  await upsertDemoMember(ctx, thirdClubId, {
+    email: 'sana.qureshi.demo@example.com',
+    fullName: 'Rtr. Sana Qureshi',
+    directoryOptIn: true,
+    status: 'approved',
+    skills: ['Video editing', 'Scriptwriting', 'Anchoring'],
+    membershipAnniversary: '2024-03-01',
+  });
+}
+
 export async function seedDevData(
   prisma: PrismaClient,
   log: (msg: string) => void = () => undefined,
@@ -962,5 +1132,6 @@ export async function seedDevData(
   await seedPointsDemoData(ctx, adminId, dsc, clubIds);
   await seedEventsAndAnnouncements(ctx, clubIds, adminId);
   await seedPublicContentDemoData(ctx, clubIds);
+  await seedMembersDemoData(ctx, clubIds);
   log(`dev seed complete: ${DEV_ADMIN.email} / ${DEV_ADMIN.password}`);
 }
