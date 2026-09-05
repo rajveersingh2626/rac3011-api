@@ -60,14 +60,19 @@ jobs:
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           DOKPLOY_BASE_URL: ${{ vars.DOKPLOY_BASE_URL }}
           IMAGE: ghcr.io/${{ github.repository_owner }}/rac3011-api:main
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
         run: |
+          # saveDockerProvider requires username/password/registryUrl in the
+          # same payload (nonoptional in Dokploy's schema), not just dockerImage
+          # -- omitting them 400s. Same registry credential already saved on
+          # the app (verified via application.one), just re-sent here.
           for APP_ID in "${{ vars.DOKPLOY_API_APPLICATION_ID }}" "${{ vars.DOKPLOY_WORKER_APPLICATION_ID }}"; do
             [ -z "$APP_ID" ] && continue
             curl --fail-with-body --silent --show-error --request POST \
               "$DOKPLOY_BASE_URL/api/application.saveDockerProvider" \
               --header "Content-Type: application/json" \
               --header "x-api-key: $DOKPLOY_API_KEY" \
-              --data "$(jq -n --arg id "$APP_ID" --arg img "$IMAGE" '{applicationId:$id, dockerImage:$img}')"
+              --data "$(jq -n --arg id "$APP_ID" --arg img "$IMAGE" --arg user "rbansal42" --arg pass "$GHCR_PULL_TOKEN" --arg url "ghcr.io" '{applicationId:$id, dockerImage:$img, username:$user, password:$pass, registryUrl:$url}')"
             curl --fail-with-body --silent --show-error --request POST \
               "$DOKPLOY_BASE_URL/api/application.redeploy" \
               --header "Content-Type: application/json" \
