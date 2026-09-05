@@ -44,7 +44,14 @@ jobs:
           IMAGE: ghcr.io/${{ github.repository_owner }}/rac3011-api:main
         run: |
           docker rmi -f "$IMAGE" || true
-          docker pull "$IMAGE"
+          # GHCR briefly denies pulls of a tag just pushed with attestations
+          # (eventual-consistency lag on the manifest list); retry with backoff.
+          for i in 1 2 3 4 5; do
+            docker pull "$IMAGE" && break
+            echo "pull attempt $i failed, retrying in 10s..."
+            sleep 10
+            [ "$i" -eq 5 ] && exit 1
+          done
 
       - name: Point Dokploy apps to the new image and redeploy
         if: ${{ vars.DOKPLOY_BASE_URL != '' }}
