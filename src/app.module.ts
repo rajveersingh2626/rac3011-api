@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { LoggerModule } from 'nestjs-pino';
+import { AnnouncementsModule } from './announcements/announcements.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { CacheModule } from './cache/cache.module';
@@ -52,6 +53,7 @@ const httpModules = [
   ClubsModule,
   ClubFactsModule,
   FeedbackModule,
+  AnnouncementsModule,
   HealthModule,
   PublicModule,
   ReportsModule,

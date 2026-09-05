@@ -108,6 +108,11 @@ export class ScopeService {
     return { clubIds: filter.clubIds.includes(requestedClubId) ? [requestedClubId] : [] };
   }
 
+  /** Expands zone ids to the club ids inside them, for callers validating a caller-supplied zone list. */
+  clubIdsInZones(zoneIds: string[]): Promise<string[]> {
+    return this.repo.findClubIdsInZones(zoneIds);
+  }
+
   static projectFilter(access: ResolvedAccess, permission: PermissionKey): ScopeFilter {
     if (access.isSuperAdmin) return { all: true };
     const scopes = access.grants[permission] ?? [];
