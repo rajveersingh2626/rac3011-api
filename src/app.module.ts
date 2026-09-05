@@ -22,9 +22,9 @@ import { ReportsModule } from './reports/reports.module';
 import { SettingsModule } from './settings/settings.module';
 import { SisterClubRequestsModule } from './sister-club-requests/sister-club-requests.module';
 import { StorageModule } from './storage/storage.module';
+import { CareerbridgeModule } from './subdomains/careerbridge/careerbridge.module';
 import { DrishtiModule } from './subdomains/drishti/drishti.module';
 import { Mission3011Module } from './subdomains/mission3011/mission3011.module';
-import { RideModule } from './subdomains/ride/ride.module';
 import { env } from './config/env';
 
 const workerModules = [
@@ -59,7 +59,7 @@ const httpModules = [
   SisterClubRequestsModule,
   Mission3011Module,
   DrishtiModule,
-  RideModule,
+  CareerbridgeModule,
 ];
 
 @Module({
