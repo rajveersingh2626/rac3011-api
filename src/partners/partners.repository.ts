@@ -38,7 +38,9 @@ export class PartnersRepository {
     return (max._max.order ?? -1) + 1;
   }
 
-  async create(input: Required<Pick<PartnerWrite, 'name' | 'tier'>> & PartnerWrite): Promise<PartnerRow> {
+  async create(
+    input: Required<Pick<PartnerWrite, 'name' | 'tier'>> & PartnerWrite,
+  ): Promise<PartnerRow> {
     const order = await this.nextOrder();
     return this.prisma.partner.create({
       data: {
@@ -61,7 +63,9 @@ export class PartnersRepository {
         ...(input.tier !== undefined ? { tier: input.tier } : {}),
         ...(input.logoUrl !== undefined ? { logoUrl: input.logoUrl } : {}),
         ...(input.website !== undefined ? { website: input.website } : {}),
-        ...(input.permissionStatus !== undefined ? { permissionStatus: input.permissionStatus } : {}),
+        ...(input.permissionStatus !== undefined
+          ? { permissionStatus: input.permissionStatus }
+          : {}),
       },
       select: SELECT,
     });

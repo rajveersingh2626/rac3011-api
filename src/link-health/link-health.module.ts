@@ -11,6 +11,7 @@ import { LinkHealthScheduler } from './link-health.scheduler';
 import { LinkHealthService } from './link-health.service';
 import { LiveDriveGateway } from './live-drive-gateway.service';
 
+// No controllers here: this module is also loaded by the WORKER=1 process, which mounts no routes.
 @Module({
   imports: [
     BullModule.forRoot({

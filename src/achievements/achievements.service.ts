@@ -33,7 +33,11 @@ export class AchievementsService {
     return row;
   }
 
-  async update(actorId: string, id: string, input: UpdateAchievementInput): Promise<AchievementRow> {
+  async update(
+    actorId: string,
+    id: string,
+    input: UpdateAchievementInput,
+  ): Promise<AchievementRow> {
     const before = await this.get(id);
     const row = await this.repo.update(id, input);
     await this.audit.record({

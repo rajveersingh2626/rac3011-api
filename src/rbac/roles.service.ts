@@ -41,19 +41,6 @@ export class RolesService {
     return this.repo.findExistingUserRole(userId, roleId, scopeType, scopeId);
   }
 
-  getRoleByKey(key: string): Promise<RoleRecord | null> {
-    return this.repo.findRoleByKey(key);
-  }
-
-  findExistingGrant(
-    userId: string,
-    roleId: string,
-    scopeType: ScopeKind,
-    scopeId: string | null,
-  ): Promise<UserRoleRecord | null> {
-    return this.repo.findExistingUserRole(userId, roleId, scopeType, scopeId);
-  }
-
   async createRole(actorId: string, input: CreateRoleInput): Promise<RoleRecord> {
     const existing = await this.repo.findRoleByKey(input.key);
     if (existing) throw new CodedConflictException('ALREADY_EXISTS', 'A role with this key exists');

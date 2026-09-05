@@ -12,3 +12,7 @@ export function pastDrrDto(row: PastDrrRow) {
     isLowResPhoto: row.isLowResPhoto,
   };
 }
+
+export function pastDrrAdminDto(row: PastDrrRow) {
+  return { ...pastDrrDto(row), order: row.order };
+}

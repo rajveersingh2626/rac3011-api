@@ -81,7 +81,11 @@ export class ContentRepository {
       });
       return tx.contentBlock.update({
         where: { pageKey_sectionKey: { pageKey, sectionKey } },
-        data: { publishedValue: row.draftValue as Prisma.InputJsonValue, publishedAt: new Date(), updatedById },
+        data: {
+          publishedValue: row.draftValue as Prisma.InputJsonValue,
+          publishedAt: new Date(),
+          updatedById,
+        },
         select: ADMIN_SELECT,
       });
     });

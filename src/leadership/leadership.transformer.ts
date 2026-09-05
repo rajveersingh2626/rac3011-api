@@ -13,3 +13,7 @@ export function districtTeamMemberDto(row: DistrictTeamRow) {
     clubId: row.clubId,
   };
 }
+
+export function districtTeamMemberAdminDto(row: DistrictTeamRow) {
+  return { ...districtTeamMemberDto(row), order: row.order, ryYear: row.ryYear };
+}
