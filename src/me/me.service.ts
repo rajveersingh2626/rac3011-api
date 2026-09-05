@@ -82,7 +82,10 @@ export class MeService {
     if (!profile) throw new NotFoundException('No member profile for this account');
     const publishedAt = await this.repo.currentPrivacyPolicyPublishedAt();
     if (!publishedAt) {
-      throw new CodedConflictException('PRIVACY_NOT_ACCEPTED', 'No privacy policy is currently published');
+      throw new CodedConflictException(
+        'PRIVACY_NOT_ACCEPTED',
+        'No privacy policy is currently published',
+      );
     }
     await this.repo.recordPrivacyAcceptance(profile.id, publishedAt);
   }

@@ -60,4 +60,26 @@ export class PointsSourceRepository {
       orderBy: { month: 'desc' },
     });
   }
+
+  async findDistrictEventIdsInMonth(monthStart: Date, monthEnd: Date): Promise<string[]> {
+    const rows = await this.prisma.event.findMany({
+      where: { isDistrictEvent: true, startsAt: { gte: monthStart, lt: monthEnd } },
+      select: { id: true },
+    });
+    return rows.map((r) => r.id);
+  }
+
+  async countCheckinsForClubAtEvents(
+    clubId: string,
+    eventIds: string[],
+  ): Promise<Map<string, number>> {
+    if (eventIds.length === 0) return new Map();
+    // memberId null = walk-in, not an "approved member" checkin, so it's excluded from the ratio.
+    const rows = await this.prisma.eventCheckin.groupBy({
+      by: ['eventId'],
+      where: { clubId, eventId: { in: eventIds }, memberId: { not: null } },
+      _count: { _all: true },
+    });
+    return new Map(rows.map((r) => [r.eventId, r._count._all]));
+  }
 }

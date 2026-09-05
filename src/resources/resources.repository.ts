@@ -41,7 +41,10 @@ export class ResourcesRepository {
   }
 
   async nextOrder(category: ResourceCategory): Promise<number> {
-    const max = await this.prisma.resource.aggregate({ where: { category }, _max: { order: true } });
+    const max = await this.prisma.resource.aggregate({
+      where: { category },
+      _max: { order: true },
+    });
     return (max._max.order ?? -1) + 1;
   }
 

@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { createCacheRedis } from '../cache/redis.provider';
 import { ClubFactAdapter } from './adapters/club-fact.adapter';
 import { DeferredSourceAdapter } from './adapters/deferred-source.adapter';
+import { EventAttendanceAdapter } from './adapters/event-attendance.adapter';
 import { POINT_SOURCE_ADAPTERS } from './adapters/point-source.port';
 import { ReportFieldAdapter } from './adapters/report-field.adapter';
 import { ClubPointsController } from './club-points.controller';
@@ -35,22 +36,27 @@ import type { SourceTypeKey } from './points.types';
     PointsRecomputeProcessor,
     ReportFieldAdapter,
     ClubFactAdapter,
+    EventAttendanceAdapter,
     DeferredSourceAdapter,
     {
       provide: POINT_SOURCE_ADAPTERS,
       useFactory: (
         reportField: ReportFieldAdapter,
         clubFact: ClubFactAdapter,
+        eventAttendance: EventAttendanceAdapter,
         deferred: DeferredSourceAdapter,
-      ): Record<SourceTypeKey, ReportFieldAdapter | ClubFactAdapter | DeferredSourceAdapter> => ({
+      ): Record<
+        SourceTypeKey,
+        ReportFieldAdapter | ClubFactAdapter | EventAttendanceAdapter | DeferredSourceAdapter
+      > => ({
         report_field: reportField,
         club_fact: clubFact,
-        event_attendance: deferred,
+        event_attendance: eventAttendance,
         project_collaboration: deferred,
         ride_hosting: deferred,
         club_events: deferred,
       }),
-      inject: [ReportFieldAdapter, ClubFactAdapter, DeferredSourceAdapter],
+      inject: [ReportFieldAdapter, ClubFactAdapter, EventAttendanceAdapter, DeferredSourceAdapter],
     },
   ],
   exports: [PointsEngineService, PointsRepository],

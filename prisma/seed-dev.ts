@@ -752,6 +752,270 @@ async function seedEventsAndAnnouncements(
   }
 }
 
+// @example.com emails make these identifiable/purgeable later, same convention as seedMembersDemoData.
+async function ensureDemoAttendee(
+  ctx: Ctx,
+  email: string,
+  name: string,
+  clubId: string,
+): Promise<{ id: string; qrToken: string }> {
+  const userId = await ensureUser(ctx, email, name, ctx.passwordHash);
+  const profile = await ctx.prisma.memberProfile.upsert({
+    where: { userId },
+    create: {
+      userId,
+      fullName: name,
+      email,
+      clubId,
+      status: 'approved',
+      approvedAt: new Date(),
+    },
+    update: {},
+    select: { id: true, qrToken: true },
+  });
+  await grant(ctx, userId, 'member', 'club', clubId);
+  return profile;
+}
+
+async function upsertDemoEvent(
+  ctx: Ctx,
+  input: {
+    slug: string;
+    title: string;
+    startsAt: string;
+    endsAt?: string;
+    location?: string;
+    description?: string;
+    isDistrictEvent: boolean;
+    clubId?: string;
+    rsvpOpen?: boolean;
+    capacity?: number;
+    photos?: string[];
+    createdById: string;
+  },
+): Promise<{ id: string; slug: string }> {
+  return ctx.prisma.event.upsert({
+    where: { slug: input.slug },
+    create: {
+      slug: input.slug,
+      title: input.title,
+      startsAt: new Date(input.startsAt),
+      endsAt: input.endsAt ? new Date(input.endsAt) : null,
+      location: input.location ?? null,
+      description: input.description ?? null,
+      isDistrictEvent: input.isDistrictEvent,
+      clubId: input.clubId ?? null,
+      rsvpOpen: input.rsvpOpen ?? true,
+      capacity: input.capacity ?? null,
+      photos: input.photos ?? [],
+      createdById: input.createdById,
+    },
+    update: {},
+    select: { id: true, slug: true },
+  });
+}
+
+async function upsertDemoCheckin(
+  ctx: Ctx,
+  eventId: string,
+  memberId: string,
+  clubId: string,
+  method: 'qr' | 'manual' | 'walk_in',
+  checkedInById: string,
+): Promise<void> {
+  await ctx.prisma.eventCheckin.upsert({
+    where: { eventId_memberId: { eventId, memberId } },
+    create: { eventId, memberId, clubId, method, checkedInById },
+    update: {},
+  });
+}
+
+async function upsertDemoRsvp(
+  ctx: Ctx,
+  eventId: string,
+  memberId: string,
+  status: 'going' | 'maybe' | 'not_going',
+): Promise<void> {
+  await ctx.prisma.eventRsvp.upsert({
+    where: { eventId_memberId: { eventId, memberId } },
+    create: { eventId, memberId, status },
+    update: { status },
+  });
+}
+
+// Full events/RSVP/check-in/feedback demo set (spec step 8), additive and idempotent via slug/email upserts.
+// Mirrors the district's own mockups: design-export/v2/{Public Pages Part 2, Portal Admin Part 1, Portal Admin Part 2}.dc.html.
+async function seedEventsFeedbackDemoData(
+  ctx: Ctx,
+  adminId: string,
+  dscUserId: string,
+  fallbackClubIds: string[],
+): Promise<void> {
+  const { lead: clubA, others } = await pickShowcaseClubs(ctx, fallbackClubIds);
+  const clubB = others[0] ?? fallbackClubIds[1] ?? clubA;
+  const clubC = others[1] ?? fallbackClubIds[2] ?? clubA;
+  const clubD = others[2] ?? fallbackClubIds[3] ?? clubA;
+
+  async function attendees(clubId: string, tag: string, count: number) {
+    const rows = [];
+    for (let i = 1; i <= count; i += 1) {
+      rows.push(
+        await ensureDemoAttendee(
+          ctx,
+          `demo.attendee${i}.${tag}@example.com`,
+          `Demo Attendee ${i} (${tag})`,
+          clubId,
+        ),
+      );
+    }
+    return rows;
+  }
+
+  // Past district event: check-ins across four clubs so event_attendance has real ratios to score.
+  const cls = await upsertDemoEvent(ctx, {
+    slug: 'club-leadership-seminar-2026',
+    title: 'Club Leadership Seminar',
+    startsAt: '2026-08-06T09:30:00Z',
+    endsAt: '2026-08-06T17:00:00Z',
+    location: 'India Habitat Centre, Lodhi Road',
+    description: 'All presidents and secretaries.',
+    isDistrictEvent: true,
+    createdById: adminId,
+  });
+  const clsA = await attendees(clubA, 'cls-a', 8);
+  const clsB = await attendees(clubB, 'cls-b', 8);
+  const clsC = await attendees(clubC, 'cls-c', 9);
+  const clsD = await attendees(clubD, 'cls-d', 10);
+  for (const m of clsA.slice(0, 6)) await upsertDemoCheckin(ctx, cls.id, m.id, clubA, 'manual', dscUserId);
+  for (const m of clsB.slice(0, 5)) await upsertDemoCheckin(ctx, cls.id, m.id, clubB, 'manual', dscUserId);
+  if (clsC[0]) await upsertDemoCheckin(ctx, cls.id, clsC[0].id, clubC, 'qr', dscUserId);
+  for (const m of clsC.slice(1, 8)) await upsertDemoCheckin(ctx, cls.id, m.id, clubC, 'manual', dscUserId);
+  for (const m of clsD.slice(0, 2)) await upsertDemoCheckin(ctx, cls.id, m.id, clubD, 'manual', dscUserId);
+  // Walk-ins have no memberId, so they can't go through the (eventId, memberId) upsert key above.
+  const walkInExists = await ctx.prisma.eventCheckin.findFirst({
+    where: { eventId: cls.id, walkInName: 'Guest of Rtr. Dhruv Jha' },
+  });
+  if (!walkInExists) {
+    await ctx.prisma.eventCheckin.create({
+      data: {
+        eventId: cls.id,
+        walkInName: 'Guest of Rtr. Dhruv Jha',
+        clubId: clubA,
+        method: 'walk_in',
+        checkedInById: dscUserId,
+      },
+    });
+  }
+
+  // Upcoming district event, open RSVPs, no capacity limit.
+  const seric = await upsertDemoEvent(ctx, {
+    slug: 'seric-2026',
+    title: 'SERIC — South East Rotaract Interaction Conference',
+    startsAt: '2026-09-20T09:00:00Z',
+    endsAt: '2026-09-21T18:00:00Z',
+    location: 'Venue to be confirmed',
+    description: 'Two days, open to all Rotaractors.',
+    isDistrictEvent: true,
+    createdById: adminId,
+  });
+  const sericAttendees = await attendees(clubA, 'seric-a', 3);
+  const sericOther = await attendees(clubB, 'seric-b', 2);
+  if (sericAttendees[0]) await upsertDemoRsvp(ctx, seric.id, sericAttendees[0].id, 'going');
+  if (sericAttendees[1]) await upsertDemoRsvp(ctx, seric.id, sericAttendees[1].id, 'going');
+  if (sericAttendees[2]) await upsertDemoRsvp(ctx, seric.id, sericAttendees[2].id, 'maybe');
+  if (sericOther[0]) await upsertDemoRsvp(ctx, seric.id, sericOther[0].id, 'going');
+  if (sericOther[1]) await upsertDemoRsvp(ctx, seric.id, sericOther[1].id, 'not_going');
+
+  // Club-level event (isDistrictEvent=false): the club's own tracker, photos attached.
+  const bloodCamp = await upsertDemoEvent(ctx, {
+    slug: 'blood-donation-camp-rotary-blood-bank-2026',
+    title: 'Blood donation camp with Rotary Blood Bank',
+    startsAt: '2026-08-24T09:00:00Z',
+    endsAt: '2026-08-24T14:00:00Z',
+    location: 'Community centre, Chirag Delhi',
+    description: '180 attended, 2 collaborating clubs.',
+    isDistrictEvent: false,
+    clubId: clubA,
+    photos: ['https://picsum.photos/seed/demo-blood-camp-1/640/480', 'https://picsum.photos/seed/demo-blood-camp-2/640/480'],
+    createdById: adminId,
+  });
+  for (const m of clsA.slice(0, 3)) await upsertDemoCheckin(ctx, bloodCamp.id, m.id, clubA, 'manual', dscUserId);
+
+  // District event already at capacity: exactly `capacity` check-ins recorded.
+  const rcl = await upsertDemoEvent(ctx, {
+    slug: 'rcl-semifinals-2026',
+    title: 'Rotaract Cricket League — semifinals',
+    startsAt: '2026-10-04T10:00:00Z',
+    location: 'Dwarka sports complex',
+    isDistrictEvent: true,
+    capacity: 6,
+    createdById: adminId,
+  });
+  for (const m of clsB.slice(0, 3)) await upsertDemoCheckin(ctx, rcl.id, m.id, clubB, 'manual', dscUserId);
+  for (const m of clsC.slice(0, 3)) await upsertDemoCheckin(ctx, rcl.id, m.id, clubC, 'manual', dscUserId);
+
+  // Feedback: one open, one reviewed-with-reply, one closed; categories general/event/general(anonymous).
+  const attendeeA1 = clsA[0];
+  const attendeeB1 = clsB[0];
+  if (attendeeA1) {
+    const attendeeUser = await ctx.prisma.memberProfile.findUnique({
+      where: { id: attendeeA1.id },
+      select: { userId: true },
+    });
+    if (attendeeUser) {
+      await ctx.prisma.feedback.upsert({
+        where: { id: 'demo-feedback-open' },
+        create: {
+          id: 'demo-feedback-open',
+          submittedById: attendeeUser.userId,
+          category: 'general',
+          message: 'Could the calendar go out earlier? Clubs plan installations two months ahead.',
+          status: 'open',
+        },
+        update: {},
+      });
+    }
+  }
+  if (attendeeB1) {
+    const attendeeUser = await ctx.prisma.memberProfile.findUnique({
+      where: { id: attendeeB1.id },
+      select: { userId: true, clubId: true },
+    });
+    if (attendeeUser) {
+      await ctx.prisma.feedback.upsert({
+        where: { id: 'demo-feedback-reviewed' },
+        create: {
+          id: 'demo-feedback-reviewed',
+          submittedById: attendeeUser.userId,
+          clubId: attendeeUser.clubId,
+          category: 'event',
+          eventId: cls.id,
+          message: 'The venue had no accessible entrance for one of our members.',
+          status: 'reviewed',
+          reply: 'Noted — the 2027 venue shortlist now has accessibility as a filter. Thank you for raising it.',
+          reviewedById: dscUserId,
+          reviewedAt: new Date(),
+        },
+        update: {},
+      });
+    }
+  }
+  await ctx.prisma.feedback.upsert({
+    where: { id: 'demo-feedback-closed' },
+    create: {
+      id: 'demo-feedback-closed',
+      submittedById: null,
+      category: 'general',
+      message: 'Anonymous note: thank you to the secretariat for the quick report review turnaround.',
+      status: 'closed',
+      reply: 'Appreciated — passing this on to the review team.',
+      reviewedById: dscUserId,
+      reviewedAt: new Date(),
+    },
+    update: {},
+  });
+}
+
 // Demo rows carry a `https://example.org/demo/*` / `https://example.invalid/*` url as the purge key across partners/publications/resources/asset_links.
 async function seedPublicContentDemoData(ctx: Ctx, fallbackClubIds: string[]): Promise<void> {
   const racddl = await findRealClub(ctx.prisma, 'Dynamic Leaders');
@@ -1131,6 +1395,7 @@ export async function seedDevData(
   await seedShowcaseDemoProjects(ctx, adminId, clubIds);
   await seedPointsDemoData(ctx, adminId, dsc, clubIds);
   await seedEventsAndAnnouncements(ctx, clubIds, adminId);
+  await seedEventsFeedbackDemoData(ctx, adminId, dsc, clubIds);
   await seedPublicContentDemoData(ctx, clubIds);
   await seedMembersDemoData(ctx, clubIds);
   log(`dev seed complete: ${DEV_ADMIN.email} / ${DEV_ADMIN.password}`);

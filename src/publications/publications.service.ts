@@ -33,7 +33,11 @@ export class PublicationsService {
     return row;
   }
 
-  async update(actorId: string, id: string, input: UpdatePublicationInput): Promise<PublicationRow> {
+  async update(
+    actorId: string,
+    id: string,
+    input: UpdatePublicationInput,
+  ): Promise<PublicationRow> {
     const before = await this.get(id);
     const row = await this.repo.update(id, input);
     await this.audit.record({
