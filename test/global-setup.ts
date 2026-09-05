@@ -14,6 +14,7 @@ export async function setup(): Promise<void> {
   const url = container.getConnectionUri();
   process.env.DATABASE_URL = url;
   process.env.TEST_DATABASE_URL = url;
+  process.env.MAIL_ALLOWLIST = 'notifications-allowlist@example.com';
   execFileSync('npx', ['prisma', 'migrate', 'deploy'], {
     env: { ...process.env, DATABASE_URL: url },
     stdio: 'inherit',

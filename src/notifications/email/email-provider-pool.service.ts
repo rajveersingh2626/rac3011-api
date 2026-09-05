@@ -4,6 +4,7 @@ import { EmailUsageRepository } from '../email-usage.repository';
 import { ClockPort } from './clock.port';
 import { PROVIDER_ORDER, type EmailProviderName, type EmailTransport } from './email-provider';
 import { rewriteRecipient } from './recipient-rewrite';
+import { FakeEmailTransport } from './transports/fake.transport';
 import { GmailTransport } from './transports/gmail.transport';
 import { MailgunTransport } from './transports/mailgun.transport';
 import { OracleTransport } from './transports/oracle.transport';
@@ -92,8 +93,9 @@ export const emailTransportsProvider = {
     resend: ResendTransport,
     mailgun: MailgunTransport,
     gmail: GmailTransport,
-  ): EmailTransport[] => [oracle, resend, mailgun, gmail],
-  inject: [OracleTransport, ResendTransport, MailgunTransport, GmailTransport],
+    fake: FakeEmailTransport,
+  ): EmailTransport[] => (env.NODE_ENV === 'test' ? [fake] : [oracle, resend, mailgun, gmail]),
+  inject: [OracleTransport, ResendTransport, MailgunTransport, GmailTransport, FakeEmailTransport],
 };
 
 export const emailPoolConfigProvider = {
