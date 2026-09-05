@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Authenticated, RequirePermission } from '../../common/decorators/access.decorators';
+import { RequirePermission } from '../../common/decorators/access.decorators';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { paginate, parseListQuery } from '../../common/query/list-query';
 import type { RequestContext } from '../../common/types/access';
@@ -23,10 +23,11 @@ export class DrishtiBeneficiariesController {
   constructor(private readonly service: DrishtiBeneficiariesService) {}
 
   @Get()
-  @Authenticated()
+  @RequirePermission('club_events:log', 'subdomain:drishti:manage')
   async list(@CurrentUser() ctx: RequestContext, @Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     const { items, total } = await this.service.list(
+      ctx,
       { stage: q.filter.stage as DrishtiStageKind | undefined, clubId: q.filter.clubId },
       q.page,
       q.pageSize,
@@ -46,9 +47,9 @@ export class DrishtiBeneficiariesController {
   }
 
   @Get(':id')
-  @Authenticated()
+  @RequirePermission('club_events:log', 'subdomain:drishti:manage')
   async get(@CurrentUser() ctx: RequestContext, @Param('id') id: string) {
-    return beneficiaryDto(await this.service.get(id), canSeePii(ctx));
+    return beneficiaryDto(await this.service.get(ctx, id), canSeePii(ctx));
   }
 
   @Patch(':id')

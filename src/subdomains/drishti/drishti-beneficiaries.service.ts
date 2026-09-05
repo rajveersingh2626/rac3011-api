@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { AuditService } from '../../audit/audit.service';
 import { env } from '../../config/env';
-import { ScopeService } from '../../common/scope/scope.service';
+import { ScopeService, type ClubScopeFilter } from '../../common/scope/scope.service';
 import type { RequestContext } from '../../common/types/access';
 import { MeService } from '../../me/me.service';
 import type { CreateBeneficiaryInput } from './dto/create-beneficiary.dto';
@@ -28,18 +28,32 @@ export class DrishtiBeneficiariesService {
     private readonly audit: AuditService,
   ) {}
 
-  list(
+  async list(
+    ctx: RequestContext,
     filter: BeneficiaryListFilter,
     page: number,
     pageSize: number,
   ): Promise<{ items: BeneficiaryRow[]; total: number }> {
-    return this.repo.findMany(filter, page, pageSize);
+    const scope = await this.clubScopeFor(ctx);
+    const narrowed = ScopeService.narrowClubs(scope, filter.clubId);
+    if ('clubIds' in narrowed && narrowed.clubIds.length === 0) return { items: [], total: 0 };
+    return this.repo.findMany(filter, page, pageSize, narrowed);
   }
 
-  async get(id: string): Promise<BeneficiaryRow> {
+  async get(ctx: RequestContext, id: string): Promise<BeneficiaryRow> {
     const row = await this.repo.findById(id);
     if (!row) throw new NotFoundException();
+    if (!this.hasManageGrant(ctx)) {
+      await this.scope.assertCanAccessClub(ctx.access, OFFICER_PERMISSION, row.clubId);
+    }
     return row;
+  }
+
+  /** Manage-grant callers see every club; everyone else (club_events:log officers, already
+   * required by the route guard) are scoped to their own club(s) only. */
+  private async clubScopeFor(ctx: RequestContext): Promise<ClubScopeFilter> {
+    if (this.hasManageGrant(ctx)) return { all: true };
+    return this.scope.clubFilter(ctx.access, OFFICER_PERMISSION);
   }
 
   async create(ctx: RequestContext, input: CreateBeneficiaryInput): Promise<BeneficiaryRow> {

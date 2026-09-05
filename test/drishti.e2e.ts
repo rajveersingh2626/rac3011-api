@@ -26,11 +26,13 @@ describe('Drishti beneficiaries (spec step 12)', () => {
   let app: INestApplication;
   let memberA: TestAgent;
   let presidentA: TestAgent;
+  let presidentB: TestAgent;
   let drishtiAdmin: TestAgent;
   let m3011Admin: TestAgent;
 
   beforeAll(async () => {
     await createClub({ id: 'DR-CLUB-A', name: 'Drishti Club A', zoneName: 'Vayu' });
+    await createClub({ id: 'DR-CLUB-B', name: 'Drishti Club B', zoneName: 'Prithvi' });
 
     await createUser({
       email: 'dr-member-a@example.com',
@@ -48,6 +50,15 @@ describe('Drishti beneficiaries (spec step 12)', () => {
       ],
     });
     await createUser({
+      email: 'dr-president-b@example.com',
+      name: 'President B',
+      clubId: 'DR-CLUB-B',
+      roles: [
+        { key: 'member', scopeType: 'club', scopeId: 'DR-CLUB-B' },
+        { key: 'president', scopeType: 'club', scopeId: 'DR-CLUB-B' },
+      ],
+    });
+    await createUser({
       email: 'dr-admin@example.com',
       name: 'Drishti Admin',
       roles: [{ key: 'project_admin:drishti', scopeType: 'project', scopeId: 'drishti' }],
@@ -61,6 +72,7 @@ describe('Drishti beneficiaries (spec step 12)', () => {
     app = await createTestApp();
     memberA = await signInAndVerify(app, 'dr-member-a@example.com');
     presidentA = await signInAndVerify(app, 'dr-president-a@example.com');
+    presidentB = await signInAndVerify(app, 'dr-president-b@example.com');
     drishtiAdmin = await signInAndVerify(app, 'dr-admin@example.com');
     m3011Admin = await signInAndVerify(app, 'dr-m3011-admin@example.com');
   });
@@ -124,6 +136,40 @@ describe('Drishti beneficiaries (spec step 12)', () => {
     for (const item of listAsPresident.items) {
       if (item.phone) expect(item.phone).not.toBe('9123456780');
     }
+  });
+
+  it('a plain member (no club_events:log, no manage grant) cannot list or read any beneficiary', async () => {
+    await memberA.get('/drishti/beneficiaries').expect(403);
+    const created = (
+      await presidentA
+        .post('/drishti/beneficiaries')
+        .send({ name: 'Anil Sharma', eye: 'left', screenedOn: '2026-08-04' })
+        .expect(201)
+    ).body as BeneficiaryResponse;
+    await memberA.get(`/drishti/beneficiaries/${created.id}`).expect(403);
+  });
+
+  it("a president cannot list or read another club's beneficiaries (club-scoped, 404 not 403)", async () => {
+    const created = (
+      await presidentA
+        .post('/drishti/beneficiaries')
+        .send({ name: 'Kavita Joshi', eye: 'both', screenedOn: '2026-08-05' })
+        .expect(201)
+    ).body as BeneficiaryResponse;
+
+    // President B holds club_events:log (own club only) - list is scoped, never sees club A's rows.
+    const listAsPresidentB = (await presidentB.get('/drishti/beneficiaries').expect(200))
+      .body as BeneficiaryListResponse;
+    expect(listAsPresidentB.items.some((i) => i.id === created.id)).toBe(false);
+    expect(listAsPresidentB.items.some((i) => i.club.id === 'DR-CLUB-A')).toBe(false);
+
+    // Direct-by-id read of an out-of-scope existing row 404s (prevents enumeration), not 403.
+    await presidentB.get(`/drishti/beneficiaries/${created.id}`).expect(404);
+
+    // The drishti project admin sees every club, including this one.
+    const listAsAdmin = (await drishtiAdmin.get('/drishti/beneficiaries').expect(200))
+      .body as BeneficiaryListResponse;
+    expect(listAsAdmin.items.some((i) => i.id === created.id)).toBe(true);
   });
 
   it('only the drishti project admin can move stages; a mission3011 admin is denied', async () => {
