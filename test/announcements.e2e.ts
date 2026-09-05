@@ -12,6 +12,7 @@ describe('Announcements (spec §6.6, acceptance test #11)', () => {
   let presidentAgni: TestAgent;
   let presidentVayu: TestAgent;
   let memberAgni: TestAgent;
+  let isolatedZoneId: string;
 
   beforeAll(async () => {
     await createClub({ id: 'ANN-CLUB-AGNI', name: 'Announcements Club Agni', zoneName: 'Agni' });
@@ -80,6 +81,37 @@ describe('Announcements (spec §6.6, acceptance test #11)', () => {
       roles: [{ key: 'secretary', scopeType: 'club', scopeId: 'ANN-CLUB-VAYU-3' }],
     });
 
+    // Private zone: the canonical ones are shared across every e2e file with no reset, so a
+    // whole-zone member count on them is never stable.
+    const isolatedZone = await testPrisma().zone.create({ data: { name: 'ANN-Isolated-Zone' } });
+    isolatedZoneId = isolatedZone.id;
+    await testPrisma().club.create({
+      data: {
+        id: 'ANN-CLUB-ISO-1',
+        name: 'Announcements Club Iso 1',
+        zoneId: isolatedZoneId,
+        isActive: true,
+      },
+    });
+    await testPrisma().club.create({
+      data: {
+        id: 'ANN-CLUB-ISO-2',
+        name: 'Announcements Club Iso 2',
+        zoneId: isolatedZoneId,
+        isActive: true,
+      },
+    });
+    await createUser({
+      email: 'ann-iso-member-1@example.com',
+      name: 'Iso Member 1',
+      clubId: 'ANN-CLUB-ISO-1',
+    });
+    await createUser({
+      email: 'ann-iso-member-2@example.com',
+      name: 'Iso Member 2',
+      clubId: 'ANN-CLUB-ISO-2',
+    });
+
     app = await createTestApp();
     dsc = await signInAndVerify(app, 'ann-dsc@example.com');
     secretaryAgni = await signInAndVerify(app, 'ann-secretary-agni@example.com');
@@ -133,19 +165,49 @@ describe('Announcements (spec §6.6, acceptance test #11)', () => {
       .expect(403);
   });
 
-  it('clubIds alone select nobody: §6.6 only narrows a roleKeys selection, it is not its own selector', async () => {
-    // Deliberate per spec §6.6: clubIds/zoneIds only narrow a roleKeys selection, they select no one alone.
+  it('clubIds alone (no roleKeys) reaches every approved member of that club', async () => {
+    // Rahul, 2026-09-05: corrects the original §6.6 reading (clubIds/zoneIds alone selected nobody).
     const sent = (
       await dsc
         .post('/announcements')
         .send({
           title: 'club only, no roleKeys',
-          body: 'should reach nobody',
+          body: 'reaches everyone in the club',
           audience: { clubIds: ['ANN-CLUB-AGNI'] },
         })
         .expect(201)
     ).body as { recipientCount: number };
-    expect(sent.recipientCount).toBe(0);
+    // secretaryAgni, presidentAgni, memberAgni: the three approved profiles in this club.
+    expect(sent.recipientCount).toBe(3);
+  });
+
+  it('zoneIds alone (no roleKeys) reaches every approved member across the whole zone', async () => {
+    const estimate = (
+      await dsc
+        .post('/announcements/audience/estimate')
+        .send({ audience: { zoneIds: [isolatedZoneId] } })
+        .expect(200)
+    ).body as { count: number };
+    expect(estimate.count).toBe(2); // isoMember1 (ANN-CLUB-ISO-1) + isoMember2 (ANN-CLUB-ISO-2)
+  });
+
+  it('a president sending clubIds alone (no roleKeys) is still limited to their own club', async () => {
+    await presidentAgni
+      .post('/announcements')
+      .send({ title: 'x', body: 'y', audience: { clubIds: ['ANN-CLUB-AGNI'] } })
+      .expect(201);
+    await presidentAgni
+      .post('/announcements')
+      .send({ title: 'x', body: 'y', audience: { clubIds: ['ANN-CLUB-VAYU'] } })
+      .expect(403);
+  });
+
+  it('a president sending zoneIds alone (no roleKeys) cannot escalate to a zone with another club', async () => {
+    const zone = await testPrisma().zone.findUniqueOrThrow({ where: { name: 'Agni' } });
+    await presidentAgni
+      .post('/announcements')
+      .send({ title: 'x', body: 'y', audience: { zoneIds: [zone.id] } })
+      .expect(403); // Agni zone also contains ANN-CLUB-AGNI-2, outside presidentAgni's scope.
   });
 
   it('a president can send to their own club but not another club (403)', async () => {

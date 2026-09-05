@@ -68,9 +68,13 @@ export class AnnouncementsRepository {
     const userIds = [...new Set(grants.map((g) => g.userId))];
     const profiles = await this.prisma.memberProfile.findMany({
       where: { userId: { in: userIds } },
-      select: { userId: true, clubId: true, club: { select: { zoneId: true } } },
+      select: { userId: true, clubId: true, status: true, club: { select: { zoneId: true } } },
     });
     const profileByUserId = new Map(profiles.map((p) => [p.userId, p]));
+    // Excludes a role holder whose profile isn't approved; no profile at all (e.g. district-only) stays a candidate.
+    const excludedUserIds = new Set(
+      profiles.filter((p) => p.status !== 'approved').map((p) => p.userId),
+    );
 
     const grantedClubIds = [
       ...new Set(
@@ -112,37 +116,39 @@ export class AnnouncementsRepository {
       grantsByUserId.set(grant.userId, list);
     }
 
-    return userIds.map((userId) => {
-      const profile = profileByUserId.get(userId);
-      const userGrants = grantsByUserId.get(userId) ?? [];
+    return userIds
+      .filter((userId) => !excludedUserIds.has(userId))
+      .map((userId) => {
+        const profile = profileByUserId.get(userId);
+        const userGrants = grantsByUserId.get(userId) ?? [];
 
-      const scopedClubIds = new Set<string>();
-      const scopedZoneIds = new Set<string>();
-      for (const grant of userGrants) {
-        if (grant.scopeType === 'club' && grant.scopeId) {
-          scopedClubIds.add(grant.scopeId);
-          const zoneId = zoneIdOfClub.get(grant.scopeId);
-          if (zoneId) scopedZoneIds.add(zoneId);
-        } else if (grant.scopeType === 'zone' && grant.scopeId) {
-          scopedZoneIds.add(grant.scopeId);
-          for (const clubId of clubIdsOfZone.get(grant.scopeId) ?? []) scopedClubIds.add(clubId);
+        const scopedClubIds = new Set<string>();
+        const scopedZoneIds = new Set<string>();
+        for (const grant of userGrants) {
+          if (grant.scopeType === 'club' && grant.scopeId) {
+            scopedClubIds.add(grant.scopeId);
+            const zoneId = zoneIdOfClub.get(grant.scopeId);
+            if (zoneId) scopedZoneIds.add(zoneId);
+          } else if (grant.scopeType === 'zone' && grant.scopeId) {
+            scopedZoneIds.add(grant.scopeId);
+            for (const clubId of clubIdsOfZone.get(grant.scopeId) ?? []) scopedClubIds.add(clubId);
+          }
         }
-      }
 
-      return {
-        userId,
-        clubId: profile?.clubId ?? null,
-        zoneId: profile?.club.zoneId ?? null,
-        scopedClubIds: [...scopedClubIds],
-        scopedZoneIds: [...scopedZoneIds],
-      };
-    });
+        return {
+          userId,
+          clubId: profile?.clubId ?? null,
+          zoneId: profile?.club.zoneId ?? null,
+          scopedClubIds: [...scopedClubIds],
+          scopedZoneIds: [...scopedZoneIds],
+        };
+      });
   }
 
   async findUserIdsForMemberIds(memberIds: string[]): Promise<string[]> {
     if (memberIds.length === 0) return [];
     const profiles = await this.prisma.memberProfile.findMany({
-      where: { id: { in: memberIds } },
+      where: { id: { in: memberIds }, status: 'approved' },
       select: { userId: true },
     });
     return profiles.map((p) => p.userId);
@@ -157,6 +163,23 @@ export class AnnouncementsRepository {
       select: { id: true, clubId: true },
     });
     return new Map(profiles.map((p) => [p.id, p.clubId]));
+  }
+
+  // No roleKeys given: clubIds/zoneIds select every approved member of those clubs/zones
+  // directly (Rahul, 2026-09-05 — see announcements.service.ts resolveAudience()).
+  async findMemberUserIdsInClubsOrZones(clubIds: string[], zoneIds: string[]): Promise<string[]> {
+    if (clubIds.length === 0 && zoneIds.length === 0) return [];
+    const profiles = await this.prisma.memberProfile.findMany({
+      where: {
+        status: 'approved',
+        OR: [
+          ...(clubIds.length ? [{ clubId: { in: clubIds } }] : []),
+          ...(zoneIds.length ? [{ club: { zoneId: { in: zoneIds } } }] : []),
+        ],
+      },
+      select: { userId: true },
+    });
+    return [...new Set(profiles.map((p) => p.userId))];
   }
 }
 

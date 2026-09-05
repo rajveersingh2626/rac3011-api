@@ -60,6 +60,14 @@ export class AnnouncementsService {
     if (audience.roleKeys?.length) {
       const candidates = await this.repo.findRoleHolderCandidates(audience.roleKeys);
       for (const userId of resolveRoleHolders(candidates, audience)) result.add(userId);
+    } else if (audience.zoneIds?.length || audience.clubIds?.length) {
+      // Rahul, 2026-09-05: with no roleKeys, clubIds/zoneIds select every approved member of
+      // those clubs/zones directly, not nobody (corrects the original spec §6.6 reading).
+      const userIds = await this.repo.findMemberUserIdsInClubsOrZones(
+        audience.clubIds ?? [],
+        audience.zoneIds ?? [],
+      );
+      for (const userId of userIds) result.add(userId);
     }
     if (audience.memberIds?.length) {
       for (const userId of await this.repo.findUserIdsForMemberIds(audience.memberIds)) {
