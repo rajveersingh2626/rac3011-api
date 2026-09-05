@@ -1944,6 +1944,220 @@ async function seedCareerbridgeDemoData(ctx: Ctx, verifiedById: string): Promise
   });
 }
 
+type DemoDelegationSpec = {
+  slug: string;
+  ryYear: number;
+  visitingDistrict: string;
+  country: string;
+  startsAt: string;
+  endsAt: string;
+  headcount: number;
+  contactName: string;
+  contactEmail: string;
+  status: 'planned' | 'confirmed' | 'completed' | 'cancelled';
+  hosts?: { clubId: string; daysHosted: number; membersSent: number }[];
+};
+
+// RideDelegation has no natural unique column, so demo rows are keyed on (visitingDistrict,
+// startsAt) - a find-then-upsert idiom, same as upsertDemoBeneficiary above.
+async function upsertDemoDelegation(
+  ctx: Ctx,
+  rideAdminId: string,
+  spec: DemoDelegationSpec,
+): Promise<void> {
+  const startsAt = new Date(`${spec.startsAt}T00:00:00Z`);
+  const data = {
+    ryYear: spec.ryYear,
+    visitingDistrict: spec.visitingDistrict,
+    country: spec.country,
+    startsAt,
+    endsAt: new Date(`${spec.endsAt}T00:00:00Z`),
+    headcount: spec.headcount,
+    contactName: spec.contactName,
+    contactEmail: spec.contactEmail,
+    status: spec.status,
+  };
+  const existing = await ctx.prisma.rideDelegation.findFirst({
+    where: { visitingDistrict: spec.visitingDistrict, startsAt },
+  });
+  const id = existing
+    ? existing.id
+    : (await ctx.prisma.rideDelegation.create({ data, select: { id: true } })).id;
+  if (existing) await ctx.prisma.rideDelegation.update({ where: { id: existing.id }, data });
+
+  if (spec.hosts) {
+    await ctx.prisma.rideDelegationHost.deleteMany({ where: { delegationId: id } });
+    await ctx.prisma.rideDelegationHost.createMany({
+      data: spec.hosts.map((h) => ({
+        delegationId: id,
+        clubId: h.clubId,
+        daysHosted: h.daysHosted,
+        membersSent: h.membersSent,
+        assignedById: rideAdminId,
+      })),
+    });
+  }
+}
+
+async function upsertDemoSupportClub(
+  ctx: Ctx,
+  createdById: string,
+  spec: {
+    clubId: string;
+    ryYear: number;
+    capacityDelegates: number;
+    homestayAvailable: boolean;
+    preferredMonths: number[];
+    contactPhone: string;
+  },
+): Promise<void> {
+  await ctx.prisma.rideSupportClub.upsert({
+    where: { ryYear_clubId: { ryYear: spec.ryYear, clubId: spec.clubId } },
+    create: {
+      ryYear: spec.ryYear,
+      clubId: spec.clubId,
+      capacityDelegates: spec.capacityDelegates,
+      homestayAvailable: spec.homestayAvailable,
+      preferredMonths: spec.preferredMonths,
+      contactPhone: spec.contactPhone,
+      notes: 'DEMO SEED - purge before launch',
+      createdById,
+    },
+    update: {
+      capacityDelegates: spec.capacityDelegates,
+      homestayAvailable: spec.homestayAvailable,
+      preferredMonths: spec.preferredMonths,
+      contactPhone: spec.contactPhone,
+    },
+  });
+}
+
+async function upsertDemoGalleryItem(
+  ctx: Ctx,
+  spec: { year: number; url: string; kind: 'photo' | 'video'; caption: string; order: number },
+): Promise<void> {
+  const existing = await ctx.prisma.rideGalleryItem.findFirst({
+    where: { year: spec.year, url: spec.url },
+  });
+  if (existing) {
+    await ctx.prisma.rideGalleryItem.update({ where: { id: existing.id }, data: spec });
+  } else {
+    await ctx.prisma.rideGalleryItem.create({ data: spec });
+  }
+}
+
+// One delegation mirrors the spec §12 acceptance-test numbers exactly (3 days/2 members -> 120/60/50 points).
+async function seedRideDemoData(
+  ctx: Ctx,
+  createdById: string,
+  rideAdminId: string,
+  fallbackClubIds: string[],
+): Promise<void> {
+  const { lead: racddlId, others } = await pickShowcaseClubs(ctx, fallbackClubIds);
+  const clubA = racddlId;
+  const clubB = others[0] ?? fallbackClubIds[1] ?? fallbackClubIds[0];
+
+  await upsertDemoSupportClub(ctx, createdById, {
+    clubId: clubA,
+    ryYear: 2026,
+    capacityDelegates: 4,
+    homestayAvailable: true,
+    preferredMonths: [10, 11, 12],
+    contactPhone: '+91-9800000001',
+  });
+  await upsertDemoSupportClub(ctx, createdById, {
+    clubId: clubB,
+    ryYear: 2026,
+    capacityDelegates: 2,
+    homestayAvailable: false,
+    preferredMonths: [1, 2],
+    contactPhone: '+91-9800000002',
+  });
+
+  await upsertDemoDelegation(ctx, rideAdminId, {
+    slug: 'demo-ride-delegation-philippines-2026',
+    ryYear: 2026,
+    visitingDistrict: 'D3810',
+    country: 'Philippines',
+    startsAt: '2026-08-10',
+    endsAt: '2026-08-13',
+    headcount: 6,
+    contactName: 'Maria Santos',
+    contactEmail: 'maria.santos@example.org',
+    status: 'completed',
+    hosts: [{ clubId: clubA, daysHosted: 3, membersSent: 2 }],
+  });
+  await upsertDemoDelegation(ctx, rideAdminId, {
+    slug: 'demo-ride-delegation-japan-2026',
+    ryYear: 2026,
+    visitingDistrict: 'D2680',
+    country: 'Japan',
+    startsAt: '2026-10-05',
+    endsAt: '2026-10-12',
+    headcount: 8,
+    contactName: 'Aiko Tanaka',
+    contactEmail: 'aiko.tanaka@example.org',
+    status: 'confirmed',
+    hosts: [
+      { clubId: clubA, daysHosted: 4, membersSent: 3 },
+      { clubId: clubB, daysHosted: 3, membersSent: 1 },
+    ],
+  });
+  await upsertDemoDelegation(ctx, rideAdminId, {
+    slug: 'demo-ride-delegation-nepal-2026',
+    ryYear: 2026,
+    visitingDistrict: 'D3292',
+    country: 'Nepal',
+    startsAt: '2026-11-15',
+    endsAt: '2026-11-18',
+    headcount: 5,
+    contactName: 'Bikash Shrestha',
+    contactEmail: 'bikash.shrestha@example.org',
+    status: 'planned',
+  });
+  await upsertDemoDelegation(ctx, rideAdminId, {
+    slug: 'demo-ride-delegation-srilanka-2026',
+    ryYear: 2026,
+    visitingDistrict: 'D3220',
+    country: 'Sri Lanka',
+    startsAt: '2026-12-01',
+    endsAt: '2026-12-04',
+    headcount: 4,
+    contactName: 'Dinesh Perera',
+    contactEmail: 'dinesh.perera@example.org',
+    status: 'cancelled',
+  });
+
+  await upsertDemoGalleryItem(ctx, {
+    year: 2025,
+    url: 'https://picsum.photos/seed/demo-ride-2025-1/1200/800',
+    kind: 'photo',
+    caption: 'District 3011 hosts the visiting Bangladesh delegation, 2025',
+    order: 0,
+  });
+  await upsertDemoGalleryItem(ctx, {
+    year: 2025,
+    url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    kind: 'video',
+    caption: 'RIDE 2025 highlights reel',
+    order: 1,
+  });
+  await upsertDemoGalleryItem(ctx, {
+    year: 2026,
+    url: 'https://picsum.photos/seed/demo-ride-2026-1/1200/800',
+    kind: 'photo',
+    caption: 'Welcoming the Philippines delegation at the airport',
+    order: 0,
+  });
+  await upsertDemoGalleryItem(ctx, {
+    year: 2026,
+    url: 'https://picsum.photos/seed/demo-ride-2026-2/1200/800',
+    kind: 'photo',
+    caption: 'Homestay evening with the host club',
+    order: 1,
+  });
+}
+
 export async function seedDevData(
   prisma: PrismaClient,
   log: (msg: string) => void = () => undefined,
@@ -2031,6 +2245,10 @@ export async function seedDevData(
     create: { key: 'careerbridge.expiryDays', value: 60 },
     update: {},
   });
+
+  const rideAdmin = await ensureUser(ctx, 'ride.admin@example.org', 'RIDE Admin', ctx.passwordHash);
+  await grant(ctx, rideAdmin, 'project_admin:ride', 'project', 'ride');
+  await seedRideDemoData(ctx, adminId, rideAdmin, clubIds);
 
   log(`dev seed complete: ${DEV_ADMIN.email} / ${DEV_ADMIN.password}`);
 }

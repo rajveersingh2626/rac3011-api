@@ -69,6 +69,17 @@ export class PointsSourceRepository {
     return rows.map((r) => r.id);
   }
 
+  async findRideHostingTotals(
+    clubId: string,
+    ryYear: number,
+  ): Promise<{ daysHosted: number; membersSent: number }> {
+    const agg = await this.prisma.rideDelegationHost.aggregate({
+      where: { clubId, delegation: { ryYear } },
+      _sum: { daysHosted: true, membersSent: true },
+    });
+    return { daysHosted: agg._sum.daysHosted ?? 0, membersSent: agg._sum.membersSent ?? 0 };
+  }
+
   async countCheckinsForClubAtEvents(
     clubId: string,
     eventIds: string[],

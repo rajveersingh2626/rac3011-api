@@ -6,6 +6,7 @@ import { DeferredSourceAdapter } from './adapters/deferred-source.adapter';
 import { EventAttendanceAdapter } from './adapters/event-attendance.adapter';
 import { POINT_SOURCE_ADAPTERS } from './adapters/point-source.port';
 import { ReportFieldAdapter } from './adapters/report-field.adapter';
+import { RideHostingAdapter } from './adapters/ride-hosting.adapter';
 import { ClubPointsController } from './club-points.controller';
 import { ClubPointsService } from './club-points.service';
 import { PointsEngineService } from './engine/points-engine.service';
@@ -38,6 +39,7 @@ import type { SourceTypeKey } from './points.types';
     ClubFactAdapter,
     EventAttendanceAdapter,
     DeferredSourceAdapter,
+    RideHostingAdapter,
     {
       provide: POINT_SOURCE_ADAPTERS,
       useFactory: (
@@ -45,18 +47,29 @@ import type { SourceTypeKey } from './points.types';
         clubFact: ClubFactAdapter,
         eventAttendance: EventAttendanceAdapter,
         deferred: DeferredSourceAdapter,
+        rideHosting: RideHostingAdapter,
       ): Record<
         SourceTypeKey,
-        ReportFieldAdapter | ClubFactAdapter | EventAttendanceAdapter | DeferredSourceAdapter
+        | ReportFieldAdapter
+        | ClubFactAdapter
+        | EventAttendanceAdapter
+        | DeferredSourceAdapter
+        | RideHostingAdapter
       > => ({
         report_field: reportField,
         club_fact: clubFact,
         event_attendance: eventAttendance,
         project_collaboration: deferred,
-        ride_hosting: deferred,
+        ride_hosting: rideHosting,
         club_events: deferred,
       }),
-      inject: [ReportFieldAdapter, ClubFactAdapter, EventAttendanceAdapter, DeferredSourceAdapter],
+      inject: [
+        ReportFieldAdapter,
+        ClubFactAdapter,
+        EventAttendanceAdapter,
+        DeferredSourceAdapter,
+        RideHostingAdapter,
+      ],
     },
   ],
   exports: [PointsEngineService, PointsRepository],

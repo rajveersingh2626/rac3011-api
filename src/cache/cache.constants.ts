@@ -17,6 +17,7 @@ export const CACHE_TAGS = [
   'reports',
   'mission3011',
   'drishti',
+  'ride',
   'careerbridge',
 ] as const;
 

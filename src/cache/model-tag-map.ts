@@ -25,6 +25,10 @@ export const MODEL_TAG_MAP: Record<string, CacheTag[]> = {
   DrishtiBeneficiary: ['drishti'],
   DrishtiSurgery: ['drishti'],
   CbListing: ['careerbridge'],
+  RideSupportClub: ['ride'],
+  RideDelegation: ['ride'],
+  RideDelegationHost: ['ride'],
+  RideGalleryItem: ['ride'],
 };
 
 export function getModelTags(model: string | undefined): CacheTag[] {

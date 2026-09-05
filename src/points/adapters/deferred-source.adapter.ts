@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { AdapterInput, PointSourceAdapter } from './point-source.port';
 
-// event_attendance/project_collaboration/ride_hosting/club_events: their source tables belong to
-// later phases; this keeps every seeded rule resolvable (zero input) until each gets a real adapter.
+// project_collaboration/club_events: no adapter yet, so every seeded rule stays resolvable (zero input).
 @Injectable()
 export class DeferredSourceAdapter implements PointSourceAdapter {
   inputs(): Promise<AdapterInput[]> {
