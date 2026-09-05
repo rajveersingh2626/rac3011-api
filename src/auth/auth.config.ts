@@ -29,6 +29,20 @@ export function createAuthInstance(deps: AuthConfigDeps) {
         mfaPending: { type: 'boolean', required: false, input: false, defaultValue: true },
       },
     },
+    databaseHooks: {
+      session: {
+        create: {
+          // twoFactor issues a fresh session on a verified TOTP check; without this it'd inherit
+          // mfaPending:true and stay stuck behind SecondFactorStage forever.
+          before: (session, context) =>
+            Promise.resolve(
+              context?.path === '/two-factor/verify-totp'
+                ? { data: { mfaPending: false } }
+                : undefined,
+            ),
+        },
+      },
+    },
     advanced: {
       cookies: {
         session_token: {
