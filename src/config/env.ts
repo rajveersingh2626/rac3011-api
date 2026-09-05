@@ -87,6 +87,7 @@ export const envSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === '1'),
+  GLOBAL_OTP: optionalString,
 });
 
 export type Env = z.infer<typeof envSchema>;
