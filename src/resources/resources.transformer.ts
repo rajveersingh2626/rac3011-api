@@ -12,3 +12,17 @@ export function publicResourceDto(row: ResourceRow) {
     comingSoonMonth: row.comingSoonMonth,
   };
 }
+
+export function resourceAdminDto(row: ResourceRow) {
+  return {
+    id: row.id,
+    category: row.category,
+    title: row.title,
+    description: row.description,
+    url: row.url,
+    isLocked: row.isLocked,
+    requiredPermission: row.requiredPermission,
+    comingSoonMonth: row.comingSoonMonth,
+    order: row.order,
+  };
+}
