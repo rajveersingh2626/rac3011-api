@@ -7,7 +7,6 @@ import { CacheModule } from './cache/cache.module';
 import { ClubFactsModule } from './clubs/club-facts.module';
 import { ClubsModule } from './clubs/clubs.module';
 import { CommonModule } from './common/common.module';
-import { FeedbackModule } from './feedback/feedback.module';
 import { HealthModule } from './health/health.module';
 import { LinkHealthModule } from './link-health/link-health.module';
 import { LinkHealthAdminModule } from './link-health/link-health-admin.module';
@@ -53,7 +52,6 @@ const httpModules = [
   SettingsModule,
   LinkHealthAdminModule,
   SisterClubRequestsModule,
-  FeedbackModule,
 ];
 
 @Module({
