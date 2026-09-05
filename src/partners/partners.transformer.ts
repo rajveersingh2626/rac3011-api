@@ -12,3 +12,15 @@ export function partnerDto(row: PartnerRow) {
     permissionStatus: row.permissionStatus,
   };
 }
+
+export function partnerAdminDto(row: PartnerRow) {
+  return {
+    id: row.id,
+    name: row.name,
+    logoUrl: row.logoUrl,
+    tier: row.tier,
+    website: row.website,
+    permissionStatus: row.permissionStatus,
+    order: row.order,
+  };
+}
