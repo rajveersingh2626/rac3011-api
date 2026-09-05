@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { NotificationPort } from '../notifications/notification.port';
-import { LinkCheckerPort } from './link-checker.port';
-import { LinkHealthRepository } from './link-health.repository';
+import { LinkCheckerPort, type LinkCheckStatus } from './link-checker.port';
+import { LinkHealthRepository, type AssetLinkRow } from './link-health.repository';
 
 @Injectable()
 export class LinkHealthService {
@@ -17,6 +17,33 @@ export class LinkHealthService {
     const link = await this.repo.findById(id);
     if (!link) return;
     await this.applyCheck(link.id, link.url, link.status, link.ownerUserId);
+  }
+
+  listAdmin(status?: AssetLinkRow['status']) {
+    return this.repo.findManyFiltered(status);
+  }
+
+  async recheckAndReturn(id: string) {
+    const before = await this.repo.findByIdAdmin(id);
+    if (!before) throw new NotFoundException();
+    await this.applyCheck(before.id, before.url, before.status, before.ownerUserId);
+    return this.repo.findByIdAdmin(id);
+  }
+
+  async checkAndTrack(input: {
+    url: string;
+    kind: string;
+    ownerUserId: string | null;
+    resourceType: string;
+    resourceId: string;
+  }): Promise<LinkCheckStatus> {
+    const status = await this.checker.check(input.url);
+    await this.repo.upsertTracked({
+      ...input,
+      status,
+      lastError: status === 'ok' ? null : `status=${status}`,
+    });
+    return status;
   }
 
   async recheckAll(): Promise<{ checked: number; transitioned: number }> {

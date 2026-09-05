@@ -21,6 +21,6 @@ import { UserRolesController } from './user-roles.controller';
     RbacRouteAudit,
     { provide: APP_GUARD, useClass: PermissionGuard },
   ],
-  exports: [RbacResolverService, RbacRouteAudit],
+  exports: [RbacResolverService, RbacRouteAudit, RolesService],
 })
 export class RbacModule {}

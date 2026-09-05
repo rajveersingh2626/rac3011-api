@@ -22,6 +22,7 @@ const PROFILE_SELECT = {
   directoryOptIn: true,
   isDacMember: true,
   themePreference: true,
+  qrToken: true,
   createdAt: true,
 } satisfies Prisma.MemberProfileSelect;
 
@@ -47,6 +48,22 @@ export class MeRepository {
       where,
       select: { id: true, name: true, shortName: true, zoneId: true },
       orderBy: { name: 'asc' },
+    });
+  }
+
+  async currentPrivacyPolicyPublishedAt(): Promise<Date | null> {
+    const block = await this.prisma.contentBlock.findUnique({
+      where: { pageKey_sectionKey: { pageKey: 'privacy-policy', sectionKey: 'body' } },
+      select: { publishedAt: true },
+    });
+    return block?.publishedAt ?? null;
+  }
+
+  async recordPrivacyAcceptance(memberId: string, policyPublishedAt: Date): Promise<void> {
+    await this.prisma.memberPrivacyAcceptance.upsert({
+      where: { memberId_policyPublishedAt: { memberId, policyPublishedAt } },
+      create: { memberId, policyPublishedAt },
+      update: {},
     });
   }
 }

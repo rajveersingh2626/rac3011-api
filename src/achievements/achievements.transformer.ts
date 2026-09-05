@@ -11,3 +11,7 @@ export function achievementDto(row: AchievementRow) {
     description: row.description,
   };
 }
+
+export function achievementAdminDto(row: AchievementRow) {
+  return { ...achievementDto(row), order: row.order };
+}

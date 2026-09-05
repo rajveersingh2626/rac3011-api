@@ -15,6 +15,7 @@ export type MemberProfileRow = {
   directoryOptIn: boolean;
   isDacMember: boolean;
   themePreference: string;
+  qrToken: string;
   createdAt: Date;
 };
 

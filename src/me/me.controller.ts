@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, Patch, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import QRCode from 'qrcode';
+import { clubDto } from '../clubs/clubs.transformer';
 import { Authenticated } from '../common/decorators/access.decorators';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { RequestContext } from '../common/types/access';
@@ -35,5 +37,33 @@ export class MeController {
   @Authenticated()
   async update(@CurrentUser() ctx: RequestContext, @Body() dto: UpdateMeDto) {
     return memberProfileDto(await this.me.updateProfile(ctx, dto));
+  }
+
+  @Get('club')
+  @Authenticated()
+  async getClub(@CurrentUser() ctx: RequestContext) {
+    return clubDto(await this.me.getClub(ctx));
+  }
+
+  @Get('card')
+  @Authenticated()
+  async getCard(@CurrentUser() ctx: RequestContext) {
+    return this.me.getCard(ctx);
+  }
+
+  @Get('qr.svg')
+  @Authenticated()
+  @Header('Content-Type', 'image/svg+xml')
+  async getQrSvg(@CurrentUser() ctx: RequestContext): Promise<string> {
+    const qrToken = await this.me.getQrToken(ctx);
+    return QRCode.toString(qrToken, { type: 'svg', margin: 1, width: 256 });
+  }
+
+  @Post('privacy-acceptances')
+  @Authenticated()
+  @HttpCode(200)
+  async acceptPrivacyPolicy(@CurrentUser() ctx: RequestContext): Promise<{ accepted: true }> {
+    await this.me.acceptPrivacyPolicy(ctx);
+    return { accepted: true };
   }
 }
