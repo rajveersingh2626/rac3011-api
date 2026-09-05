@@ -1,6 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { createCacheRedis } from '../cache/redis.provider';
+import { bullRootOptions } from '../cache/redis.provider';
 import { MeModule } from '../me/me.module';
 import { PointsModule } from '../points/points.module';
 import { ATTENDANCE_RECOMPUTE_QUEUE } from './attendance-recompute.constants';
@@ -16,7 +16,7 @@ import { EventsService } from './events.service';
   imports: [
     MeModule,
     PointsModule,
-    BullModule.forRoot({ connection: createCacheRedis() }),
+    BullModule.forRoot(bullRootOptions()),
     BullModule.registerQueue({ name: ATTENDANCE_RECOMPUTE_QUEUE }),
   ],
   controllers: [EventsAdminController],

@@ -15,6 +15,9 @@ export async function setup(): Promise<void> {
   process.env.DATABASE_URL = url;
   process.env.TEST_DATABASE_URL = url;
   process.env.MAIL_ALLOWLIST = 'notifications-allowlist@example.com';
+  // Small on purpose: a failed send job's BullMQ retry must not linger past this file's own app,
+  // leaking into whichever e2e file's worker boots next on the same shared Redis.
+  process.env.NOTIFICATIONS_RETRY_DELAY_MS = '200';
   execFileSync('npx', ['prisma', 'migrate', 'deploy'], {
     env: { ...process.env, DATABASE_URL: url },
     stdio: 'inherit',

@@ -12,7 +12,7 @@ import {
   NOTIFICATIONS_SWEEP_STALE_MS,
   sendJobOptions,
 } from './notifications.constants';
-import { renderEmail } from './templates';
+import { renderEmail, TEMPLATES } from './templates';
 
 type SendJobData = { outboxId: string };
 
@@ -44,6 +44,11 @@ export class NotificationSendProcessor extends WorkerHost {
     }
     if (row.status === 'sent') return;
 
+    if (!(row.template in TEMPLATES)) {
+      await this.outbox.recordFailedAttempt(row.id, `unknown template ${row.template}`, true);
+      return;
+    }
+
     try {
       const rendered = renderEmail(row.template as TemplateKey, row.payload);
       const result = await this.pool.send({
@@ -65,7 +70,13 @@ export class NotificationSendProcessor extends WorkerHost {
     const staleBefore = new Date(Date.now() - NOTIFICATIONS_SWEEP_STALE_MS);
     const stale = await this.outbox.findStaleQueued(staleBefore, NOTIFICATIONS_SWEEP_BATCH_SIZE);
     for (const row of stale) {
-      await this.queue.add(NOTIFICATIONS_SEND_JOB, { outboxId: row.id }, sendJobOptions());
+      try {
+        await this.queue.add(NOTIFICATIONS_SEND_JOB, { outboxId: row.id }, sendJobOptions(row.id));
+      } catch (error) {
+        this.logger.error(
+          `sweep failed to enqueue outbox row ${row.id}: ${(error as Error).message}`,
+        );
+      }
     }
   }
 }

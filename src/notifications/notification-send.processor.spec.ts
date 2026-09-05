@@ -46,12 +46,12 @@ function fakePool(impl: (msg: unknown) => { provider: string }) {
 }
 
 function fakeQueue() {
-  const jobs: { name: string; data: unknown }[] = [];
-  const add = vi.fn((name: string, data: unknown) => {
-    jobs.push({ name, data });
+  const jobs: { name: string; data: unknown; opts: unknown }[] = [];
+  const add = vi.fn((name: string, data: unknown, opts: unknown) => {
+    jobs.push({ name, data, opts });
     return Promise.resolve();
   });
-  return { queue: { add } as unknown as Queue, jobs };
+  return { queue: { add } as unknown as Queue, jobs, add };
 }
 
 function sendJob(data: { outboxId: string }, opts: { attempts?: number } = { attempts: 5 }): Job {
@@ -130,7 +130,7 @@ describe('NotificationSendProcessor', () => {
     expect(outbox.recordFailedAttempt).toHaveBeenCalledWith('outbox-1', 'smtp down', true);
   });
 
-  it('sweep re-enqueues a send job for every stale queued row', async () => {
+  it('sweep re-enqueues a send job for every stale queued row, each with jobId = outboxId', async () => {
     const outbox = fakeOutbox();
     outbox.findStaleQueued.mockResolvedValueOnce([row({ id: 'a' }), row({ id: 'b' })]);
     const pool = fakePool(() => ({ provider: 'oracle' }));
@@ -139,9 +139,46 @@ describe('NotificationSendProcessor', () => {
 
     await processor.process({ name: 'sweep', data: {} } as unknown as Job);
 
-    expect(queue.jobs).toEqual([
+    expect(queue.jobs.map((j) => ({ name: j.name, data: j.data }))).toEqual([
       { name: 'send', data: { outboxId: 'a' } },
       { name: 'send', data: { outboxId: 'b' } },
     ]);
+    expect(queue.jobs[0].opts).toMatchObject({ jobId: 'a' });
+    expect(queue.jobs[1].opts).toMatchObject({ jobId: 'b' });
+  });
+
+  it('sweep continues past a row whose enqueue throws, logging and still enqueuing the rest', async () => {
+    const outbox = fakeOutbox();
+    outbox.findStaleQueued.mockResolvedValueOnce([row({ id: 'a' }), row({ id: 'b' })]);
+    const pool = fakePool(() => ({ provider: 'oracle' }));
+    const queue = fakeQueue();
+    queue.add.mockRejectedValueOnce(new Error('redis unavailable'));
+    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool);
+
+    await expect(
+      processor.process({ name: 'sweep', data: {} } as unknown as Job),
+    ).resolves.toBeUndefined();
+
+    expect(queue.add).toHaveBeenCalledTimes(2);
+    expect(queue.jobs.map((j) => ({ name: j.name, data: j.data }))).toEqual([
+      { name: 'send', data: { outboxId: 'b' } },
+    ]);
+  });
+
+  it('records an unknown template as an immediately final failure without calling the pool or rethrowing', async () => {
+    const outbox = fakeOutbox(row({ template: 'not-a-real-template' }));
+    const pool = fakePool(() => ({ provider: 'oracle' }));
+    const queue = fakeQueue();
+    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool);
+
+    await expect(processor.process(sendJob({ outboxId: 'outbox-1' }))).resolves.toBeUndefined();
+
+    expect(pool.send).not.toHaveBeenCalled();
+    expect(outbox.markSent).not.toHaveBeenCalled();
+    expect(outbox.recordFailedAttempt).toHaveBeenCalledWith(
+      'outbox-1',
+      'unknown template not-a-real-template',
+      true,
+    );
   });
 });

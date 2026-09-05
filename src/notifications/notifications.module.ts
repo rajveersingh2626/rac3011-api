@@ -1,6 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
-import { createCacheRedis } from '../cache/redis.provider';
+import { bullRootOptions } from '../cache/redis.provider';
 import { ConsoleNotificationAdapter } from './console-notification.adapter';
 import { EmailUsageRepository } from './email-usage.repository';
 import { ClockPort, SystemClock } from './email/clock.port';
@@ -24,7 +24,7 @@ import { NOTIFICATIONS_QUEUE } from './notifications.constants';
 @Global()
 @Module({
   imports: [
-    BullModule.forRoot({ connection: createCacheRedis() }),
+    BullModule.forRoot(bullRootOptions()),
     BullModule.registerQueue({ name: NOTIFICATIONS_QUEUE }),
   ],
   providers: [

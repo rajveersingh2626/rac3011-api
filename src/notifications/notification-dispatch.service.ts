@@ -52,7 +52,7 @@ export class NotificationDispatchService extends NotificationPort {
 
     for (const id of ids) {
       try {
-        await this.queue.add(NOTIFICATIONS_SEND_JOB, { outboxId: id }, sendJobOptions());
+        await this.queue.add(NOTIFICATIONS_SEND_JOB, { outboxId: id }, sendJobOptions(id));
       } catch (error) {
         this.logger.error(`failed to enqueue outbox row ${id}: ${(error as Error).message}`);
       }

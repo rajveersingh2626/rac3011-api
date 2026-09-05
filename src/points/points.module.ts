@@ -1,6 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { createCacheRedis } from '../cache/redis.provider';
+import { bullRootOptions } from '../cache/redis.provider';
 import { ClubFactAdapter } from './adapters/club-fact.adapter';
 import { DeferredSourceAdapter } from './adapters/deferred-source.adapter';
 import { EventAttendanceAdapter } from './adapters/event-attendance.adapter';
@@ -22,7 +22,7 @@ import type { SourceTypeKey } from './points.types';
 
 @Module({
   imports: [
-    BullModule.forRoot({ connection: createCacheRedis() }),
+    BullModule.forRoot(bullRootOptions()),
     BullModule.registerQueue({ name: POINTS_RECOMPUTE_QUEUE }),
   ],
   controllers: [PointCategoriesController, PointRulesController, ClubPointsController],

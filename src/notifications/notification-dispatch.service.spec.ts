@@ -71,6 +71,7 @@ describe('NotificationDispatchService', () => {
     expect(queue.jobs[0].name).toBe('send');
     expect(queue.jobs[0].data).toEqual({ outboxId: 'outbox-0' });
     expect(queue.jobs[0].opts).toMatchObject({
+      jobId: 'outbox-0',
       attempts: 5,
       backoff: { type: 'exponential' },
       removeOnComplete: true,

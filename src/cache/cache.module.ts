@@ -11,7 +11,7 @@ import { CacheService } from './cache.service';
 import { LiveCloudflarePurgeClient } from './cloudflare-purge.client';
 import { CloudflarePurgeClient } from './cloudflare-purge.port';
 import { NoopCloudflarePurgeClient } from './noop-cloudflare-purge.client';
-import { CACHE_REDIS, createCacheRedis } from './redis.provider';
+import { bullRootOptions, CACHE_REDIS, createCacheRedis } from './redis.provider';
 
 const cloudflareConfigured =
   !!env.CLOUDFLARE_API_EMAIL && !!env.CLOUDFLARE_API_KEY && !!env.CLOUDFLARE_ZONE_ID;
@@ -19,7 +19,7 @@ const cloudflareConfigured =
 @Global()
 @Module({
   imports: [
-    BullModule.forRoot({ connection: createCacheRedis() }),
+    BullModule.forRoot(bullRootOptions()),
     BullModule.registerQueue({ name: CACHE_PURGE_QUEUE }),
     SiteRebuildModule,
   ],
