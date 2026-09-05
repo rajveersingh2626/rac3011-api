@@ -26,6 +26,7 @@ import { CareerbridgeModule } from './subdomains/careerbridge/careerbridge.modul
 import { DrishtiModule } from './subdomains/drishti/drishti.module';
 import { Mission3011Module } from './subdomains/mission3011/mission3011.module';
 import { RideModule } from './subdomains/ride/ride.module';
+import { RclModule } from './subdomains/rcl/rcl.module';
 import { env } from './config/env';
 
 const workerModules = [
@@ -62,6 +63,7 @@ const httpModules = [
   DrishtiModule,
   RideModule,
   CareerbridgeModule,
+  RclModule,
 ];
 
 @Module({

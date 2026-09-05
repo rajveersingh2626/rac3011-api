@@ -2158,6 +2158,325 @@ async function seedRideDemoData(
   });
 }
 
+type DemoPlayerSpec = { name: string; role: string; linkToFirstMember?: boolean };
+
+type DemoTeamSpec = {
+  clubId: string;
+  name: string;
+  captainName: string;
+  captainPhone: string;
+  status: 'registered' | 'confirmed' | 'withdrawn';
+  players: DemoPlayerSpec[];
+};
+
+async function firstApprovedMemberId(ctx: Ctx, clubId: string): Promise<string | null> {
+  const member = await ctx.prisma.memberProfile.findFirst({
+    where: { clubId, status: 'approved' },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  });
+  return member?.id ?? null;
+}
+
+async function upsertDemoTeam(
+  ctx: Ctx,
+  season: number,
+  createdById: string,
+  spec: DemoTeamSpec,
+): Promise<string> {
+  const team = await ctx.prisma.rclTeam.upsert({
+    where: { season_clubId: { season, clubId: spec.clubId } },
+    create: {
+      season,
+      clubId: spec.clubId,
+      name: spec.name,
+      captainName: spec.captainName,
+      captainPhone: spec.captainPhone,
+      status: spec.status,
+      createdById,
+    },
+    update: {
+      name: spec.name,
+      captainName: spec.captainName,
+      captainPhone: spec.captainPhone,
+      status: spec.status,
+    },
+  });
+  await ctx.prisma.rclPlayer.deleteMany({ where: { teamId: team.id } });
+  const linkedMemberId = spec.players.some((p) => p.linkToFirstMember)
+    ? await firstApprovedMemberId(ctx, spec.clubId)
+    : null;
+  await ctx.prisma.rclPlayer.createMany({
+    data: spec.players.map((p) => ({
+      teamId: team.id,
+      name: p.name,
+      role: p.role,
+      memberId: p.linkToFirstMember ? linkedMemberId : null,
+    })),
+  });
+  return team.id;
+}
+
+type DemoFixtureSpec = {
+  homeTeamId: string;
+  awayTeamId: string;
+  scheduledAt: string;
+  venue: string;
+  status: 'scheduled' | 'completed' | 'abandoned';
+  result?: {
+    homeRuns: number;
+    homeWickets: number;
+    homeOvers: number;
+    awayRuns: number;
+    awayWickets: number;
+    awayOvers: number;
+    winnerTeamId: string | null;
+  };
+};
+
+async function upsertDemoFixture(
+  ctx: Ctx,
+  season: number,
+  enteredById: string,
+  spec: DemoFixtureSpec,
+): Promise<void> {
+  const existing = await ctx.prisma.rclFixture.findFirst({
+    where: { season, homeTeamId: spec.homeTeamId, awayTeamId: spec.awayTeamId },
+  });
+  const data = {
+    season,
+    homeTeamId: spec.homeTeamId,
+    awayTeamId: spec.awayTeamId,
+    scheduledAt: new Date(spec.scheduledAt),
+    venue: spec.venue,
+    status: spec.status,
+  };
+  const fixtureId = existing
+    ? existing.id
+    : (await ctx.prisma.rclFixture.create({ data, select: { id: true } })).id;
+  if (existing) await ctx.prisma.rclFixture.update({ where: { id: existing.id }, data });
+
+  if (spec.result) {
+    const resultData = { ...spec.result, notes: null, enteredById };
+    await ctx.prisma.rclResult.upsert({
+      where: { fixtureId },
+      create: { fixtureId, ...resultData },
+      update: resultData,
+    });
+  }
+}
+
+// One real seeded team per club (players: a mix of memberId-linked and plain names), plus a
+// varied fixture list (a decisive win, a tie, a no-score abandonment, two upcoming fixtures).
+async function seedRclDemoData(
+  ctx: Ctx,
+  createdById: string,
+  fallbackClubIds: string[],
+): Promise<void> {
+  const { lead, others } = await pickShowcaseClubs(ctx, fallbackClubIds);
+  const clubIds = [...new Set([lead, ...others])].slice(0, 6);
+
+  const seasonRow = await ctx.prisma.setting.findUnique({ where: { key: 'rcl.season' } });
+  const season = (seasonRow?.value as number | undefined) ?? 2026;
+
+  // Real dev environments may only have as few as 5 clubs (before real district data is
+  // imported); specs beyond clubIds.length are simply never used below.
+  const allTeamSpecs: Omit<DemoTeamSpec, 'clubId'>[] = [
+    {
+      name: 'District Dynamos',
+      captainName: 'Aman Verma',
+      captainPhone: '9810000001',
+      status: 'confirmed',
+      players: [
+        { name: 'Aman Verma', role: 'captain', linkToFirstMember: true },
+        { name: 'Rohan Kapoor', role: 'batter' },
+        { name: 'Siddharth Rao', role: 'batter' },
+        { name: 'Vikram Sethi', role: 'all-rounder' },
+        { name: 'Karan Malhotra', role: 'bowler' },
+        { name: 'Yash Thakur', role: 'bowler' },
+      ],
+    },
+    {
+      name: 'Zonal Strikers',
+      captainName: 'Priya Menon',
+      captainPhone: '9810000002',
+      status: 'confirmed',
+      players: [
+        { name: 'Priya Menon', role: 'captain', linkToFirstMember: true },
+        { name: 'Devika Nair', role: 'wicketkeeper' },
+        { name: 'Arjun Bhatia', role: 'batter' },
+        { name: 'Nikhil Chawla', role: 'bowler' },
+        { name: 'Farhan Ali', role: 'bowler' },
+      ],
+    },
+    {
+      name: 'Community Chargers',
+      captainName: 'Rahul Bose',
+      captainPhone: '9810000003',
+      status: 'confirmed',
+      players: [
+        { name: 'Rahul Bose', role: 'captain', linkToFirstMember: true },
+        { name: 'Tanvi Shah', role: 'batter' },
+        { name: 'Imran Qureshi', role: 'all-rounder' },
+        { name: 'Sameer Joshi', role: 'bowler' },
+        { name: 'Aditya Ranganathan', role: 'bowler' },
+      ],
+    },
+    {
+      name: 'Rotaract Royals',
+      captainName: 'Neha Kulkarni',
+      captainPhone: '9810000004',
+      status: 'registered',
+      players: [
+        { name: 'Neha Kulkarni', role: 'captain', linkToFirstMember: true },
+        { name: 'Varun Oberoi', role: 'batter' },
+        { name: 'Ishaan Pillai', role: 'bowler' },
+        { name: 'Manav Chopra', role: 'all-rounder' },
+      ],
+    },
+    {
+      name: 'South Delhi Spartans',
+      captainName: 'Kabir Anand',
+      captainPhone: '9810000005',
+      status: 'registered',
+      players: [
+        { name: 'Kabir Anand', role: 'captain', linkToFirstMember: true },
+        { name: 'Divya Iyer', role: 'batter' },
+        { name: 'Rajat Sinha', role: 'bowler' },
+      ],
+    },
+    {
+      name: 'Gurgaon Gladiators',
+      captainName: 'Simran Kaur',
+      captainPhone: '9810000006',
+      status: 'registered',
+      players: [
+        { name: 'Simran Kaur', role: 'captain', linkToFirstMember: true },
+        { name: 'Aarav Khurana', role: 'batter' },
+        { name: 'Vivaan Trivedi', role: 'bowler' },
+      ],
+    },
+  ];
+
+  const teamSpecs: DemoTeamSpec[] = clubIds.map((clubId, i) => ({
+    ...allTeamSpecs[i % allTeamSpecs.length],
+    clubId,
+  }));
+  const teamIds: string[] = [];
+  for (const spec of teamSpecs) teamIds.push(await upsertDemoTeam(ctx, season, createdById, spec));
+  const team = (i: number): string => teamIds[i % teamIds.length];
+
+  type FixtureDef = Omit<DemoFixtureSpec, 'homeTeamId' | 'awayTeamId'>;
+  const pairs: [number, number, FixtureDef][] = [
+    [
+      0,
+      1,
+      {
+        scheduledAt: `${season}-08-16T09:00:00Z`,
+        venue: 'District Sports Complex',
+        status: 'completed',
+        result: {
+          homeRuns: 150,
+          homeWickets: 5,
+          homeOvers: 20,
+          awayRuns: 120,
+          awayWickets: 8,
+          awayOvers: 20,
+          winnerTeamId: team(0),
+        },
+      },
+    ],
+    [
+      2,
+      3,
+      {
+        scheduledAt: `${season}-08-23T09:00:00Z`,
+        venue: 'Dwarka Sports Ground',
+        status: 'completed',
+        result: {
+          homeRuns: 132,
+          homeWickets: 7,
+          homeOvers: 20,
+          awayRuns: 132,
+          awayWickets: 6,
+          awayOvers: 20,
+          winnerTeamId: null,
+        },
+      },
+    ],
+    [
+      1,
+      2,
+      {
+        scheduledAt: `${season}-09-06T09:00:00Z`,
+        venue: 'District Sports Complex',
+        status: 'completed',
+        result: {
+          homeRuns: 98,
+          homeWickets: 10,
+          homeOvers: 18.4,
+          awayRuns: 140,
+          awayWickets: 3,
+          awayOvers: 20,
+          winnerTeamId: team(2),
+        },
+      },
+    ],
+    [
+      3,
+      4,
+      {
+        scheduledAt: `${season}-10-04T09:00:00Z`,
+        venue: 'Dwarka Sports Ground',
+        status: 'scheduled',
+      },
+    ],
+    // These two only add a distinct fixture when a 6th team actually exists; with 5 teams
+    // team(5) wraps to team(0) and would self-play, so they're skipped below.
+    [
+      4,
+      5,
+      {
+        scheduledAt: `${season}-08-30T09:00:00Z`,
+        venue: 'Gurgaon City Ground',
+        status: 'abandoned',
+      },
+    ],
+    [
+      0,
+      5,
+      {
+        scheduledAt: `${season}-10-11T09:00:00Z`,
+        venue: 'District Sports Complex',
+        status: 'scheduled',
+      },
+    ],
+  ];
+  // Fewer than 6 distinct teams: still guarantee at least one abandoned fixture.
+  if (teamIds.length < 6) {
+    pairs.push([
+      4,
+      0,
+      {
+        scheduledAt: `${season}-08-30T09:00:00Z`,
+        venue: 'Gurgaon City Ground',
+        status: 'abandoned',
+      },
+    ]);
+  }
+
+  const seenPairs = new Set<string>();
+  for (const [i, j, def] of pairs) {
+    const homeTeamId = team(i);
+    const awayTeamId = team(j);
+    if (homeTeamId === awayTeamId) continue;
+    const key = [homeTeamId, awayTeamId].sort().join(':');
+    if (seenPairs.has(key)) continue;
+    seenPairs.add(key);
+    await upsertDemoFixture(ctx, season, createdById, { homeTeamId, awayTeamId, ...def });
+  }
+}
+
 export async function seedDevData(
   prisma: PrismaClient,
   log: (msg: string) => void = () => undefined,
@@ -2250,5 +2569,9 @@ export async function seedDevData(
   await grant(ctx, rideAdmin, 'project_admin:ride', 'project', 'ride');
   await seedRideDemoData(ctx, adminId, rideAdmin, clubIds);
 
+
+  const rclAdmin = await ensureUser(ctx, 'rcl.admin@example.org', 'RCL Admin', ctx.passwordHash);
+  await grant(ctx, rclAdmin, 'project_admin:rcl', 'project', 'rcl');
+  await seedRclDemoData(ctx, adminId, clubIds);
   log(`dev seed complete: ${DEV_ADMIN.email} / ${DEV_ADMIN.password}`);
 }

@@ -22,6 +22,7 @@ export const TAG_URL_MAP: Partial<Record<CacheTag, string[]>> = {
   drishti: ['/public/drishti/dashboard'],
   careerbridge: ['/public/careerbridge/listings'],
   ride: ['/public/ride/incoming', '/public/ride/gallery', '/public/ride/dashboard'],
+  rcl: ['/public/rcl/standings', '/public/rcl/fixtures'],
 };
 
 export function urlsForTags(tags: CacheTag[]): string[] {

@@ -29,6 +29,10 @@ export const MODEL_TAG_MAP: Record<string, CacheTag[]> = {
   RideDelegation: ['ride'],
   RideDelegationHost: ['ride'],
   RideGalleryItem: ['ride'],
+  RclTeam: ['rcl'],
+  RclPlayer: ['rcl'],
+  RclFixture: ['rcl'],
+  RclResult: ['rcl'],
 };
 
 export function getModelTags(model: string | undefined): CacheTag[] {

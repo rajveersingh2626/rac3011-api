@@ -19,6 +19,7 @@ export const SITE_REBUILD_TAGS: readonly CacheTag[] = [
   'drishti',
   'careerbridge',
   'ride',
+  'rcl',
 ] as const;
 
 export function tagsTriggerRebuild(tags: readonly CacheTag[]): boolean {
