@@ -17,6 +17,7 @@ export const CACHE_TAGS = [
   'reports',
   'mission3011',
   'drishti',
+  'ride',
 ] as const;
 
 export type CacheTag = (typeof CACHE_TAGS)[number];

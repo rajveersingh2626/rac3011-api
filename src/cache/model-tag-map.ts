@@ -24,6 +24,7 @@ export const MODEL_TAG_MAP: Record<string, CacheTag[]> = {
   M3011CampClub: ['mission3011'],
   DrishtiBeneficiary: ['drishti'],
   DrishtiSurgery: ['drishti'],
+  CbListing: ['careerbridge'],
 };
 
 export function getModelTags(model: string | undefined): CacheTag[] {

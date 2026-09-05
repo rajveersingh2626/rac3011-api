@@ -1813,6 +1813,137 @@ async function seedDrishtiDemoData(
   });
 }
 
+type DemoListingSpec = {
+  title: string;
+  company: string;
+  type: 'job' | 'internship' | 'mentorship';
+  location: string;
+  mode: 'remote' | 'onsite' | 'hybrid';
+  description: string;
+  contactEmail: string;
+  postedByName: string;
+  postedByEmail: string;
+  status: 'pending' | 'verified' | 'filled' | 'rejected' | 'expired';
+  rejectionReason?: string;
+};
+
+// @example.com/@example.org emails make these identifiable/purgeable later.
+async function upsertDemoListing(
+  ctx: Ctx,
+  verifiedById: string,
+  spec: DemoListingSpec,
+): Promise<void> {
+  const existing = await ctx.prisma.cbListing.findFirst({
+    where: { title: spec.title, company: spec.company },
+  });
+  const isReviewed = spec.status !== 'pending';
+  const now = new Date();
+  const data = {
+    title: spec.title,
+    company: spec.company,
+    type: spec.type,
+    location: spec.location,
+    mode: spec.mode,
+    description: spec.description,
+    contactEmail: spec.contactEmail,
+    postedByName: spec.postedByName,
+    postedByEmail: spec.postedByEmail,
+    status: spec.status,
+    verifyToken: null,
+    verifiedById: isReviewed && spec.status !== 'rejected' ? verifiedById : null,
+    verifiedAt: isReviewed && spec.status !== 'rejected' ? now : null,
+    filledAt: spec.status === 'filled' ? now : null,
+    expiresAt:
+      spec.status === 'expired'
+        ? new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
+        : spec.status === 'verified' || spec.status === 'filled'
+          ? new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000)
+          : null,
+    rejectionReason: spec.status === 'rejected' ? (spec.rejectionReason ?? null) : null,
+  };
+  if (existing) await ctx.prisma.cbListing.update({ where: { id: existing.id }, data });
+  else await ctx.prisma.cbListing.create({ data });
+}
+
+async function seedCareerbridgeDemoData(ctx: Ctx, verifiedById: string): Promise<void> {
+  await upsertDemoListing(ctx, verifiedById, {
+    title: 'Social Media Coordinator',
+    company: 'Bloom Digital Co',
+    type: 'job',
+    location: 'Delhi',
+    mode: 'hybrid',
+    description:
+      'Plan and publish a weekly content calendar across Instagram and LinkedIn for a growing D2C brand.',
+    contactEmail: 'careers@bloom-digital.example.com',
+    postedByName: 'Bloom Digital HR',
+    postedByEmail: 'hr@bloom-digital.example.com',
+    status: 'verified',
+  });
+  await upsertDemoListing(ctx, verifiedById, {
+    title: 'Data Analyst Intern',
+    company: 'Insight Metrics Pvt Ltd',
+    type: 'internship',
+    location: 'Gurgaon',
+    mode: 'remote',
+    description:
+      'Six-week paid internship building dashboards in SQL and Excel for a small analytics consultancy.',
+    contactEmail: 'internships@insight-metrics.example.com',
+    postedByName: 'Priya Nair',
+    postedByEmail: 'priya.nair@insight-metrics.example.com',
+    status: 'verified',
+  });
+  await upsertDemoListing(ctx, verifiedById, {
+    title: 'Rotary Peace Fellow Mentor',
+    company: 'Rotaract District 3011',
+    type: 'mentorship',
+    location: 'Delhi',
+    mode: 'remote',
+    description:
+      'Monthly one-on-one mentorship for a Rotary Peace Fellowship applicant preparing their essay and interview.',
+    contactEmail: 'careerbridge@rotaract3011.example.org',
+    postedByName: 'Career Bridge Desk',
+    postedByEmail: 'careerbridge.desk@rotaract3011.example.org',
+    status: 'filled',
+  });
+  await upsertDemoListing(ctx, verifiedById, {
+    title: 'Junior Graphic Designer',
+    company: 'Studio Kranti',
+    type: 'job',
+    location: 'Noida',
+    mode: 'onsite',
+    description: 'Entry-level in-house designer for a boutique branding studio, portfolio required.',
+    contactEmail: 'jobs@studio-kranti.example.com',
+    postedByName: 'Studio Kranti Admin',
+    postedByEmail: 'admin@studio-kranti.example.com',
+    status: 'pending',
+  });
+  await upsertDemoListing(ctx, verifiedById, {
+    title: 'Unpaid Data Entry (10 hrs/week)',
+    company: 'QuickForms Services',
+    type: 'internship',
+    location: 'Delhi',
+    mode: 'remote',
+    description: 'Manual data entry into spreadsheets, no compensation or certificate offered.',
+    contactEmail: 'contact@quickforms.example.com',
+    postedByName: 'QuickForms Admin',
+    postedByEmail: 'admin@quickforms.example.com',
+    status: 'rejected',
+    rejectionReason: 'No compensation or learning outcome disclosed; does not meet posting guidelines',
+  });
+  await upsertDemoListing(ctx, verifiedById, {
+    title: 'Summer Research Assistant 2026',
+    company: 'Delhi Policy Lab',
+    type: 'internship',
+    location: 'Delhi',
+    mode: 'onsite',
+    description: 'Assist with a completed summer research programme on urban mobility.',
+    contactEmail: 'research@delhi-policy-lab.example.org',
+    postedByName: 'Delhi Policy Lab',
+    postedByEmail: 'admin@delhi-policy-lab.example.org',
+    status: 'expired',
+  });
+}
+
 export async function seedDevData(
   prisma: PrismaClient,
   log: (msg: string) => void = () => undefined,
@@ -1886,6 +2017,20 @@ export async function seedDevData(
   );
   await grant(ctx, drishtiAdmin, 'project_admin:drishti', 'project', 'drishti');
   await seedDrishtiDemoData(ctx, adminId, clubIds);
+
+  const careerbridgeAdmin = await ensureUser(
+    ctx,
+    'careerbridge.admin@example.org',
+    'Career Bridge Admin',
+    ctx.passwordHash,
+  );
+  await grant(ctx, careerbridgeAdmin, 'project_admin:careerbridge', 'project', 'careerbridge');
+  await seedCareerbridgeDemoData(ctx, careerbridgeAdmin);
+  await ctx.prisma.setting.upsert({
+    where: { key: 'careerbridge.expiryDays' },
+    create: { key: 'careerbridge.expiryDays', value: 60 },
+    update: {},
+  });
 
   log(`dev seed complete: ${DEV_ADMIN.email} / ${DEV_ADMIN.password}`);
 }
