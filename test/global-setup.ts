@@ -18,6 +18,10 @@ export async function setup(): Promise<void> {
   // Small on purpose: a failed send job's BullMQ retry must not linger past this file's own app,
   // leaking into whichever e2e file's worker boots next on the same shared Redis.
   process.env.NOTIFICATIONS_RETRY_DELAY_MS = '200';
+  // email_provider_usage is one Postgres counter shared by every e2e file, and the fake transport
+  // reports itself as 'oracle', so the 100/day default cap is reachable mid-run and later files
+  // would see sends fail with NoEmailProviderAvailableError.
+  process.env.ORACLE_DAILY_CAP = '1000000';
   execFileSync('npx', ['prisma', 'migrate', 'deploy'], {
     env: { ...process.env, DATABASE_URL: url },
     stdio: 'inherit',

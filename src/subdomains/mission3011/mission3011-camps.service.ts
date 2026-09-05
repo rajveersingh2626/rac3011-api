@@ -74,10 +74,11 @@ export class Mission3011CampsService {
 
     const adminIds = await this.repo.findProjectAdminUserIds('mission3011');
     if (adminIds.length > 0) {
+      const club = await this.me.getClub(ctx);
       await this.notifications.notify({
         template: 'camp-submitted',
         to: adminIds.map((userId) => ({ userId })),
-        data: { campId: created.id, leadClubId: profile.clubId, venue: created.venue },
+        data: { campId: created.id, leadClubName: club.name, venue: created.venue },
       });
     }
     return created;

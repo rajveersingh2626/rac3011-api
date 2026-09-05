@@ -1,40 +1,64 @@
 import type { TemplateKey } from '../notification.port';
-import { genericTemplate } from './generic.template';
+import { announcementTemplate } from './announcement.template';
+import { bookingConfirmedTemplate } from './booking-confirmed.template';
+import { bookingDeclinedTemplate } from './booking-declined.template';
+import { bookingReminderTemplate } from './booking-reminder.template';
+import { bookingRequestedTemplate } from './booking-requested.template';
+import { campApprovedTemplate } from './camp-approved.template';
+import { campSubmittedTemplate } from './camp-submitted.template';
+import { certificateIssuedTemplate } from './certificate-issued.template';
+import { contributionApprovedTemplate } from './contribution-approved.template';
+import { enquiryReceivedTemplate } from './enquiry-received.template';
+import { eventReminderTemplate } from './event-reminder.template';
+import { feedbackRepliedTemplate } from './feedback-replied.template';
+import { linkBrokenTemplate } from './link-broken.template';
+import { listingVerifiedTemplate } from './listing-verified.template';
+import { listingVerifyTemplate } from './listing-verify.template';
+import { memberApprovedTemplate } from './member-approved.template';
+import { memberRegisteredTemplate } from './member-registered.template';
+import { memberRejectedTemplate } from './member-rejected.template';
 import { otpTemplate } from './otp.template';
 import { passwordResetRequiredTemplate } from './password-reset-required.template';
+import { reportQueriedTemplate } from './report-queried.template';
+import { reportRepliedTemplate } from './report-replied.template';
+import { reportScoredTemplate } from './report-scored.template';
+import { rideHostAssignedTemplate } from './ride-host-assigned.template';
+import { showcasePublishedTemplate } from './showcase-published.template';
+import { showcaseRejectedTemplate } from './showcase-rejected.template';
+import { showcaseSubmittedTemplate } from './showcase-submitted.template';
 import type { NotificationTemplate } from './template.types';
 
 export type { NotificationTemplate } from './template.types';
 
 // Record<TemplateKey, ...> makes TS refuse to compile if a TemplateKey is ever added to
-// notification.port.ts without a corresponding entry here (falls back to genericTemplate(key)).
+// notification.port.ts without a corresponding entry here.
 export const TEMPLATES: Record<TemplateKey, NotificationTemplate> = {
   otp: otpTemplate,
-  'member-registered': genericTemplate('member-registered'),
-  'member-approved': genericTemplate('member-approved'),
-  'member-rejected': genericTemplate('member-rejected'),
-  'report-queried': genericTemplate('report-queried'),
-  'report-replied': genericTemplate('report-replied'),
-  'report-scored': genericTemplate('report-scored'),
-  'showcase-submitted': genericTemplate('showcase-submitted'),
-  'showcase-published': genericTemplate('showcase-published'),
-  'showcase-rejected': genericTemplate('showcase-rejected'),
-  announcement: genericTemplate('announcement'),
-  'feedback-replied': genericTemplate('feedback-replied'),
-  'booking-requested': genericTemplate('booking-requested'),
-  'booking-confirmed': genericTemplate('booking-confirmed'),
-  'booking-declined': genericTemplate('booking-declined'),
-  'booking-reminder': genericTemplate('booking-reminder'),
-  'link-broken': genericTemplate('link-broken'),
-  'event-reminder': genericTemplate('event-reminder'),
-  'enquiry-received': genericTemplate('enquiry-received'),
-  'listing-verify': genericTemplate('listing-verify'),
-  'listing-verified': genericTemplate('listing-verified'),
-  'camp-submitted': genericTemplate('camp-submitted'),
-  'camp-approved': genericTemplate('camp-approved'),
-  'ride-host-assigned': genericTemplate('ride-host-assigned'),
-  'contribution-approved': genericTemplate('contribution-approved'),
-  'certificate-issued': genericTemplate('certificate-issued'),
+  'member-registered': memberRegisteredTemplate,
+  'member-approved': memberApprovedTemplate,
+  'member-rejected': memberRejectedTemplate,
+  'report-queried': reportQueriedTemplate,
+  'report-replied': reportRepliedTemplate,
+  'report-scored': reportScoredTemplate,
+  'showcase-submitted': showcaseSubmittedTemplate,
+  'showcase-published': showcasePublishedTemplate,
+  'showcase-rejected': showcaseRejectedTemplate,
+  announcement: announcementTemplate,
+  'feedback-replied': feedbackRepliedTemplate,
+  'booking-requested': bookingRequestedTemplate,
+  'booking-confirmed': bookingConfirmedTemplate,
+  'booking-declined': bookingDeclinedTemplate,
+  'booking-reminder': bookingReminderTemplate,
+  'link-broken': linkBrokenTemplate,
+  'event-reminder': eventReminderTemplate,
+  'enquiry-received': enquiryReceivedTemplate,
+  'listing-verify': listingVerifyTemplate,
+  'listing-verified': listingVerifiedTemplate,
+  'camp-submitted': campSubmittedTemplate,
+  'camp-approved': campApprovedTemplate,
+  'ride-host-assigned': rideHostAssignedTemplate,
+  'contribution-approved': contributionApprovedTemplate,
+  'certificate-issued': certificateIssuedTemplate,
   'password-reset-required': passwordResetRequiredTemplate,
 };
 

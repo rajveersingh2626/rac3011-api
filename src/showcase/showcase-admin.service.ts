@@ -274,6 +274,8 @@ export class ShowcaseAdminService {
           to: [{ userId: existing.submittedById }],
           data: {
             projectId: existing.id,
+            title: publishedTitle,
+            slug,
             rejectionReason: input.rejectionReason ?? existing.rejectionReason,
           },
         });

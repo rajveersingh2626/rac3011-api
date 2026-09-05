@@ -14,10 +14,11 @@ import { createTestApp } from './app';
 import { testPrisma } from './db';
 import { createUser } from './fixtures';
 
-async function waitUntil(predicate: () => Promise<boolean>, timeoutMs = 5000): Promise<void> {
+async function waitFor<T>(produce: () => Promise<T | null>, timeoutMs = 5000): Promise<T> {
   const start = Date.now();
   for (;;) {
-    if (await predicate()) return;
+    const value = await produce();
+    if (value !== null) return value;
     if (Date.now() - start > timeoutMs) throw new Error('timed out waiting for condition');
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
@@ -61,9 +62,9 @@ describe('notification dispatch (outbox + BullMQ send worker, spec §7 step 9)',
     expect(['queued', 'sent']).toContain(queued?.status);
     expect(queued?.subject).toContain('123456');
 
-    await waitUntil(async () => {
+    await waitFor(async () => {
       const current = await prisma.notificationOutbox.findUnique({ where: { id: queued!.id } });
-      return current?.status === 'sent';
+      return current?.status === 'sent' ? current : null;
     });
 
     const sentRow = await prisma.notificationOutbox.findUnique({ where: { id: queued!.id } });
@@ -94,9 +95,9 @@ describe('notification dispatch (outbox + BullMQ send worker, spec §7 step 9)',
     });
     expect(queued).not.toBeNull();
 
-    await waitUntil(async () => {
+    await waitFor(async () => {
       const current = await prisma.notificationOutbox.findUnique({ where: { id: queued!.id } });
-      return current?.status === 'sent';
+      return current?.status === 'sent' ? current : null;
     });
 
     const delivered = fake.sent.find((m) => m.html.includes('654321'));
@@ -143,19 +144,14 @@ describe('notification dispatch (outbox + BullMQ send worker, spec §7 step 9)',
     expect(queued).not.toBeNull();
 
     // Capture the row at the exact moment attempts first hits 1, rather than re-querying after
-    // waitUntil resolves, to keep the window tight against NOTIFICATIONS_RETRY_DELAY_MS's retry.
-    let afterFirstAttempt: Awaited<ReturnType<typeof prisma.notificationOutbox.findUnique>> = null;
-    await waitUntil(async () => {
+    // the wait resolves, to keep the window tight against NOTIFICATIONS_RETRY_DELAY_MS's retry.
+    const afterFirstAttempt = await waitFor(async () => {
       const current = await prisma.notificationOutbox.findUnique({ where: { id: queued!.id } });
-      if ((current?.attempts ?? 0) >= 1) {
-        afterFirstAttempt = current;
-        return true;
-      }
-      return false;
+      return (current?.attempts ?? 0) >= 1 ? current : null;
     });
-    expect(afterFirstAttempt?.status).toBe('queued');
-    expect(afterFirstAttempt?.attempts).toBe(1);
-    expect(afterFirstAttempt?.lastError).toBeTruthy();
+    expect(afterFirstAttempt.status).toBe('queued');
+    expect(afterFirstAttempt.attempts).toBe(1);
+    expect(afterFirstAttempt.lastError).toBeTruthy();
 
     // Simulate a sweep re-enqueue of this still-pending row: same jobId, BullMQ returns the
     // existing job unchanged instead of creating a second one.
