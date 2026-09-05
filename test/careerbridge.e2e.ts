@@ -67,11 +67,13 @@ describe('Career Bridge listings (spec §10, step 13)', () => {
     const prisma = app.get(PrismaService);
     const before = await prisma.cbListing.count();
 
-    const res = await request(httpServer(app))
-      .post('/public/careerbridge/listings')
-      .send({ ...SUBMISSION, postedByEmail: 'bot@example.com', website: 'https://spam.example' })
-      .expect(201);
-    expect(res.body.status).toBe('pending_email');
+    const res = (
+      await request(httpServer(app))
+        .post('/public/careerbridge/listings')
+        .send({ ...SUBMISSION, postedByEmail: 'bot@example.com', website: 'https://spam.example' })
+        .expect(201)
+    ).body as { status: string };
+    expect(res.status).toBe('pending_email');
 
     const after = await prisma.cbListing.count();
     expect(after).toBe(before);
@@ -88,7 +90,10 @@ describe('Career Bridge listings (spec §10, step 13)', () => {
 
     // Plain members (no manage grant) cannot see the admin desk at all.
     await member.get('/careerbridge/listings').expect(403);
-    await member.patch(`/careerbridge/listings/${posted.id}`).send({ status: 'verified' }).expect(403);
+    await member
+      .patch(`/careerbridge/listings/${posted.id}`)
+      .send({ status: 'verified' })
+      .expect(403);
 
     const adapter = app.get(ConsoleNotificationAdapter);
     const verifyMail = adapter.lastFor(SUBMISSION.postedByEmail, 'listing-verify');
@@ -116,12 +121,16 @@ describe('Career Bridge listings (spec §10, step 13)', () => {
       .send({ token })
       .expect(400);
 
-    const pendingList = (await cbAdmin.get('/careerbridge/listings?filter[status]=pending').expect(200))
-      .body as ListingListResponse;
+    const pendingList = (
+      await cbAdmin.get('/careerbridge/listings?filter[status]=pending').expect(200)
+    ).body as ListingListResponse;
     expect(pendingList.items.some((i) => i.id === posted.id)).toBe(true);
 
     const adminApproved = (
-      await cbAdmin.patch(`/careerbridge/listings/${posted.id}`).send({ status: 'verified' }).expect(200)
+      await cbAdmin
+        .patch(`/careerbridge/listings/${posted.id}`)
+        .send({ status: 'verified' })
+        .expect(200)
     ).body as ListingResponse;
     expect(adminApproved.status).toBe('verified');
     expect(adminApproved.expiresAt).toBeTruthy();
@@ -130,8 +139,9 @@ describe('Career Bridge listings (spec §10, step 13)', () => {
     expect(verifiedMail).toBeTruthy();
 
     await waitUntil(async () => {
-      const publicList = (await request(httpServer(app)).get('/public/careerbridge/listings').expect(200))
-        .body as ListingListResponse;
+      const publicList = (
+        await request(httpServer(app)).get('/public/careerbridge/listings').expect(200)
+      ).body as ListingListResponse;
       return publicList.items.some((i) => i.id === posted.id);
     });
 
@@ -150,11 +160,18 @@ describe('Career Bridge listings (spec §10, step 13)', () => {
     ).body as { id: string };
 
     const adapter = app.get(ConsoleNotificationAdapter);
-    const token = new URL(adapter.lastFor('cb-reject@example.com', 'listing-verify')!.data.verifyLink as string)
-      .searchParams.get('token');
-    await request(httpServer(app)).post('/public/careerbridge/listings/verify').send({ token }).expect(201);
+    const token = new URL(
+      adapter.lastFor('cb-reject@example.com', 'listing-verify')!.data.verifyLink as string,
+    ).searchParams.get('token');
+    await request(httpServer(app))
+      .post('/public/careerbridge/listings/verify')
+      .send({ token })
+      .expect(201);
 
-    await cbAdmin.patch(`/careerbridge/listings/${posted.id}`).send({ status: 'rejected' }).expect(400);
+    await cbAdmin
+      .patch(`/careerbridge/listings/${posted.id}`)
+      .send({ status: 'rejected' })
+      .expect(400);
     const rejected = (
       await cbAdmin
         .patch(`/careerbridge/listings/${posted.id}`)
@@ -175,14 +192,27 @@ describe('Career Bridge listings (spec §10, step 13)', () => {
         .expect(201)
     ).body as { id: string };
     const adapter = app.get(ConsoleNotificationAdapter);
-    const token = new URL(adapter.lastFor('cb-fill@example.com', 'listing-verify')!.data.verifyLink as string)
-      .searchParams.get('token');
-    await request(httpServer(app)).post('/public/careerbridge/listings/verify').send({ token }).expect(201);
-    await cbAdmin.patch(`/careerbridge/listings/${posted.id}`).send({ status: 'verified' }).expect(200);
+    const token = new URL(
+      adapter.lastFor('cb-fill@example.com', 'listing-verify')!.data.verifyLink as string,
+    ).searchParams.get('token');
+    await request(httpServer(app))
+      .post('/public/careerbridge/listings/verify')
+      .send({ token })
+      .expect(201);
+    await cbAdmin
+      .patch(`/careerbridge/listings/${posted.id}`)
+      .send({ status: 'verified' })
+      .expect(200);
 
-    await cbAdmin.patch(`/careerbridge/listings/${posted.id}`).send({ status: 'filled' }).expect(200);
+    await cbAdmin
+      .patch(`/careerbridge/listings/${posted.id}`)
+      .send({ status: 'filled' })
+      .expect(200);
     // Cannot fill an already-filled listing.
-    await cbAdmin.patch(`/careerbridge/listings/${posted.id}`).send({ status: 'filled' }).expect(400);
+    await cbAdmin
+      .patch(`/careerbridge/listings/${posted.id}`)
+      .send({ status: 'filled' })
+      .expect(400);
 
     const publicDetail = (
       await request(httpServer(app)).get(`/public/careerbridge/listings/${posted.id}`).expect(200)
