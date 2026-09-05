@@ -12,6 +12,9 @@ import { PointsRepository } from '../src/points/points.repository';
 import { PointsSourceRepository } from '../src/points/points-source.repository';
 import type { SourceTypeKey } from '../src/points/points.types';
 import type { PrismaService } from '../src/prisma/prisma.service';
+import { env } from '../src/config/env';
+import { encryptPhone } from '../src/subdomains/drishti/drishti-pii.util';
+import type { DrishtiStageKind } from '../src/subdomains/drishti/drishti.types';
 import { CANONICAL_ZONES, seedZonesFromClubs, slugify } from './seed/zones';
 
 export const DEV_ADMIN = {
@@ -1343,6 +1346,473 @@ async function seedMembersDemoData(ctx: Ctx, fallbackClubIds: string[]): Promise
   });
 }
 
+// Purge before launch: camps via partner_blood_bank='Rotary Blood Bank', beneficiaries via notes LIKE 'DEMO SEED%'.
+type DemoCampSpec = {
+  venue: string;
+  city: string;
+  date: string;
+  unitsCollected: number;
+  donorsRegistered: number;
+  status: 'approved' | 'submitted' | 'rejected';
+  rejectionReason?: string;
+};
+
+async function upsertDemoCamp(
+  ctx: Ctx,
+  leadClubId: string,
+  participatingClubIds: string[],
+  spec: DemoCampSpec,
+  submittedById: string,
+  reviewerId: string,
+): Promise<void> {
+  const date = new Date(`${spec.date}T00:00:00Z`);
+  const existing = await ctx.prisma.m3011Camp.findFirst({
+    where: { leadClubId, venue: spec.venue, date },
+  });
+  const data = {
+    leadClubId,
+    date,
+    venue: spec.venue,
+    city: spec.city,
+    unitsCollected: spec.unitsCollected,
+    donorsRegistered: spec.donorsRegistered,
+    partnerBloodBank: 'Rotary Blood Bank',
+    submittedById,
+    status: spec.status,
+    reviewedById: spec.status === 'submitted' ? null : reviewerId,
+    reviewedAt: spec.status === 'submitted' ? null : new Date(),
+    rejectionReason:
+      spec.status === 'rejected' ? (spec.rejectionReason ?? 'Duplicate entry') : null,
+  };
+  const campId = existing
+    ? existing.id
+    : (await ctx.prisma.m3011Camp.create({ data, select: { id: true } })).id;
+  if (existing) await ctx.prisma.m3011Camp.update({ where: { id: existing.id }, data });
+  await ctx.prisma.m3011CampClub.deleteMany({ where: { campId } });
+  await ctx.prisma.m3011CampClub.createMany({
+    data: [...new Set([leadClubId, ...participatingClubIds])].map((clubId) => ({ campId, clubId })),
+    skipDuplicates: true,
+  });
+}
+
+// Per-club camp/unit counts mirror the Mission dashboard mockup leaderboard.
+async function seedMission3011DemoData(
+  ctx: Ctx,
+  submittedById: string,
+  reviewerId: string,
+  fallbackClubIds: string[],
+): Promise<void> {
+  const { lead: racddlId, others } = await pickShowcaseClubs(ctx, fallbackClubIds);
+  const at = (i: number): string => others[i] ?? racddlId;
+  const southEastId = at(0);
+  const southId = at(1);
+  const ehsaasId = at(2);
+  const rajdhaniId = at(3);
+  const lsrId = at(4);
+  const sakshamId = at(5);
+
+  const approvedByClub: [string, string, DemoCampSpec[]][] = [
+    [
+      southId,
+      'Delhi',
+      [
+        {
+          venue: 'Community Hall',
+          city: 'Delhi',
+          date: '2026-07-12',
+          unitsCollected: 42,
+          donorsRegistered: 46,
+          status: 'approved',
+        },
+        {
+          venue: 'DDA Ground',
+          city: 'Delhi',
+          date: '2026-07-26',
+          unitsCollected: 38,
+          donorsRegistered: 41,
+          status: 'approved',
+        },
+        {
+          venue: 'Society Clubhouse',
+          city: 'Delhi',
+          date: '2026-08-09',
+          unitsCollected: 36,
+          donorsRegistered: 39,
+          status: 'approved',
+        },
+        {
+          venue: 'Sports Complex',
+          city: 'Delhi',
+          date: '2026-08-23',
+          unitsCollected: 34,
+          donorsRegistered: 37,
+          status: 'approved',
+        },
+        {
+          venue: 'College Auditorium',
+          city: 'Delhi',
+          date: '2026-09-06',
+          unitsCollected: 33,
+          donorsRegistered: 35,
+          status: 'approved',
+        },
+        {
+          venue: 'Market Association Hall',
+          city: 'Delhi',
+          date: '2026-09-20',
+          unitsCollected: 31,
+          donorsRegistered: 33,
+          status: 'approved',
+        },
+      ],
+    ],
+    [
+      lsrId,
+      'Delhi',
+      [
+        {
+          venue: 'College Grounds',
+          city: 'Delhi',
+          date: '2026-07-18',
+          unitsCollected: 52,
+          donorsRegistered: 55,
+          status: 'approved',
+        },
+        {
+          venue: 'Hostel Common Room',
+          city: 'Delhi',
+          date: '2026-08-01',
+          unitsCollected: 48,
+          donorsRegistered: 50,
+          status: 'approved',
+        },
+        {
+          venue: 'Main Auditorium',
+          city: 'Delhi',
+          date: '2026-08-15',
+          unitsCollected: 44,
+          donorsRegistered: 47,
+          status: 'approved',
+        },
+        {
+          venue: 'Sports Field',
+          city: 'Delhi',
+          date: '2026-08-29',
+          unitsCollected: 42,
+          donorsRegistered: 44,
+          status: 'approved',
+        },
+      ],
+    ],
+    [
+      sakshamId,
+      'Gurgaon',
+      [
+        {
+          venue: 'Community Centre',
+          city: 'Gurgaon',
+          date: '2026-07-14',
+          unitsCollected: 38,
+          donorsRegistered: 40,
+          status: 'approved',
+        },
+        {
+          venue: 'Society Park',
+          city: 'Gurgaon',
+          date: '2026-07-28',
+          unitsCollected: 35,
+          donorsRegistered: 37,
+          status: 'approved',
+        },
+        {
+          venue: 'Sector Market Hall',
+          city: 'Gurgaon',
+          date: '2026-08-11',
+          unitsCollected: 34,
+          donorsRegistered: 36,
+          status: 'approved',
+        },
+        {
+          venue: 'School Ground',
+          city: 'Gurgaon',
+          date: '2026-08-25',
+          unitsCollected: 33,
+          donorsRegistered: 35,
+          status: 'approved',
+        },
+        {
+          venue: 'Club Premises',
+          city: 'Gurgaon',
+          date: '2026-09-08',
+          unitsCollected: 31,
+          donorsRegistered: 33,
+          status: 'approved',
+        },
+      ],
+    ],
+    [
+      rajdhaniId,
+      'Delhi',
+      [
+        {
+          venue: 'Community Ground',
+          city: 'Delhi',
+          date: '2026-07-20',
+          unitsCollected: 52,
+          donorsRegistered: 55,
+          status: 'approved',
+        },
+        {
+          venue: 'Society Hall',
+          city: 'Delhi',
+          date: '2026-08-03',
+          unitsCollected: 49,
+          donorsRegistered: 52,
+          status: 'approved',
+        },
+        {
+          venue: 'Market Complex',
+          city: 'Delhi',
+          date: '2026-08-17',
+          unitsCollected: 47,
+          donorsRegistered: 49,
+          status: 'approved',
+        },
+      ],
+    ],
+    [
+      southEastId,
+      'Delhi',
+      [
+        {
+          venue: 'Sports Ground',
+          city: 'Delhi',
+          date: '2026-07-22',
+          unitsCollected: 46,
+          donorsRegistered: 48,
+          status: 'approved',
+        },
+        {
+          venue: 'Community Hall',
+          city: 'Delhi',
+          date: '2026-08-05',
+          unitsCollected: 44,
+          donorsRegistered: 46,
+          status: 'approved',
+        },
+        {
+          venue: 'School Auditorium',
+          city: 'Delhi',
+          date: '2026-08-19',
+          unitsCollected: 42,
+          donorsRegistered: 44,
+          status: 'approved',
+        },
+      ],
+    ],
+  ];
+
+  for (const [clubId, , camps] of approvedByClub) {
+    for (const spec of camps)
+      await upsertDemoCamp(ctx, clubId, [], spec, submittedById, reviewerId);
+  }
+
+  // Approvals desk demo content: one pending multi-club camp, one already rejected.
+  await upsertDemoCamp(
+    ctx,
+    racddlId,
+    [ehsaasId],
+    {
+      venue: 'RACDDL Grounds',
+      city: 'Delhi',
+      date: '2026-09-27',
+      unitsCollected: 180,
+      donorsRegistered: 195,
+      status: 'submitted',
+    },
+    submittedById,
+    reviewerId,
+  );
+  await upsertDemoCamp(
+    ctx,
+    ehsaasId,
+    [],
+    {
+      venue: 'Neighbourhood Park',
+      city: 'Delhi',
+      date: '2026-09-13',
+      unitsCollected: 28,
+      donorsRegistered: 30,
+      status: 'rejected',
+      rejectionReason: 'Duplicate submission for the same drive',
+    },
+    submittedById,
+    reviewerId,
+  );
+}
+
+type DemoBeneficiarySpec = {
+  name: string;
+  age: number;
+  gender: string;
+  eye: 'left' | 'right' | 'both';
+  screenedOn: string;
+  campLocation: string;
+  stage: DrishtiStageKind;
+  phone?: string;
+  surgery?: { hospital: string; operatedOn: string; outcome?: string; followupOn?: string };
+};
+
+async function upsertDemoBeneficiary(
+  ctx: Ctx,
+  clubId: string,
+  createdById: string,
+  spec: DemoBeneficiarySpec,
+): Promise<void> {
+  const existing = await ctx.prisma.drishtiBeneficiary.findFirst({
+    where: { clubId, name: spec.name },
+  });
+  const data = {
+    clubId,
+    name: spec.name,
+    age: spec.age,
+    gender: spec.gender,
+    phoneEncrypted: spec.phone ? encryptPhone(spec.phone, env.DRISHTI_PII_KEY) : null,
+    eye: spec.eye,
+    screenedOn: new Date(`${spec.screenedOn}T00:00:00Z`),
+    campLocation: spec.campLocation,
+    stage: spec.stage,
+    notes: 'DEMO SEED - purge before launch',
+    createdById,
+  };
+  const beneficiaryId = existing
+    ? existing.id
+    : (await ctx.prisma.drishtiBeneficiary.create({ data, select: { id: true } })).id;
+  if (existing) await ctx.prisma.drishtiBeneficiary.update({ where: { id: existing.id }, data });
+  if (spec.surgery) {
+    const surgeryExists = await ctx.prisma.drishtiSurgery.findFirst({
+      where: { beneficiaryId, hospital: spec.surgery.hospital },
+    });
+    if (!surgeryExists) {
+      await ctx.prisma.drishtiSurgery.create({
+        data: {
+          beneficiaryId,
+          hospital: spec.surgery.hospital,
+          operatedOn: new Date(`${spec.surgery.operatedOn}T00:00:00Z`),
+          outcome: spec.surgery.outcome ?? null,
+          followupOn: spec.surgery.followupOn
+            ? new Date(`${spec.surgery.followupOn}T00:00:00Z`)
+            : null,
+        },
+      });
+    }
+  }
+}
+
+// Hospital names/ranking mirror the Drishti dashboard mockup; counts are scaled to a reviewable seed size.
+async function seedDrishtiDemoData(
+  ctx: Ctx,
+  createdById: string,
+  fallbackClubIds: string[],
+): Promise<void> {
+  const { lead: racddlId, others } = await pickShowcaseClubs(ctx, fallbackClubIds);
+  const clubPool = [...new Set([racddlId, ...others])];
+  const clubFor = (i: number): string => clubPool[i % clubPool.length];
+
+  const screenedNames = [
+    'Ram Kumar',
+    'Shanti Devi',
+    'Mohan Lal',
+    'Kamla Bai',
+    'Suresh Chand',
+    'Radha Rani',
+  ];
+  const scheduledNames = ['Vijay Singh', 'Lakshmi Amma', 'Prakash Yadav'];
+  const operatedSpecs: { name: string; hospital: string }[] = [
+    { name: 'Geeta Devi', hospital: 'Venu Eye Institute' },
+    { name: 'Harish Chandra', hospital: 'Venu Eye Institute' },
+    { name: 'Sunita Sharma', hospital: "Dr Shroff's Charity Eye Hospital" },
+  ];
+
+  await Promise.all(
+    screenedNames.map((name, i) =>
+      upsertDemoBeneficiary(ctx, clubFor(i), createdById, {
+        name,
+        age: 55 + i,
+        gender: i % 2 === 0 ? 'female' : 'male',
+        eye: i % 3 === 0 ? 'both' : i % 3 === 1 ? 'left' : 'right',
+        screenedOn: `2026-08-${String(10 + i).padStart(2, '0')}`,
+        campLocation: 'District screening camp',
+        stage: 'screened',
+        phone: `98${String(10000000 + i * 111).padStart(8, '0')}`,
+      }),
+    ),
+  );
+  await Promise.all(
+    scheduledNames.map((name, i) =>
+      upsertDemoBeneficiary(ctx, clubFor(i + 1), createdById, {
+        name,
+        age: 60 + i,
+        gender: i % 2 === 0 ? 'male' : 'female',
+        eye: 'both',
+        screenedOn: `2026-07-${String(20 + i).padStart(2, '0')}`,
+        campLocation: 'District screening camp',
+        stage: 'scheduled',
+        phone: `97${String(20000000 + i * 222).padStart(8, '0')}`,
+      }),
+    ),
+  );
+  await Promise.all(
+    operatedSpecs.map((spec, i) =>
+      upsertDemoBeneficiary(ctx, clubFor(i + 2), createdById, {
+        name: spec.name,
+        age: 62 + i,
+        gender: i % 2 === 0 ? 'female' : 'male',
+        eye: 'both',
+        screenedOn: `2026-06-${String(10 + i).padStart(2, '0')}`,
+        campLocation: 'District screening camp',
+        stage: 'operated',
+        phone: `96${String(30000000 + i * 333).padStart(8, '0')}`,
+        surgery: {
+          hospital: spec.hospital,
+          operatedOn: `2026-07-${String(1 + i).padStart(2, '0')}`,
+        },
+      }),
+    ),
+  );
+  await upsertDemoBeneficiary(ctx, clubFor(0), createdById, {
+    name: 'Bimla Devi',
+    age: 68,
+    gender: 'female',
+    eye: 'left',
+    screenedOn: '2026-05-15',
+    campLocation: 'District screening camp',
+    stage: 'followup',
+    phone: '9500011122',
+    surgery: {
+      hospital: 'Venu Eye Institute',
+      operatedOn: '2026-06-10',
+      followupOn: '2026-07-22',
+    },
+  });
+  await upsertDemoBeneficiary(ctx, clubFor(1), createdById, {
+    name: 'Om Prakash',
+    age: 71,
+    gender: 'male',
+    eye: 'right',
+    screenedOn: '2026-04-20',
+    campLocation: 'District screening camp',
+    stage: 'closed',
+    phone: '9400022233',
+    surgery: {
+      hospital: 'Guru Nanak Eye Centre',
+      operatedOn: '2026-05-12',
+      outcome: 'Vision restored, discharged',
+      followupOn: '2026-06-23',
+    },
+  });
+}
+
 export async function seedDevData(
   prisma: PrismaClient,
   log: (msg: string) => void = () => undefined,
@@ -1398,5 +1868,24 @@ export async function seedDevData(
   await seedEventsFeedbackDemoData(ctx, adminId, dsc, clubIds);
   await seedPublicContentDemoData(ctx, clubIds);
   await seedMembersDemoData(ctx, clubIds);
+
+  const mission3011Admin = await ensureUser(
+    ctx,
+    'mission3011.admin@example.org',
+    'Mission 3011 Admin',
+    ctx.passwordHash,
+  );
+  await grant(ctx, mission3011Admin, 'project_admin:mission3011', 'project', 'mission3011');
+  await seedMission3011DemoData(ctx, adminId, mission3011Admin, clubIds);
+
+  const drishtiAdmin = await ensureUser(
+    ctx,
+    'drishti.admin@example.org',
+    'Drishti Admin',
+    ctx.passwordHash,
+  );
+  await grant(ctx, drishtiAdmin, 'project_admin:drishti', 'project', 'drishti');
+  await seedDrishtiDemoData(ctx, adminId, clubIds);
+
   log(`dev seed complete: ${DEV_ADMIN.email} / ${DEV_ADMIN.password}`);
 }

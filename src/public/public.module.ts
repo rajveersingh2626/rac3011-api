@@ -41,5 +41,7 @@ import { PublicController } from './public.controller';
     PublicInitiativesService,
     ProjectSummaryRegistry,
   ],
+  // Exported so each subdomain module can import PublicModule and register its own summary().
+  exports: [ProjectSummaryRegistry],
 })
 export class PublicModule {}

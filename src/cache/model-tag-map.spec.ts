@@ -15,6 +15,8 @@ const PUBLIC_REPOSITORY_FILES = [
   'src/content/content.repository.ts',
   'src/events/events.repository.ts',
   'src/showcase/showcase.repository.ts',
+  'src/subdomains/mission3011/mission3011-dashboard.repository.ts',
+  'src/subdomains/drishti/drishti-dashboard.repository.ts',
 ];
 
 // showcase.repository.ts selects the Project -> ProjectClub relation via `clubs: {...}`, not a

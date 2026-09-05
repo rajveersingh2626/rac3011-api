@@ -33,4 +33,15 @@ describe('parseEnv', () => {
       /production/,
     );
   });
+
+  it('refuses production with the dev-default Drishti PII key', () => {
+    expect(() =>
+      parseEnv({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://x/y',
+        AUTH_SECRET: 'a-real-32-plus-byte-secret-value-here',
+        WEB_ORIGINS: 'https://rotaract3011.org',
+      }),
+    ).toThrow(/DRISHTI_PII_KEY/);
+  });
 });

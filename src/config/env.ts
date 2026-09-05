@@ -57,12 +57,15 @@ export const envSchema = z.object({
   DRR_CALENDAR_ID: optionalString,
   ANTHROPIC_API_KEY: optionalString,
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-5'),
-  DRISHTI_PII_KEY: optionalString.pipe(
-    z
-      .string()
-      .regex(/^[0-9a-fA-F]{64}$/)
-      .optional(),
-  ),
+  // Dev/test fallback only ("de" x32); every non-local environment must set a real 32-byte hex key.
+  DRISHTI_PII_KEY: optionalString
+    .pipe(
+      z
+        .string()
+        .regex(/^[0-9a-fA-F]{64}$/)
+        .optional(),
+    )
+    .transform((v): string => v ?? 'de'.repeat(32)),
   STORAGE_DRIVER: z.enum(['live', 'stub']).default('stub'),
   ASSIST_DRIVER: z.enum(['live', 'stub']).default('stub'),
   UPLOADTHING_TOKEN_PERMANENT: optionalString,
@@ -102,6 +105,7 @@ export function parseEnv(source: NodeJS.ProcessEnv): Env {
   if (env.NODE_ENV === 'production') {
     const missing: string[] = [];
     if (env.AUTH_SECRET.startsWith('dev-only')) missing.push('AUTH_SECRET');
+    if (env.DRISHTI_PII_KEY === 'de'.repeat(32)) missing.push('DRISHTI_PII_KEY');
     if (env.WEB_ORIGINS.length === 0) missing.push('WEB_ORIGINS');
     if (env.STORAGE_DRIVER === 'live') {
       if (!env.UPLOADTHING_TOKEN_PERMANENT) missing.push('UPLOADTHING_TOKEN_PERMANENT');

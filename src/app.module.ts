@@ -22,6 +22,8 @@ import { ReportsModule } from './reports/reports.module';
 import { SettingsModule } from './settings/settings.module';
 import { SisterClubRequestsModule } from './sister-club-requests/sister-club-requests.module';
 import { StorageModule } from './storage/storage.module';
+import { DrishtiModule } from './subdomains/drishti/drishti.module';
+import { Mission3011Module } from './subdomains/mission3011/mission3011.module';
 import { env } from './config/env';
 
 const workerModules = [
@@ -54,6 +56,8 @@ const httpModules = [
   SettingsModule,
   LinkHealthAdminModule,
   SisterClubRequestsModule,
+  Mission3011Module,
+  DrishtiModule,
 ];
 
 @Module({
