@@ -47,6 +47,13 @@ export class PublicClubsRepository {
     });
   }
 
+  listZones(): Promise<{ id: string; name: string; order: number }[]> {
+    return this.prisma.zone.findMany({
+      select: { id: true, name: true, order: true },
+      orderBy: { order: 'asc' },
+    });
+  }
+
   findBySlug(slug: string): Promise<PublicClubRow | null> {
     return this.prisma.club.findFirst({ where: { slug, isActive: true }, select: CLUB_SELECT });
   }

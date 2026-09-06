@@ -105,6 +105,13 @@ export class PublicController {
     return { items: items.map(publicClubSummaryDto), total: items.length };
   }
 
+  @Get('zones')
+  @Public()
+  @CacheTags('clubs')
+  async listZones() {
+    return { items: await this.clubs.listZones() };
+  }
+
   @Get('clubs/:slug')
   @Public()
   @CacheTags('clubs', 'projects')

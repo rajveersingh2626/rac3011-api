@@ -14,6 +14,10 @@ export class PublicClubsService {
     return this.repo.findMany(zoneId);
   }
 
+  listZones(): Promise<{ id: string; name: string; order: number }[]> {
+    return this.repo.listZones();
+  }
+
   async bySlug(
     slug: string,
     include: { board: boolean; projects: boolean },
