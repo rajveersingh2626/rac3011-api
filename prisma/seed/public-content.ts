@@ -58,18 +58,6 @@ export const DISTRICT_TEAM_SEED: {
   kind: 'core' | 'dsc';
   order: number;
 }[] = [
-  {
-    name: 'Rtn. Sanjeev Rai Mehra',
-    designation: 'District Governor, RID 3011',
-    kind: 'core',
-    order: 0,
-  },
-  {
-    name: 'Rtr. Ananya Sharma',
-    designation: 'District Rotaract Representative (DRR)',
-    kind: 'core',
-    order: 1,
-  },
   { name: 'Rtr. Ayush Rai', designation: 'Assistant DRR — Zone Prithvi', kind: 'dsc', order: 10 },
   {
     name: 'Rtn. Rtr. Kanav Sachdeva',
@@ -177,6 +165,12 @@ export const ACHIEVEMENTS_SEED: {
 // every run would keep matching forever, so a legitimate future admin milestone of the same name would
 // silently vanish on the next deploy; the delete is one-shot behind a Setting row instead.
 export const RETIRED_ACHIEVEMENTS_FLAG_KEY = 'seed.repair.achievements.retired-titles.done';
+const RETIRED_DISTRICT_TEAM_FLAG_KEY = 'seed.repair.district-team.retired-names.done';
+// Placeholder leadership carried over from the legacy site. The real DG is
+// Rtn. CA Ajeet Jalan and the real DRR is Rtn. Rtr. Archit Bhatia, both already
+// present, so these two rendered as duplicate and incorrect office holders.
+export const RETIRED_DISTRICT_TEAM_NAMES = ['Rtn. Sanjeev Rai Mehra', 'Rtr. Ananya Sharma'];
+
 export const RETIRED_ACHIEVEMENT_TITLES = [
   '55,000+ lives impacted',
   '75 active clubs',
@@ -203,7 +197,26 @@ export async function seedPastDrrs(prisma: PrismaClient): Promise<void> {
   }
 }
 
-export async function seedDistrictTeam(prisma: PrismaClient): Promise<void> {
+export async function seedDistrictTeam(
+  prisma: PrismaClient,
+  log: (msg: string) => void = () => undefined,
+): Promise<void> {
+  if (!(await prisma.setting.findUnique({ where: { key: RETIRED_DISTRICT_TEAM_FLAG_KEY } }))) {
+    await prisma.$transaction(async (tx) => {
+      const { count } = await tx.districtTeamMember.deleteMany({
+        where: { name: { in: RETIRED_DISTRICT_TEAM_NAMES } },
+      });
+      await tx.setting.upsert({
+        where: { key: RETIRED_DISTRICT_TEAM_FLAG_KEY },
+        create: {
+          key: RETIRED_DISTRICT_TEAM_FLAG_KEY,
+          value: { completedAt: new Date().toISOString() },
+        },
+        update: {},
+      });
+      if (count > 0) log(`deleted ${count} placeholder district team member(s)`);
+    });
+  }
   for (const member of DISTRICT_TEAM_SEED) {
     const existing = await prisma.districtTeamMember.findFirst({
       where: { name: member.name, designation: member.designation, ryYear: CURRENT_RY_YEAR },
@@ -264,6 +277,6 @@ export async function seedPublicContent(
   log: (msg: string) => void = () => undefined,
 ): Promise<void> {
   await seedPastDrrs(prisma);
-  await seedDistrictTeam(prisma);
+  await seedDistrictTeam(prisma, log);
   await seedAchievements(prisma, log);
 }
