@@ -129,46 +129,60 @@ export const DISTRICT_TEAM_SEED: {
   },
 ];
 
-// districtData.js IMPACT_METRICS, seeded as milestone achievements ahead of the step-3 admin CRUD screen.
+// Real, client-confirmed district achievements for RY 2026-27. The earlier seed carried five
+// milestone rows restating the impact-stats tiles; none were substantiated, so they are removed below.
 export const ACHIEVEMENTS_SEED: {
   title: string;
+  type: 'chartered_club' | 'milestone';
   description: string;
   date: string;
   order: number;
 }[] = [
   {
-    title: '55,000+ lives impacted',
+    title: 'Clubs Chartered During the Year',
+    type: 'chartered_club',
     description:
-      'Cumulative reach of District 3011 service projects, RY 2026-27 (+22% year over year).',
+      'Three new community and campus Rotaract clubs chartered this Rotary year, expanding youth leadership and service reach across Delhi NCR.',
+    // No single charter date exists for the set, so this is pinned to the start of the Rotary year.
     date: '2026-07-01',
     order: 0,
   },
   {
-    title: '75 active clubs',
-    description: 'Rotaract clubs chartered and active across the district roster, RY 2026-27.',
-    date: '2026-07-01',
+    title: '100% Attendance at DOLS',
+    type: 'milestone',
+    description:
+      'Full attendance achieved at the District Officers Leadership Seminar (DOLS) by the district team.',
+    date: '2026-08-02',
     order: 1,
   },
   {
-    title: '₹1.5 Cr mobilised',
-    description: 'Funds mobilised for district and club projects, reported with full transparency.',
-    date: '2026-07-01',
+    title: '500+ Participation at District Installation',
+    type: 'milestone',
+    description:
+      'Attendees from clubs across all four zones came together at the District Installation Ceremony for RY 2026-27.',
+    date: '2026-08-12',
     order: 2,
   },
   {
-    title: '500+ projects executed',
+    title: 'CLLS and PLS/SLS Conducted',
+    type: 'milestone',
     description:
-      'High-impact community, vocational and international service projects run this Rotary year.',
-    date: '2026-07-01',
+      'Club Leaders Leadership Seminar (CLLS) and President/Secretary Leadership Seminars (PLS/SLS) conducted for club office bearers.',
+    date: '2026-08-30',
     order: 3,
   },
-  {
-    title: '15,000+ blood units donated',
-    description:
-      'Units collected across district blood donation drives, saving an estimated 45,000 lives.',
-    date: '2026-07-01',
-    order: 4,
-  },
+];
+
+// Fabricated milestones shipped by an earlier seed and still live in production. Deleting by title on
+// every run would keep matching forever, so a legitimate future admin milestone of the same name would
+// silently vanish on the next deploy; the delete is one-shot behind a Setting row instead.
+export const RETIRED_ACHIEVEMENTS_FLAG_KEY = 'seed.repair.achievements.retired-titles.done';
+export const RETIRED_ACHIEVEMENT_TITLES = [
+  '55,000+ lives impacted',
+  '75 active clubs',
+  '₹1.5 Cr mobilised',
+  '500+ projects executed',
+  '15,000+ blood units donated',
 ];
 
 async function resolveClubId(prisma: PrismaClient, name: string | null): Promise<string | null> {
@@ -206,13 +220,35 @@ export async function seedDistrictTeam(prisma: PrismaClient): Promise<void> {
   }
 }
 
-export async function seedAchievements(prisma: PrismaClient): Promise<void> {
+export async function seedAchievements(
+  prisma: PrismaClient,
+  log: (msg: string) => void = () => undefined,
+): Promise<void> {
+  if (!(await prisma.setting.findUnique({ where: { key: RETIRED_ACHIEVEMENTS_FLAG_KEY } }))) {
+    await prisma.$transaction(async (tx) => {
+      const { count } = await tx.achievement.deleteMany({
+        where: { title: { in: RETIRED_ACHIEVEMENT_TITLES } },
+      });
+      await tx.setting.upsert({
+        where: { key: RETIRED_ACHIEVEMENTS_FLAG_KEY },
+        create: {
+          key: RETIRED_ACHIEVEMENTS_FLAG_KEY,
+          value: { completedAt: new Date().toISOString() },
+        },
+        update: {},
+      });
+      if (count > 0) log(`deleted ${count} fabricated achievement(s)`);
+    });
+  }
   for (const a of ACHIEVEMENTS_SEED) {
+    // Achievement has no unique key and a live admin CRUD writes to the same table, so the match is
+    // narrowed by type and ordered so a duplicate title always resolves to the same, oldest row.
     const existing = await prisma.achievement.findFirst({
-      where: { title: a.title, type: 'milestone' },
+      where: { title: a.title, type: a.type },
+      orderBy: { createdAt: 'asc' },
     });
     const data = {
-      type: 'milestone' as const,
+      type: a.type,
       title: a.title,
       description: a.description,
       date: new Date(`${a.date}T00:00:00Z`),
@@ -223,8 +259,11 @@ export async function seedAchievements(prisma: PrismaClient): Promise<void> {
   }
 }
 
-export async function seedPublicContent(prisma: PrismaClient): Promise<void> {
+export async function seedPublicContent(
+  prisma: PrismaClient,
+  log: (msg: string) => void = () => undefined,
+): Promise<void> {
   await seedPastDrrs(prisma);
   await seedDistrictTeam(prisma);
-  await seedAchievements(prisma);
+  await seedAchievements(prisma, log);
 }

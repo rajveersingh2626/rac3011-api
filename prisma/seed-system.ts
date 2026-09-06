@@ -4,7 +4,11 @@ import { PERMISSIONS } from './seed/permissions';
 import { ROLES } from './seed/roles';
 import { JUDGED_CATEGORY_ORDER, POINT_CATEGORIES, POINT_RULES_2026 } from './seed/points';
 import { SETTINGS } from './seed/settings';
-import { CONTENT_BLOCKS } from './seed/content';
+import {
+  CONTENT_BLOCKS,
+  RETIRED_FLAGSHIP_TITLES,
+  RETIRED_IMPACT_STAT_LABELS,
+} from './seed/content';
 import { BADGES, INTERESTS, SKILLS } from './seed/tags-badges';
 import { LEGACY_SECTIONS } from './seed/report-schema-v1';
 import { REPORT_SCHEMA_V2_FIELDS } from './seed/report-schema-v2';
@@ -121,6 +125,66 @@ async function seedContent(prisma: PrismaClient): Promise<void> {
   }
 }
 
+// seedContent never updates an existing block, so the fabricated home blocks an earlier seed and the
+// legacy import published stayed live. A retired marker is not a safe re-arm trigger: an admin tile
+// labelled "Blood Units Donated" would put one back and the whole block would be reverted, with no
+// version history and no audit trail. The repair is therefore keyed on a Setting row and runs at most
+// once per database, whatever the block ends up containing afterwards.
+export function legacyRepairFlagKey(sectionKey: string): string {
+  return `seed.repair.home.${sectionKey}.done`;
+}
+
+async function republishLegacyBlock(
+  prisma: PrismaClient,
+  sectionKey: string,
+  retiredMarkers: string[],
+  log: (msg: string) => void,
+): Promise<void> {
+  const flagKey = legacyRepairFlagKey(sectionKey);
+  if (await prisma.setting.findUnique({ where: { key: flagKey } })) return;
+  const where = { pageKey_sectionKey: { pageKey: 'home', sectionKey } };
+  const block = await prisma.contentBlock.findUnique({ where });
+  const seed = CONTENT_BLOCKS.find((b) => b.pageKey === 'home' && b.sectionKey === sectionKey);
+  const stored = block ? JSON.stringify([block.draftValue, block.publishedValue]) : '';
+  const needsRepair = !!block && !!seed && retiredMarkers.some((marker) => stored.includes(marker));
+  const value = seed?.value as Json;
+  await prisma.$transaction(async (tx) => {
+    if (needsRepair) {
+      await tx.contentBlock.update({
+        where,
+        // The seed is not a person; leaving the last human editor here would misattribute this write.
+        data: {
+          draftValue: value,
+          publishedValue: value,
+          publishedAt: new Date(),
+          updatedById: null,
+        },
+      });
+    }
+    await tx.setting.upsert({
+      where: { key: flagKey },
+      create: { key: flagKey, value: { completedAt: new Date().toISOString() } },
+      update: {},
+    });
+  });
+  if (needsRepair) log(`replaced the legacy "${sectionKey}" block with verified content`);
+}
+
+// Repairs correct content that is already live; none of them is a prerequisite for serving traffic.
+// The seed runs on every container start under `set -e`, so a repair that throws must be logged and
+// skipped rather than allowed to stop the API from booting.
+async function runRepair(
+  name: string,
+  log: (msg: string) => void,
+  fn: () => Promise<void>,
+): Promise<void> {
+  try {
+    await fn();
+  } catch (err) {
+    log(`repair "${name}" skipped: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
 async function seedTagsAndBadges(prisma: PrismaClient): Promise<void> {
   for (const label of SKILLS)
     await prisma.skillTag.upsert({
@@ -205,10 +269,16 @@ export async function seedSystemData(
   await seedPoints(prisma);
   await seedSettings(prisma);
   await seedContent(prisma);
+  await runRepair('home.impact-stats', log, () =>
+    republishLegacyBlock(prisma, 'impact-stats', RETIRED_IMPACT_STAT_LABELS, log),
+  );
+  await runRepair('home.flagship', log, () =>
+    republishLegacyBlock(prisma, 'flagship', RETIRED_FLAGSHIP_TITLES, log),
+  );
   await seedTagsAndBadges(prisma);
   await seedLegacyReportSchema(prisma);
   await seedActiveReportSchema(prisma);
-  await seedPublicContent(prisma);
+  await seedPublicContent(prisma, log);
 }
 
 if (require.main === module) {

@@ -14,12 +14,27 @@ export const CONTENT_BLOCKS: ContentSeed[] = [
     pageKey: 'home',
     sectionKey: 'flagship',
     type: 'list',
+    // The four RY 2026-27 district projects from the client's project ownership bidding document.
+    // No targets or counts: these are still being bid out to clubs, so any figure would read as
+    // something already achieved.
     value: [
-      { title: 'Mahadan 9.0', summary: 'The district-wide blood donation drive, now in its ninth edition.' },
-      { title: 'Clean Yamuna & Green NCR', summary: 'River clean-ups and plantation drives across the NCR.' },
-      { title: 'Digital Literacy Labs', summary: 'Computer literacy labs for under-served schools.' },
-      { title: 'Pediatric Health Screening', summary: 'Health camps screening children in partnership with hospitals.' },
-      { title: 'Youth Leadership Assembly', summary: 'The annual leadership assembly for Rotaractors of the district.' },
+      { title: 'Mission 3011', summary: 'Clubs across the district run their own blood donation camps, counted together as one district campaign.' },
+      { title: 'Project Drishti', summary: 'Facilitating cataract surgeries for people who need them, through hospital and NGO partners.' },
+      { title: 'Rotaract Cricket League', summary: 'A district-wide cricket tournament for Rotaract clubs.' },
+      { title: 'Career Bridge', summary: 'A platform where Rotarians post jobs, internships, mentorship and volunteering opportunities for Rotaractors.' },
+    ],
+  },
+  {
+    pageKey: 'home',
+    sectionKey: 'impact-stats',
+    type: 'list',
+    // Only figures that can be checked against the roster. The legacy import published lives
+    // impacted, funds mobilised, project counts and blood units; nothing in the schema tracks any
+    // of them. `suffix` is stored but not rendered by the site.
+    value: [
+      { label: 'Active Clubs', value: '75', suffix: 'Clubs', note: 'RY 2026-27 Roster', color: '#D81B60' },
+      { label: 'Zones', value: '4', suffix: 'Zones', note: 'Prithvi, Agni, Vayu, Akash', color: '#123499' },
+      { label: 'Clubs Chartered', value: '3', suffix: 'New Charters', note: 'New charters this year', color: '#880E4F' },
     ],
   },
   rich('privacy-policy', 'body', '<p>Placeholder privacy policy. Replace before launch.</p>'),
@@ -30,4 +45,23 @@ export const CONTENT_BLOCKS: ContentSeed[] = [
   text('contact', 'address', 'Rotaract District 3011, New Delhi'),
   rich('about', 'heritage_intro', '<p>Past District Rotaract Representatives who shaped the district.</p>'),
   rich('about', 'leadership_intro', '<p>The district team for the current Rotary year.</p>'),
+];
+
+// Titles from the invented flagship list an earlier seed published. Same marker role as the labels
+// below: they identify a block that still holds the fiction.
+export const RETIRED_FLAGSHIP_TITLES = [
+  'Mahadan 9.0',
+  'Clean Yamuna & Green NCR',
+  'Digital Literacy Labs',
+  'Pediatric Health Screening',
+  'Youth Leadership Assembly',
+];
+
+// Labels from the legacy import's impact-stats tiles. Their presence marks a block that still
+// carries the unverifiable numbers, which the seed republishes; once gone the repair never re-fires.
+export const RETIRED_IMPACT_STAT_LABELS = [
+  'Lives Impacted',
+  'Funds Mobilized',
+  'High-Impact Projects',
+  'Blood Units Donated',
 ];
