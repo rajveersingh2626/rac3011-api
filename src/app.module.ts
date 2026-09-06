@@ -73,7 +73,14 @@ const httpModules = [
 @Module({
   imports: [
     LoggerModule.forRoot({
-      pinoHttp: { level: env.LOG_LEVEL, autoLogging: env.NODE_ENV !== 'test' },
+      pinoHttp: {
+        level: env.LOG_LEVEL,
+        autoLogging: env.NODE_ENV !== 'test',
+        // pino-http's default req serializer logs all headers, which put live
+        // session tokens in the container log where anyone with docker logs
+        // could replay them.
+        redact: { paths: ['req.headers.cookie', 'req.headers.authorization'], remove: true },
+      },
     }),
     EventEmitterModule.forRoot(),
     ...(env.WORKER ? workerModules : httpModules),

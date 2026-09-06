@@ -79,9 +79,10 @@ export async function migrateLegacyUsers(
       clubId = DISTRICT_CLUB_ID;
     }
 
-    const isBcryptHash = row.password.startsWith('$2');
-    if (!isBcryptHash)
-      log(`legacy user ${email} has a non-bcrypt password hash; login will require a reset`);
+    // The legacy table stored cleartext passwords, so there was never a usable
+    // credential to carry over: better-auth compares against a bcrypt hash.
+    // Accounts are created without one and the member sets a password via reset.
+    log(`legacy user ${email} imported without a password; they must set one via reset`);
 
     await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -94,7 +95,7 @@ export async function migrateLegacyUsers(
           accountId: user.id,
           providerId: 'credential',
           issuer: 'local:credential',
-          password: row.password,
+          password: null,
         },
       });
       const profile = await tx.memberProfile.create({

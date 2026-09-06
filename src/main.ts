@@ -7,12 +7,13 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpErrorFilter } from './common/errors/http-exception.filter';
 import { env } from './config/env';
+import { corsOrigin } from './config/cors-origin';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   app.use(helmet());
-  app.enableCors({ origin: env.WEB_ORIGINS, credentials: true });
+  app.enableCors({ origin: corsOrigin, credentials: true });
   app.useGlobalPipes(new ZodValidationPipe());
   app.useGlobalFilters(new HttpErrorFilter());
   const doc = SwaggerModule.createDocument(

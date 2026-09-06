@@ -7,7 +7,6 @@ model LegacyUserProfile {
   post                String?   @default("Club President")
   clubName            String?   @default("District 3011") @map("club_name")
   phone               String?
-  password            String
   totpSecret          String?   @map("totp_secret")
   createdAt           DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   resetToken          String?   @map("reset_token")

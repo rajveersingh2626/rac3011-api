@@ -34,7 +34,7 @@ export const CONTENT_BLOCKS: ContentSeed[] = [
     value: [
       { label: 'Active Clubs', value: '75', suffix: 'Clubs', note: 'RY 2026-27 Roster', color: '#D81B60' },
       { label: 'Zones', value: '4', suffix: 'Zones', note: 'Prithvi, Agni, Vayu, Akash', color: '#123499' },
-      { label: 'Clubs Chartered', value: '3', suffix: 'New Charters', note: 'New charters this year', color: '#880E4F' },
+      { label: 'Clubs Chartered', value: '5', suffix: 'New Charters', note: 'New charters this year', color: '#880E4F' },
     ],
   },
   rich('privacy-policy', 'body', '<p>Placeholder privacy policy. Replace before launch.</p>'),
