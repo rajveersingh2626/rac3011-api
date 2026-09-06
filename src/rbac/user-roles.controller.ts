@@ -2,9 +2,12 @@ import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/commo
 import { ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/access.decorators';
+import { parseListQuery } from '../common/query/list-query';
 import type { RequestContext } from '../common/types/access';
 import { CreateUserRoleDto } from './dto/user-role.dto';
 import { RolesService } from './roles.service';
+
+const FILTERS = ['userId'] as const;
 
 @ApiTags('user-roles')
 @Controller('user-roles')
@@ -13,8 +16,9 @@ export class UserRolesController {
 
   @Get()
   @RequirePermission('roles:manage')
-  list(@Query('filter') filter?: Record<string, string>) {
-    return this.roles.listUserRoles(filter?.userId);
+  list(@Query() raw: Record<string, unknown>) {
+    const q = parseListQuery(raw, { filters: FILTERS });
+    return this.roles.listUserRoles(q.filter.userId);
   }
 
   @Post()

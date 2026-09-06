@@ -14,6 +14,9 @@ describe('RBAC denial matrix', () => {
   let zrrOtherZone: TestAgent;
   let dsc: TestAgent;
   let editingTeam: TestAgent;
+  let superAdmin: TestAgent;
+  let dscUserId: string;
+  let editingTeamUserId: string;
 
   beforeAll(async () => {
     const prisma = testPrisma();
@@ -48,15 +51,22 @@ describe('RBAC denial matrix', () => {
       name: 'ZRR Agni',
       roles: [{ key: 'zrr', scopeType: 'zone', scopeId: agni.id }],
     });
-    await createUser({
+    const dscUser = await createUser({
       email: 'mx-dsc@example.com',
       name: 'DSC Officer',
       roles: [{ key: 'dsc', scopeType: 'none' }],
     });
-    await createUser({
+    dscUserId = dscUser.id;
+    const editingTeamUser = await createUser({
       email: 'mx-editing-team@example.com',
       name: 'Editing Team',
       roles: [{ key: 'editing_team', scopeType: 'none' }],
+    });
+    editingTeamUserId = editingTeamUser.id;
+    await createUser({
+      email: 'mx-super-admin@example.com',
+      name: 'Super Admin',
+      roles: [{ key: 'super_admin', scopeType: 'none' }],
     });
 
     app = await createTestApp();
@@ -66,6 +76,7 @@ describe('RBAC denial matrix', () => {
     zrrOtherZone = await signInAndVerify(app, 'mx-zrr-agni@example.com');
     dsc = await signInAndVerify(app, 'mx-dsc@example.com');
     editingTeam = await signInAndVerify(app, 'mx-editing-team@example.com');
+    superAdmin = await signInAndVerify(app, 'mx-super-admin@example.com');
   });
 
   afterAll(async () => {
@@ -80,6 +91,19 @@ describe('RBAC denial matrix', () => {
       await dsc.get('/roles').expect(403);
       await editingTeam.get('/roles').expect(403);
       await dsc.get('/user-roles').expect(403);
+    });
+  });
+
+  describe('GET /user-roles?filter[userId] scoping', () => {
+    it('returns only the grants for the requested user, not every grant in the district', async () => {
+      const res = await superAdmin
+        .get('/user-roles')
+        .query({ 'filter[userId]': dscUserId })
+        .expect(200);
+      const rows = res.body as { userId: string }[];
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows.every((r) => r.userId === dscUserId)).toBe(true);
+      expect(rows.some((r) => r.userId === editingTeamUserId)).toBe(false);
     });
   });
 
