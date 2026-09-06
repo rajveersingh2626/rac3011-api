@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { PermissionKey } from '../types/permission-keys';
 import type { ProjectKey, ResolvedAccess, Scope, ScopeFilter } from '../types/access';
 import { ScopeRepository } from './scope.repository';
@@ -34,6 +34,16 @@ export class ScopeService {
     clubId: string,
   ): Promise<void> {
     if (!(await this.canAccessClub(access, permission, clubId))) throw new NotFoundException();
+  }
+
+  /** True only for a district-wide ('none'-scoped) grant, never for a club/zone/project one. */
+  hasDistrictScope(access: ResolvedAccess, permission: PermissionKey): boolean {
+    if (access.isSuperAdmin) return true;
+    return this.scopesFor(access, permission).some((s) => s.type === 'none');
+  }
+
+  assertDistrictScope(access: ResolvedAccess, permission: PermissionKey): void {
+    if (!this.hasDistrictScope(access, permission)) throw new ForbiddenException();
   }
 
   canAccessProject(

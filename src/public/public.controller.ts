@@ -20,6 +20,10 @@ import { CacheTags } from '../cache/cache-tags.decorator';
 import { Public } from '../common/decorators/access.decorators';
 import { parseListQuery } from '../common/query/list-query';
 import { ContentService } from '../content/content.service';
+import { isBookingReference } from '../drr-bookings/booking-reference.util';
+import { CreateDrrBookingDto } from '../drr-bookings/dto/create-drr-booking.dto';
+import { DrrBookingsService } from '../drr-bookings/drr-bookings.service';
+import { drrBookingPublicDto } from '../drr-bookings/drr-bookings.transformer';
 import { CreateEnquiryDto } from '../enquiries/dto/create-enquiry.dto';
 import { EnquiriesService } from '../enquiries/enquiries.service';
 import { eventToIcs, eventsToIcs } from '../events/ics.util';
@@ -72,6 +76,7 @@ export class PublicController {
     private readonly initiatives: PublicInitiativesService,
     private readonly events: EventsService,
     private readonly enquiries: EnquiriesService,
+    private readonly drrBookings: DrrBookingsService,
   ) {}
 
   @Get('home')
@@ -259,5 +264,34 @@ export class PublicController {
     const result = await this.enquiries.submit(dto);
     if ('honeypot' in result) return { received: true };
     return { received: true, routedTo: result.routedToName || null };
+  }
+
+  @Post('drr-bookings')
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 3, ttl: 3600000 } })
+  async postDrrBooking(
+    @Body() dto: CreateDrrBookingDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    setNoCache(res);
+    const result = await this.drrBookings.submit(dto);
+    if ('honeypot' in result) return { received: true, reference: null };
+    return { received: true, reference: result.reference, status: result.status };
+  }
+
+  // Deliberately untagged for the L2 cache: a booking is personal to whoever holds the reference.
+  @Get('drr-bookings/:reference')
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  async getDrrBooking(
+    @Param('reference') reference: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    setNoCache(res);
+    // Anything that is not reference-shaped is a probe, not a lookup: never hit the database.
+    if (!isBookingReference(reference)) throw new NotFoundException();
+    return drrBookingPublicDto(await this.drrBookings.byReference(reference));
   }
 }

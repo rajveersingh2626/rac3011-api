@@ -37,6 +37,8 @@ const DSC = [
   'resources:manage',
   'public_content:manage',
   'audit:view',
+  // The secretariat triages DRR presence requests on the DRR's behalf.
+  'drr_calendar:manage',
 ];
 
 const unique = (keys: string[]) => [...new Set(keys)];
@@ -47,6 +49,13 @@ export const ROLES: RoleSeed[] = [
   { key: 'secretary', name: 'Club Secretary', description: 'Club secretary', scopeType: 'club', permissions: unique(PRESIDENT) },
   { key: 'zrr', name: 'Zonal Rotaract Representative', description: 'Zone-level reviewer', scopeType: 'zone', permissions: unique(ZRR) },
   { key: 'dsc', name: 'District Secretariat / Council', description: 'District officer', scopeType: 'none', permissions: unique(DSC) },
+  {
+    key: 'drr',
+    name: 'District Rotaract Representative',
+    description: 'District Rotaract Representative; owns the DRR calendar',
+    scopeType: 'none',
+    permissions: unique([...MEMBER, 'drr_calendar:manage']),
+  },
   {
     key: 'editing_team',
     name: 'Editing Team',

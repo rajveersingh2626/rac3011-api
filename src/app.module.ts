@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { CacheModule } from './cache/cache.module';
 import { ClubFactsModule } from './clubs/club-facts.module';
 import { ClubsModule } from './clubs/clubs.module';
+import { DrrBookingsModule } from './drr-bookings/drr-bookings.module';
 import { CommonModule } from './common/common.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { HealthModule } from './health/health.module';
@@ -52,6 +53,7 @@ const httpModules = [
   MembersModule,
   ClubsModule,
   ClubFactsModule,
+  DrrBookingsModule,
   FeedbackModule,
   AnnouncementsModule,
   HealthModule,

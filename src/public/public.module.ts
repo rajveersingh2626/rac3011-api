@@ -3,6 +3,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AchievementsModule } from '../achievements/achievements.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { ContentModule } from '../content/content.module';
+import { DrrBookingsModule } from '../drr-bookings/drr-bookings.module';
 import { EnquiriesModule } from '../enquiries/enquiries.module';
 import { EventsModule } from '../events/events.module';
 import { HeritageModule } from '../heritage/heritage.module';
@@ -24,6 +25,7 @@ import { PublicController } from './public.controller';
     AchievementsModule,
     AnalyticsModule,
     ContentModule,
+    DrrBookingsModule,
     EnquiriesModule,
     EventsModule,
     HeritageModule,
