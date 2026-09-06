@@ -23,7 +23,8 @@ type ProjectResponse = {
   clubs: { role: string; club: { id: string } }[];
 };
 type ProjectListResponse = { items: ProjectResponse[]; total: number };
-type PublicProjectResponse = { title: string; summary: string };
+type PublicProjectResponse = { title: string; summary: string; beneficiaries: number | null };
+type PublicProjectListResponse = { items: { slug: string | null; beneficiaries: number | null }[] };
 
 describe('Showcase submission + moderation (spec step 7)', () => {
   let app: INestApplication;
@@ -243,6 +244,7 @@ describe('Showcase submission + moderation (spec step 7)', () => {
           date: '2026-07-15',
           summary: 'raw summary as the member wrote it',
           body: 'raw body text',
+          beneficiaries: 320,
           consentConfirmed: true,
         })
         .expect(201)
@@ -275,6 +277,13 @@ describe('Showcase submission + moderation (spec step 7)', () => {
     ).body as PublicProjectResponse;
     expect(publicView.title).toBe('Polished Title');
     expect(publicView.summary).toBe('Polished summary for the public page.');
+    expect(publicView.beneficiaries).toBe(320);
+
+    // The public cards render beneficiaries off the list endpoint, not the detail one.
+    const publicList = (await request(httpServer(app)).get('/public/projects').expect(200))
+      .body as PublicProjectListResponse;
+    const listed = publicList.items.find((p) => p.slug === published.slug);
+    expect(listed?.beneficiaries).toBe(320);
   });
 
   it('reject requires a reason; owner can then revise and resubmit', async () => {
