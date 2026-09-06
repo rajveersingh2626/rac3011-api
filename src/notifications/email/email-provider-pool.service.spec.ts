@@ -7,6 +7,7 @@ import {
   type EmailPoolConfig,
 } from './email-provider-pool.service';
 import type { EmailMessage, EmailProviderName, EmailTransport } from './email-provider';
+import { rewriteRecipient } from './recipient-rewrite';
 
 const DAY = new Date('2026-09-10T00:00:00.000Z');
 const DEFAULT_CAPS: Record<EmailProviderName, number> = {
@@ -17,7 +18,7 @@ const DEFAULT_CAPS: Record<EmailProviderName, number> = {
 };
 
 function config(overrides: Partial<EmailPoolConfig> = {}): EmailPoolConfig {
-  return { caps: DEFAULT_CAPS, isProduction: true, allowlist: [], ...overrides };
+  return { caps: DEFAULT_CAPS, maySendToRealRecipients: true, allowlist: [], ...overrides };
 }
 
 function fakeClock(now: Date): ClockPort {
@@ -153,31 +154,55 @@ describe('EmailProviderPool', () => {
     await expect(pool.send(MESSAGE)).rejects.toBeInstanceOf(NoEmailProviderAvailableError);
   });
 
-  it('refuses to send outside production when the allowlist is empty', async () => {
+  it('refuses to send when MAIL_LIVE is off and the allowlist is empty', async () => {
     const oracle = fakeTransport('oracle');
     const pool = new EmailProviderPool(
       fakeUsageRepo(),
       fakeClock(DAY),
       [oracle],
-      config({ isProduction: false, allowlist: [] }),
+      config({ maySendToRealRecipients: false, allowlist: [] }),
     );
 
-    await expect(pool.send(MESSAGE)).rejects.toThrow(/MAIL_ALLOWLIST/);
+    await expect(pool.send(MESSAGE)).rejects.toThrow(/MAIL_LIVE/);
     expect(oracle.callCount).toBe(0);
   });
 
-  it('rewrites the recipient outside production when not on the allowlist', async () => {
+  it('rewrites the recipient when MAIL_LIVE is off and not on the allowlist', async () => {
     const oracle = fakeTransport('oracle');
     const pool = new EmailProviderPool(
       fakeUsageRepo(),
       fakeClock(DAY),
       [oracle],
-      config({ isProduction: false, allowlist: ['dev@example.com'] }),
+      config({ maySendToRealRecipients: false, allowlist: ['dev@example.com'] }),
     );
 
     await pool.send(MESSAGE);
 
     expect(oracle.sent[0].to).toBe('dev@example.com');
     expect(oracle.sent[0].subject).toContain(MESSAGE.to);
+  });
+
+  it('redirects to the allowlist when the environment may not send to real recipients', () => {
+    const res = rewriteRecipient({
+      to: 'member@example.org',
+      subject: 'Hello',
+      maySendToRealRecipients: false,
+      allowlist: ['ops@rotaract3011.org'],
+    });
+    expect(res).toEqual({
+      kind: 'send',
+      to: 'ops@rotaract3011.org',
+      subject: '[member@example.org] Hello',
+    });
+  });
+
+  it('sends to the real recipient only when explicitly allowed', () => {
+    const res = rewriteRecipient({
+      to: 'member@example.org',
+      subject: 'Hello',
+      maySendToRealRecipients: true,
+      allowlist: [],
+    });
+    expect(res).toEqual({ kind: 'send', to: 'member@example.org', subject: 'Hello' });
   });
 });

@@ -16,7 +16,7 @@ export type EmailPoolMessage = { to: string; subject: string; html: string; text
 export type EmailPoolResult = { provider: EmailProviderName };
 export type EmailPoolConfig = {
   caps: Record<EmailProviderName, number>;
-  isProduction: boolean;
+  maySendToRealRecipients: boolean;
   allowlist: readonly string[];
 };
 
@@ -44,7 +44,7 @@ export class EmailProviderPool {
     const rewritten = rewriteRecipient({
       to: message.to,
       subject: message.subject,
-      isProduction: this.config.isProduction,
+      maySendToRealRecipients: this.config.maySendToRealRecipients,
       allowlist: this.config.allowlist,
     });
     if (rewritten.kind === 'refuse') throw new Error(rewritten.reason);
@@ -107,7 +107,7 @@ export const emailPoolConfigProvider = {
       mailgun: env.MAILGUN_DAILY_CAP,
       gmail: env.GMAIL_DAILY_CAP,
     },
-    isProduction: env.NODE_ENV === 'production',
+    maySendToRealRecipients: env.MAIL_LIVE,
     allowlist: env.MAIL_ALLOWLIST,
   }),
 };

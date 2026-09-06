@@ -123,6 +123,12 @@ describe('notification dispatch (outbox + BullMQ send worker, spec §7 step 9)',
     });
     expect(row).not.toBeNull();
     expect(row?.toAddress).toBe(user.email);
+
+    // Drain before the next test flips fake.failNext, else a still-pending job here can steal it.
+    await waitFor(async () => {
+      const current = await prisma.notificationOutbox.findUnique({ where: { id: row!.id } });
+      return current?.status === 'sent' ? current : null;
+    });
   });
 
   it('records the first failed attempt (attempts, lastError) without exhausting the row, and a same-jobId re-enqueue while it is still pending does not double-send', async () => {

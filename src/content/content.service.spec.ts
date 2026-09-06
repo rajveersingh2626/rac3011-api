@@ -53,13 +53,13 @@ function fakeRepo(initial?: ContentBlockAdminRow) {
 }
 
 function fakeLinkHealth() {
-  return { checkAndTrack: vi.fn(async () => 'ok' as const) };
+  return { checkAndTrack: vi.fn(() => 'ok' as const) };
 }
 
 function fakeAudit() {
   const records: unknown[] = [];
   return {
-    record: vi.fn(async (input: unknown) => void records.push(input)),
+    record: vi.fn((input: unknown) => void records.push(input)),
     records,
   } as unknown as AuditService & { records: unknown[] };
 }

@@ -6,16 +6,16 @@ function fakeRepo(initial: Record<string, unknown> = {}) {
   const store = new Map(Object.entries(initial));
   const presidents = new Map<string, string[]>();
   return {
-    findAll: vi.fn(async (): Promise<SettingRow[]> =>
+    findAll: vi.fn((): SettingRow[] =>
       [...store.entries()].map(([key, value]) => ({ key, value })),
     ),
-    findMany: vi.fn(async (keys: string[]): Promise<SettingRow[]> =>
+    findMany: vi.fn((keys: string[]): SettingRow[] =>
       keys.filter((k) => store.has(k)).map((key) => ({ key, value: store.get(key) })),
     ),
-    upsertMany: vi.fn(async (entries: { key: string; value: unknown }[]) => {
+    upsertMany: vi.fn((entries: { key: string; value: unknown }[]) => {
       for (const e of entries) store.set(e.key, e.value);
     }),
-    findClubPresidentUserIds: vi.fn(async (clubId: string) => presidents.get(clubId) ?? []),
+    findClubPresidentUserIds: vi.fn((clubId: string) => presidents.get(clubId) ?? []),
     presidents,
     store,
   };
@@ -28,11 +28,11 @@ function fakeRoles(roleId = 'role-mission3011-admin') {
   >();
   let seq = 0;
   return {
-    getRoleByKey: vi.fn(async (key: string) =>
+    getRoleByKey: vi.fn((key: string) =>
       key === 'project_admin:mission3011' ? { id: roleId, key, scopeType: 'project' } : null,
     ),
     findExistingGrant: vi.fn(
-      async (userId: string, rId: string, scopeType: string, scopeId: string | null) =>
+      (userId: string, rId: string, scopeType: string, scopeId: string | null) =>
         [...grants.values()].find(
           (g) =>
             g.userId === userId &&
@@ -42,7 +42,7 @@ function fakeRoles(roleId = 'role-mission3011-admin') {
         ) ?? null,
     ),
     grantUserRole: vi.fn(
-      async (
+      (
         _actorId: string,
         input: { userId: string; roleId: string; scopeType: string; scopeId?: string },
       ) => {
@@ -57,13 +57,13 @@ function fakeRoles(roleId = 'role-mission3011-admin') {
         return { id };
       },
     ),
-    revokeUserRole: vi.fn(async (_actorId: string, id: string) => void grants.delete(id)),
+    revokeUserRole: vi.fn((_actorId: string, id: string) => void grants.delete(id)),
     grants,
   };
 }
 
 function fakeAudit() {
-  return { record: vi.fn(async () => undefined) };
+  return { record: vi.fn(() => undefined) };
 }
 
 describe('SettingsService.update', () => {

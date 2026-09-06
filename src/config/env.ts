@@ -35,6 +35,10 @@ export const envSchema = z.object({
   COOKIE_DOMAIN: z.string().default('localhost'),
   WEB_ORIGINS: csv,
   MAIL_DRIVER: z.enum(['console', 'pool']).default('console'),
+  MAIL_LIVE: z
+    .enum(['0', '1'])
+    .default('0')
+    .transform((v) => v === '1'),
   MAIL_FROM: z.string().default('Rotaract District 3011 <no-reply@rotaract3011.org>'),
   MAIL_ALLOWLIST: csv,
   ORACLE_SMTP_HOST: optionalString,

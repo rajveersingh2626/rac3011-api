@@ -9,10 +9,12 @@ import { AppModule } from './app.module';
 import { HttpErrorFilter } from './common/errors/http-exception.filter';
 import { env } from './config/env';
 import { corsOrigin } from './config/cors-origin';
+import { configWarnings } from './config/config-report';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+  for (const line of configWarnings(env)) app.get(Logger).warn(`config: ${line}`);
   app.set('trust proxy', 1);
   app.use(helmet());
   app.enableCors({ origin: corsOrigin, credentials: true });

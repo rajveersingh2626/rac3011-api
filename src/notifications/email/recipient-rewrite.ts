@@ -1,7 +1,7 @@
 export type RewriteInput = {
   to: string;
   subject: string;
-  isProduction: boolean;
+  maySendToRealRecipients: boolean;
   allowlist: readonly string[];
 };
 
@@ -11,12 +11,13 @@ export type RewriteResult =
 const norm = (v: string): string => v.trim().toLowerCase();
 
 export function rewriteRecipient(input: RewriteInput): RewriteResult {
-  if (input.isProduction) return { kind: 'send', to: input.to, subject: input.subject };
+  // Staging runs NODE_ENV=production too, so intent has to be explicit here.
+  if (input.maySendToRealRecipients) return { kind: 'send', to: input.to, subject: input.subject };
   const allowlist = input.allowlist.map(norm).filter(Boolean);
   if (allowlist.length === 0) {
     return {
       kind: 'refuse',
-      reason: 'MAIL_ALLOWLIST is empty outside production; refusing to send',
+      reason: 'MAIL_LIVE is off and MAIL_ALLOWLIST is empty; refusing to send',
     };
   }
   if (allowlist.includes(norm(input.to))) {

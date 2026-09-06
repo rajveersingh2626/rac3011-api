@@ -15,9 +15,9 @@ export async function setup(): Promise<void> {
   process.env.DATABASE_URL = url;
   process.env.TEST_DATABASE_URL = url;
   process.env.MAIL_ALLOWLIST = 'notifications-allowlist@example.com';
-  // Small on purpose: a failed send job's BullMQ retry must not linger past this file's own app,
-  // leaking into whichever e2e file's worker boots next on the same shared Redis.
-  process.env.NOTIFICATIONS_RETRY_DELAY_MS = '200';
+  // Long on purpose: a short delay lets the retry complete (job removed) before
+  // notifications.e2e can assert the failed job is still pending.
+  process.env.NOTIFICATIONS_RETRY_DELAY_MS = '5000';
   // email_provider_usage is one Postgres counter shared by every e2e file, and the fake transport
   // reports itself as 'oracle', so the 100/day default cap is reachable mid-run and later files
   // would see sends fail with NoEmailProviderAvailableError.
