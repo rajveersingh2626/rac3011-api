@@ -9,3 +9,8 @@ scripts/out/
 *.log
 .DS_Store
 .tmp/
+*.bat
+*.cmd
+*.key
+*.pem
+
