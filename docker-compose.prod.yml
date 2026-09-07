@@ -68,6 +68,23 @@ services:
       REDIS_URL: redis://redis:6379
     command: ["node", "dist/src/main.js"]
 
+  studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rac3011-studio
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-ChangeThisStrongPassword123!}@postgres:5432/${POSTGRES_DB:-rac3011}
+    ports:
+      - '127.0.0.1:5555:5555'
+    command: ["npx", "prisma", "studio", "--port", "5555", "--hostname", "0.0.0.0"]
+
   web:
     build:
       context: ../rac3011-web
