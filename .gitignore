@@ -15,3 +15,8 @@ scripts/out/
 *.pem
 *HANDOFF*
 *handoff*
+*.xlsx
+*.xls
+data/*.xlsx
+*CONTEXT*
+*context*
