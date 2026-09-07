@@ -16,6 +16,7 @@
     "prisma:migrate": "prisma migrate deploy",
     "prisma:new": "tsx scripts/new-migration.ts",
     "seed": "tsx prisma/seed.ts",
+    "sync:excel": "tsx scripts/sync-excel-officers.ts",
     "openapi": "tsx scripts/export-openapi.ts"
   },
   "dependencies": {
