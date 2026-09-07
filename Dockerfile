@@ -4,6 +4,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
 FROM deps AS build
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 COPY . .
 RUN npx prisma generate && npm run build && npx tsc -p tsconfig.seed.json
 
