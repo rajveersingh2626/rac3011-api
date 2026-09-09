@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma, ScopeType } from '@prisma/client';
 import { CodedConflictException } from '../common/errors/conflict.error';

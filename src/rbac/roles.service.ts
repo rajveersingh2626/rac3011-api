@@ -306,9 +306,11 @@ export class RolesService {
       if (this.emailPool && targetUserEmail) {
         const recipientName = targetUserName || 'Rotaractor';
         const scopeDesc = scopeType === 'none' ? 'District-Wide' : `${scopeType.toUpperCase()}${scopeId ? ` (${scopeId})` : ''}`;
+        const plainText = `Hello ${recipientName},\n\nYou have been assigned the ${roleName} role with ${scopeDesc} scope by the District Administrator.\n\nSign in to the District Portal: https://rac3011.org/portal\n\nRotaract District 3011`;
         await this.emailPool.send({
           to: targetUserEmail,
           subject: `Access Update: ${roleName} role assigned on RAC 3011`,
+          text: plainText,
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; background-color: #ffffff; color: #1e293b; border: 1px solid #e2e8f0; border-radius: 12px;">
               <div style="margin-bottom: 24px; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px;">

@@ -6,6 +6,7 @@ import { SessionContextPort } from '../common/auth/session-context.port';
 import { env } from '../config/env';
 import { createAuthInstance } from './auth.config';
 import { AuthLookupController } from './auth-lookup.controller';
+import { AuthRepository } from './auth.repository';
 import { SecondFactorController } from './second-factor.controller';
 import { SecondFactorService } from './second-factor.service';
 import { SessionContextAdapter } from './session-context.adapter';
