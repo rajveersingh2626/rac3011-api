@@ -19,7 +19,21 @@ export function createAuthInstance(deps: AuthConfigDeps) {
     basePath: '/auth',
     secret: env.AUTH_SECRET,
     baseURL: env.AUTH_URL,
-    trustedOrigins: env.WEB_ORIGINS,
+    trustedOrigins: Array.from(
+      new Set([
+        ...env.WEB_ORIGINS,
+        'https://rotaract3011.org',
+        'https://*.rotaract3011.org',
+        'https://testing.rotaract3011.org',
+        'https://*.testing.rotaract3011.org',
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://localhost:4173',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+        'http://140.245.6.54',
+      ]),
+    ),
     emailAndPassword: {
       enabled: true,
       password: { hash: hashPassword, verify: verifyPassword },
