@@ -257,7 +257,7 @@ export class RbacRepository {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.user.findUnique({ where: { email: data.email } });
       if (existing) {
-        throw new CodedConflictException('EMAIL_EXISTS', `An account with email "${data.email}" already exists.`);
+        throw new CodedConflictException('ALREADY_EXISTS', `An account with email "${data.email}" already exists.`);
       }
 
       const role = await tx.role.findUnique({ where: { key: data.roleKey } });
