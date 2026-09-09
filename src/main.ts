@@ -17,6 +17,12 @@ async function bootstrap() {
   for (const line of configWarnings(env)) app.get(Logger).warn(`config: ${line}`);
   app.set('trust proxy', 1);
   app.use(helmet());
+  app.use((req: any, _res: any, next: any) => {
+    if (req.method === 'POST' && (req.url === '/auth/forget-password' || req.originalUrl === '/auth/forget-password')) {
+      req.url = '/auth/request-password-reset';
+    }
+    next();
+  });
   app.enableCors({ origin: corsOrigin, credentials: true });
   app.useGlobalPipes(new ZodValidationPipe());
   app.useGlobalFilters(new HttpErrorFilter());
