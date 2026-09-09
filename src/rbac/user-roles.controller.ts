@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/access.decorators';
@@ -6,6 +6,7 @@ import { parseListQuery } from '../common/query/list-query';
 import type { RequestContext } from '../common/types/access';
 import { CreateUserRoleDto } from './dto/user-role.dto';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
+import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 import { RolesService } from './roles.service';
 
 const FILTERS = ['userId'] as const;
@@ -32,6 +33,16 @@ export class UserRolesController {
   @RequirePermission('roles:manage')
   createUser(@CurrentUser() ctx: RequestContext, @Body() dto: CreateAdminUserDto) {
     return this.roles.createUser(ctx.user.id, dto);
+  }
+
+  @Patch('users/:id')
+  @RequirePermission('roles:manage')
+  updateUser(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+    @Body() dto: UpdateAdminUserDto,
+  ) {
+    return this.roles.updateUser(ctx.user.id, id, dto);
   }
 
   @Post()

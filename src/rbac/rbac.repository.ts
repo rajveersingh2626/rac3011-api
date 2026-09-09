@@ -189,6 +189,7 @@ export class RbacRepository {
               { name: { contains: filter, mode: 'insensitive' } },
               { email: { contains: filter, mode: 'insensitive' } },
               { profile: { fullName: { contains: filter, mode: 'insensitive' } } },
+              { profile: { rotaryId: { contains: filter, mode: 'insensitive' } } },
             ],
           }
         : {},
@@ -318,6 +319,78 @@ export class RbacRepository {
       });
 
       return { user, profile, userRole };
+    });
+  }
+
+  async updateUserWithProfile(
+    userId: string,
+    data: {
+      name?: string;
+      email?: string;
+      rotaryId?: string | null;
+      clubId?: string;
+      phone?: string | null;
+      passwordHash?: string;
+    },
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({ where: { id: userId } });
+      if (!existingUser) throw new NotFoundException('User not found');
+
+      if (data.email && data.email !== existingUser.email) {
+        const taken = await tx.user.findUnique({ where: { email: data.email } });
+        if (taken) throw new CodedConflictException('ALREADY_EXISTS', `Email "${data.email}" is already used by another account.`);
+      }
+
+      const user = await tx.user.update({
+        where: { id: userId },
+        data: {
+          ...(data.name ? { name: data.name } : {}),
+          ...(data.email ? { email: data.email } : {}),
+        },
+      });
+
+      if (data.passwordHash) {
+        await tx.account.updateMany({
+          where: { userId },
+          data: { password: data.passwordHash },
+        });
+      }
+
+      const existingProfile = await tx.memberProfile.findUnique({ where: { userId } });
+      let profile;
+      if (existingProfile) {
+        profile = await tx.memberProfile.update({
+          where: { userId },
+          data: {
+            ...(data.name ? { fullName: data.name } : {}),
+            ...(data.email ? { email: data.email } : {}),
+            ...(data.rotaryId !== undefined ? { rotaryId: data.rotaryId } : {}),
+            ...(data.clubId ? { clubId: data.clubId } : {}),
+            ...(data.phone !== undefined ? { phone: data.phone } : {}),
+          },
+        });
+      } else {
+        const qrToken = randomBytes(16).toString('hex');
+        profile = await tx.memberProfile.create({
+          data: {
+            id: 'c' + randomUUID().replace(/-/g, '').slice(0, 24),
+            userId,
+            fullName: data.name || user.name || '',
+            email: data.email || user.email,
+            phone: data.phone || null,
+            rotaryId: data.rotaryId || null,
+            clubId: data.clubId || 'DISTRICT',
+            status: 'approved',
+            qrToken,
+            directoryOptIn: true,
+            isDacMember: data.clubId === 'DISTRICT',
+            themePreference: 'system',
+          },
+        });
+      }
+
+      return { user, profile };
     });
   }
 }

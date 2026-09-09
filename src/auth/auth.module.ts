@@ -5,7 +5,7 @@ import { PrismaAuthAdapterService } from '../prisma/prisma-auth-adapter.service'
 import { SessionContextPort } from '../common/auth/session-context.port';
 import { env } from '../config/env';
 import { createAuthInstance } from './auth.config';
-import { AuthRepository } from './auth.repository';
+import { AuthLookupController } from './auth-lookup.controller';
 import { SecondFactorController } from './second-factor.controller';
 import { SecondFactorService } from './second-factor.service';
 import { SessionContextAdapter } from './session-context.adapter';
@@ -35,7 +35,7 @@ import { TrustedDevicesService } from './trusted-devices.service';
       }),
     }),
   ],
-  controllers: [SecondFactorController, TrustedDevicesController],
+  controllers: [SecondFactorController, TrustedDevicesController, AuthLookupController],
   providers: [
     AuthRepository,
     SecondFactorService,
