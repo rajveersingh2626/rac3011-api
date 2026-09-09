@@ -14,6 +14,12 @@ const FILTERS = ['userId'] as const;
 export class UserRolesController {
   constructor(private readonly roles: RolesService) {}
 
+  @Get('directory')
+  @RequirePermission('roles:manage')
+  directory(@Query('q') q?: string) {
+    return this.roles.listUsersDirectory(q);
+  }
+
   @Get()
   @RequirePermission('roles:manage')
   list(@Query() raw: Record<string, unknown>) {

@@ -5,10 +5,12 @@ import { env } from '../config/env';
 import { hashPassword, verifyPassword } from './legacy-password';
 
 export type SendOtpEmail = (input: { email: string; otp: string; type: string }) => Promise<void>;
+export type SendResetPasswordEmail = (input: { email: string; name: string; url: string; token: string }) => Promise<void>;
 
 export type AuthConfigDeps = {
   database: ReturnType<typeof prismaAdapter>;
   sendOtpEmail: SendOtpEmail;
+  sendResetPasswordEmail?: SendResetPasswordEmail;
 };
 
 export function createAuthInstance(deps: AuthConfigDeps) {
@@ -21,6 +23,16 @@ export function createAuthInstance(deps: AuthConfigDeps) {
     emailAndPassword: {
       enabled: true,
       password: { hash: hashPassword, verify: verifyPassword },
+      async sendResetPassword({ user, url, token }) {
+        if (deps.sendResetPasswordEmail) {
+          await deps.sendResetPasswordEmail({
+            email: user.email,
+            name: user.name,
+            url,
+            token,
+          });
+        }
+      },
     },
     session: {
       expiresIn: 60 * 60 * 24 * 30,

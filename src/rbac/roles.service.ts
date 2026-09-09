@@ -121,6 +121,10 @@ export class RolesService {
     return this.repo.listUserRoles(userId);
   }
 
+  listUsersDirectory(q?: string) {
+    return this.repo.listUsersDirectory(q);
+  }
+
   async grantUserRole(actorId: string, input: CreateUserRoleInput): Promise<UserRoleRecord> {
     if (!(await this.repo.userExists(input.userId))) throw new NotFoundException('User not found');
     const role = await this.repo.findRole(input.roleId);

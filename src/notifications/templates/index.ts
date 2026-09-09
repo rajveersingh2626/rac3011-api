@@ -19,6 +19,7 @@ import { memberRegisteredTemplate } from './member-registered.template';
 import { memberRejectedTemplate } from './member-rejected.template';
 import { otpTemplate } from './otp.template';
 import { passwordResetRequiredTemplate } from './password-reset-required.template';
+import { passwordResetTemplate } from './password-reset.template';
 import { reportQueriedTemplate } from './report-queried.template';
 import { reportRepliedTemplate } from './report-replied.template';
 import { reportScoredTemplate } from './report-scored.template';
@@ -60,6 +61,7 @@ export const TEMPLATES: Record<TemplateKey, NotificationTemplate> = {
   'contribution-approved': contributionApprovedTemplate,
   'certificate-issued': certificateIssuedTemplate,
   'password-reset-required': passwordResetRequiredTemplate,
+  'password-reset': passwordResetTemplate,
 };
 
 export function renderEmail(

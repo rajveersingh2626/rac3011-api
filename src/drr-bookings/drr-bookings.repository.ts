@@ -120,4 +120,41 @@ export class DrrBookingsRepository {
     for (const row of rows) byUser.set(row.userId, { userId: row.userId, email: row.user.email });
     return [...byUser.values()];
   }
+
+  async syncToCalendarEvent(row: DrrBookingRow, decidedById: string): Promise<void> {
+    let clubName = '';
+    if (row.clubId) {
+      const club = await this.prisma.club.findUnique({ where: { id: row.clubId }, select: { name: true, shortName: true } });
+      if (club) clubName = club.shortName || club.name;
+    }
+
+    const title = clubName
+      ? `DRR Visit: ${clubName}`
+      : `Official DRR Presence (${row.requesterName})`;
+
+    const slug = `drr-${row.reference.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+
+    await this.prisma.event.upsert({
+      where: { slug },
+      create: {
+        title,
+        slug,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
+        location: clubName ? `Rotaract Club of ${clubName}` : 'District 3011',
+        description: `Official District Rotaract Representative visit (${row.purpose}). Reference: ${row.reference}. Notes: ${row.notes || 'None'}`,
+        isDistrictEvent: true,
+        clubId: row.clubId,
+        rsvpOpen: false,
+        createdById: decidedById,
+      },
+      update: {
+        title,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
+        location: clubName ? `Rotaract Club of ${clubName}` : 'District 3011',
+        description: `Official District Rotaract Representative visit (${row.purpose}). Reference: ${row.reference}. Notes: ${row.notes || 'None'}`,
+      },
+    });
+  }
 }

@@ -13,6 +13,8 @@ import { ReportsController } from './reports.controller';
 import { ReportsRepository } from './reports.repository';
 import { ReportsService } from './reports.service';
 
+import { ReportsExportService } from './reports-export.service';
+
 const assistProvider =
   env.ASSIST_DRIVER === 'live'
     ? { provide: AssistPort, useClass: AnthropicAssistAdapter }
@@ -25,12 +27,13 @@ const assistProvider =
     ReportSchemasService,
     ReportsRepository,
     ReportsService,
+    ReportsExportService,
     ReportRequestsRepository,
     ReportRequestsService,
     StubAssistAdapter,
     AnthropicAssistAdapter,
     assistProvider,
   ],
-  exports: [ReportSchemasService],
+  exports: [ReportSchemasService, ReportsExportService],
 })
 export class ReportsModule {}

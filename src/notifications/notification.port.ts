@@ -25,7 +25,8 @@ export type TemplateKey =
   | 'ride-host-assigned'
   | 'contribution-approved'
   | 'certificate-issued'
-  | 'password-reset-required';
+  | 'password-reset-required'
+  | 'password-reset';
 
 export interface NotifyInput {
   template: TemplateKey;

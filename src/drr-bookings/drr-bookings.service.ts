@@ -104,6 +104,14 @@ export class DrrBookingsService {
       after: row,
     });
 
+    if (input.status === 'confirmed') {
+      try {
+        await this.repo.syncToCalendarEvent(row, ctx.user.id);
+      } catch (err) {
+        this.logger.error(`failed to sync booking ${row.reference} to events calendar: ${(err as Error).message}`);
+      }
+    }
+
     // The decision is already committed and audited; a queue outage must not 500 the officer.
     try {
       await this.notifications.notify({

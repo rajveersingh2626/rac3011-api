@@ -3,6 +3,7 @@ import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
 import { NotificationPort } from '../notifications/notification.port';
 import { PrismaAuthAdapterService } from '../prisma/prisma-auth-adapter.service';
 import { SessionContextPort } from '../common/auth/session-context.port';
+import { env } from '../config/env';
 import { createAuthInstance } from './auth.config';
 import { AuthRepository } from './auth.repository';
 import { SecondFactorController } from './second-factor.controller';
@@ -21,6 +22,15 @@ import { TrustedDevicesService } from './trusted-devices.service';
           database: adapter.create(),
           sendOtpEmail: ({ email, otp, type }) =>
             notifications.notify({ template: 'otp', to: [{ email }], data: { otp, type } }),
+          sendResetPasswordEmail: ({ email, name, token }) => {
+            const webOrigin = env.WEB_ORIGINS[0] || 'https://rotaract3011.org';
+            const resetUrl = `${webOrigin}/portal/reset-password?token=${encodeURIComponent(token)}`;
+            return notifications.notify({
+              template: 'password-reset',
+              to: [{ email }],
+              data: { name, url: resetUrl },
+            });
+          },
         }),
       }),
     }),

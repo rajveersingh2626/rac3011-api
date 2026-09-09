@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { RequirePermission } from '../common/decorators/access.decorators';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { paginate, parseListQuery } from '../common/query/list-query';
@@ -10,6 +11,8 @@ import {
   ReplyReportQueryDto,
   UpdateReportDto,
 } from './dto/report.dto';
+import { ReportSchemasService } from './report-schemas.service';
+import { ReportsExportService } from './reports-export.service';
 import { ReportsService } from './reports.service';
 import { reportDto } from './reports.transformer';
 import type { ReportStatus } from './reports.types';
@@ -20,7 +23,83 @@ const INCLUDES = ['queries', 'club', 'points'] as const;
 @ApiTags('reports')
 @Controller('reports')
 export class ReportsController {
-  constructor(private readonly service: ReportsService) {}
+  constructor(
+    private readonly service: ReportsService,
+    private readonly schemas: ReportSchemasService,
+    private readonly exports: ReportsExportService,
+  ) {}
+
+  @Get('export/zone-csv')
+  @RequirePermission('reports:review')
+  async exportZoneCsv(
+    @CurrentUser() ctx: RequestContext,
+    @Query('month') month: string | undefined,
+    @Res() res: Response,
+  ) {
+    const { items } = await this.service.list(
+      ctx.access,
+      { month },
+      { club: true },
+      1,
+      1000,
+    );
+    const csv = this.exports.generateRollupCsv(items, 'Zone Reports Summary');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="zone-reports-${month || 'all'}.csv"`);
+    res.send(csv);
+  }
+
+  @Get('export/district-csv')
+  @RequirePermission('reports:score')
+  async exportDistrictCsv(
+    @CurrentUser() ctx: RequestContext,
+    @Query('month') month: string | undefined,
+    @Res() res: Response,
+  ) {
+    const { items } = await this.service.list(
+      ctx.access,
+      { month },
+      { club: true },
+      1,
+      1000,
+    );
+    const csv = this.exports.generateRollupCsv(items, 'District 3011 All Reports Summary');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="district-reports-${month || 'all'}.csv"`);
+    res.send(csv);
+  }
+
+  @Get(':id/export/csv')
+  @RequirePermission('reports:submit', 'reports:review')
+  async exportCsv(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const report = await this.service.get(ctx.access, id, { club: true });
+    const schema = await this.schemas.getActiveSchema();
+    const csv = this.exports.generateReportCsv(report, schema);
+    const club = report.club?.shortName || report.club?.name || 'club';
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="report-${club}-${report.id}.csv"`);
+    res.send(csv);
+  }
+
+  @Get(':id/export/pdf')
+  @RequirePermission('reports:submit', 'reports:review')
+  async exportPdf(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const report = await this.service.get(ctx.access, id, { club: true });
+    const schema = await this.schemas.getActiveSchema();
+    const pdfBuffer = await this.exports.generateReportPdf(report, schema);
+    const club = report.club?.shortName || report.club?.name || 'club';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="report-${club}-${report.id}.pdf"`);
+    res.send(pdfBuffer);
+  }
 
   @Get()
   @RequirePermission('reports:submit', 'reports:review')

@@ -177,4 +177,69 @@ export class RbacRepository {
     if (scopeType === 'zone') return (await this.prisma.zone.count({ where: { id: scopeId } })) > 0;
     return true;
   }
+
+  async listUsersDirectory(q?: string) {
+    const filter = q?.trim();
+    const users = await this.prisma.user.findMany({
+      where: filter
+        ? {
+            OR: [
+              { name: { contains: filter, mode: 'insensitive' } },
+              { email: { contains: filter, mode: 'insensitive' } },
+              { profile: { fullName: { contains: filter, mode: 'insensitive' } } },
+            ],
+          }
+        : {},
+      include: {
+        profile: {
+          include: {
+            club: { select: { id: true, name: true, shortName: true } },
+          },
+        },
+        userRoles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: { permission: true },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+
+    return users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      profile: u.profile
+        ? {
+            id: u.profile.id,
+            fullName: u.profile.fullName,
+            status: u.profile.status,
+            clubId: u.profile.clubId,
+            clubName: u.profile.club.name,
+            clubShortName: u.profile.club.shortName,
+            phone: u.profile.phone,
+            rotaryId: u.profile.rotaryId,
+            photoUrl: u.profile.photoUrl,
+          }
+        : null,
+      roles: u.userRoles.map((ur) => ({
+        id: ur.id,
+        roleId: ur.roleId,
+        roleKey: ur.role.key,
+        roleName: ur.role.name,
+        scopeType: ur.scopeType,
+        scopeId: ur.scopeId,
+        grantedById: ur.grantedById,
+        permissions: ur.role.permissions.map((rp) => rp.permission.key),
+      })),
+      createdAt: u.createdAt.toISOString(),
+    }));
+  }
 }
