@@ -77,7 +77,7 @@ export class ReportsController {
     @Res() res: Response,
   ) {
     const report = await this.service.get(ctx.access, id, { club: true });
-    const schema = await this.schemas.getActiveSchema();
+    const schema = await this.schemas.getActive();
     const csv = this.exports.generateReportCsv(report, schema);
     const club = report.club?.shortName || report.club?.name || 'club';
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -93,7 +93,7 @@ export class ReportsController {
     @Res() res: Response,
   ) {
     const report = await this.service.get(ctx.access, id, { club: true });
-    const schema = await this.schemas.getActiveSchema();
+    const schema = await this.schemas.getActive();
     const pdfBuffer = await this.exports.generateReportPdf(report, schema);
     const club = report.club?.shortName || report.club?.name || 'club';
     res.setHeader('Content-Type', 'application/pdf');
