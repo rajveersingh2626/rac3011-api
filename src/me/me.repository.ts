@@ -38,6 +38,15 @@ export class MeRepository {
     userId: string,
     data: MemberProfileUpdate,
   ): Promise<MemberProfileRow> {
+    if (data.fullName || data.photoUrl !== undefined) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(data.fullName ? { name: data.fullName } : {}),
+          ...(data.photoUrl !== undefined ? { image: data.photoUrl } : {}),
+        },
+      });
+    }
     return this.prisma.memberProfile.update({ where: { userId }, data, select: PROFILE_SELECT });
   }
 

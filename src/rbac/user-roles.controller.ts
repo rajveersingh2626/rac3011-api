@@ -5,6 +5,7 @@ import { RequirePermission } from '../common/decorators/access.decorators';
 import { parseListQuery } from '../common/query/list-query';
 import type { RequestContext } from '../common/types/access';
 import { CreateUserRoleDto } from './dto/user-role.dto';
+import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import { RolesService } from './roles.service';
 
 const FILTERS = ['userId'] as const;
@@ -25,6 +26,12 @@ export class UserRolesController {
   list(@Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     return this.roles.listUserRoles(q.filter.userId);
+  }
+
+  @Post('create-user')
+  @RequirePermission('roles:manage')
+  createUser(@CurrentUser() ctx: RequestContext, @Body() dto: CreateAdminUserDto) {
+    return this.roles.createUser(ctx.user.id, dto);
   }
 
   @Post()

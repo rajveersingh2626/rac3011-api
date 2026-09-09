@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma, ScopeType } from '@prisma/client';
+import { CodedConflictException } from '../common/errors/conflict.error';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type UserRoleGrant = {
@@ -241,5 +243,81 @@ export class RbacRepository {
       })),
       createdAt: u.createdAt.toISOString(),
     }));
+  }
+
+  async createUserWithAccountAndRole(data: {
+    name: string;
+    email: string;
+    passwordHash: string;
+    clubId: string;
+    phone?: string;
+    roleKey: string;
+    grantedById: string;
+  }) {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.user.findUnique({ where: { email: data.email } });
+      if (existing) {
+        throw new CodedConflictException('EMAIL_EXISTS', `An account with email "${data.email}" already exists.`);
+      }
+
+      const role = await tx.role.findUnique({ where: { key: data.roleKey } });
+      if (!role) {
+        throw new NotFoundException(`Role with key "${data.roleKey}" not found.`);
+      }
+
+      const userId = randomUUID();
+      const user = await tx.user.create({
+        data: {
+          id: userId,
+          name: data.name,
+          email: data.email,
+          emailVerified: true,
+        },
+      });
+
+      await tx.account.create({
+        data: {
+          id: randomUUID(),
+          accountId: userId,
+          providerId: 'credential',
+          issuer: 'local:credential',
+          userId,
+          password: data.passwordHash,
+        },
+      });
+
+      const qrToken = 'c' + randomUUID().replace(/-/g, '').slice(0, 24);
+      const isDac = data.clubId === 'DISTRICT' || role.scopeType === 'none';
+
+      const profile = await tx.memberProfile.create({
+        data: {
+          id: 'c' + randomUUID().replace(/-/g, '').slice(0, 24),
+          userId,
+          fullName: data.name,
+          email: data.email,
+          phone: data.phone || null,
+          clubId: data.clubId,
+          status: 'approved',
+          qrToken,
+          directoryOptIn: true,
+          isDacMember: isDac,
+          themePreference: 'system',
+        },
+      });
+
+      const scopeId = role.scopeType === 'club' ? data.clubId : null;
+      const userRole = await tx.userRole.create({
+        data: {
+          id: 'c' + randomUUID().replace(/-/g, '').slice(0, 24),
+          userId,
+          roleId: role.id,
+          scopeType: role.scopeType,
+          scopeId,
+          grantedById: data.grantedById,
+        },
+      });
+
+      return { user, profile, userRole };
+    });
   }
 }

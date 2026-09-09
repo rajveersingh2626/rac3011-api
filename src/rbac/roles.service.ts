@@ -1,10 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { hashPassword } from '../auth/legacy-password';
 import { AuditService } from '../audit/audit.service';
 import { CodedConflictException } from '../common/errors/conflict.error';
 import type { ScopeKind } from '../common/types/access';
 import { isPermissionKey } from '../common/types/permission-keys';
 import { CreateRoleInput, UpdateRoleInput } from './dto/role.dto';
 import { CreateUserRoleInput } from './dto/user-role.dto';
+import { CreateAdminUserInput } from './dto/create-admin-user.dto';
 import { RbacRepository, RoleRecord, UserRoleRecord } from './rbac.repository';
 
 @Injectable()
@@ -182,6 +184,35 @@ export class RolesService {
         scopeId: grant.scopeId,
       },
     });
+  }
+
+  async createUser(actorId: string, input: CreateAdminUserInput) {
+    const passwordHash = await hashPassword(input.password || 'Rac3011#2026');
+    const result = await this.repo.createUserWithAccountAndRole({
+      name: input.name,
+      email: input.email,
+      passwordHash,
+      clubId: input.clubId,
+      phone: input.phone,
+      roleKey: input.roleKey,
+      grantedById: actorId,
+    });
+
+    await this.audit.record({
+      actorId,
+      action: 'user.created',
+      resourceType: 'user',
+      resourceId: result.user.id,
+      after: {
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        roleKey: input.roleKey,
+        clubId: input.clubId,
+      },
+    });
+
+    return result;
   }
 
   private async resolveScopeId(scopeType: ScopeKind, scopeId?: string): Promise<string | null> {
