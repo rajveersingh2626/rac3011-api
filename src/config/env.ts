@@ -115,9 +115,9 @@ export function parseEnv(source: NodeJS.ProcessEnv): Env {
     if (env.STORAGE_DRIVER === 'live') {
       if (!env.UPLOADTHING_TOKEN_PERMANENT) missing.push('UPLOADTHING_TOKEN_PERMANENT');
       if (!env.UPLOADTHING_TOKEN_DYNAMIC) missing.push('UPLOADTHING_TOKEN_DYNAMIC');
-      for (const k of ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'] as const) {
-        if (!env[k]) missing.push(k);
-      }
+      // R2 is only required for the private storage tier (resource documents, certificates).
+      // If R2 keys are absent, the private tier will throw at runtime only when actually used.
+      // UploadThing (permanent + dynamic tiers) works independently of R2.
     }
     if (missing.length)
       throw new Error(`Invalid environment: production requires ${missing.join(', ')}`);
