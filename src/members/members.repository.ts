@@ -119,6 +119,14 @@ export class MembersRepository {
         scopeId: clubId,
         role: { key: { in: ['president', 'secretary'] } },
       },
+    return [...new Set(rows.map((r) => r.userId))];
+  }
+
+  async findSuperAdminUserIds(): Promise<string[]> {
+    const rows = await this.prisma.userRole.findMany({
+      where: {
+        role: { key: { in: ['superadmin', 'district_admin'] } },
+      },
       select: { userId: true },
     });
     return [...new Set(rows.map((r) => r.userId))];

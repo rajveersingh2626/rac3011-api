@@ -44,11 +44,23 @@ export class MembersService {
       rotaryId: input.rotaryId ?? null,
       status: 'pending',
     });
+
+    await this.audit.record({
+      actorId: null,
+      action: 'member.registered',
+      resourceType: 'member_profile',
+      resourceId: member.id,
+      after: { fullName: member.fullName, email: member.email, clubId: member.clubId, status: 'pending' },
+    });
+
     const officerUserIds = await this.repo.findClubOfficerUserIds(input.clubId);
-    if (officerUserIds.length > 0) {
+    const superAdminUserIds = await this.repo.findSuperAdminUserIds();
+    const recipientUserIds = Array.from(new Set([...officerUserIds, ...superAdminUserIds]));
+
+    if (recipientUserIds.length > 0) {
       await this.notifications.notify({
         template: 'member-registered',
-        to: officerUserIds.map((userId) => ({ userId })),
+        to: recipientUserIds.map((userId) => ({ userId })),
         data: { memberId: member.id, fullName: member.fullName, email: member.email },
       });
     }
