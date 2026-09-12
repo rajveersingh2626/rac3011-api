@@ -19,10 +19,10 @@ async function bootstrap() {
   app.use(helmet());
   app.use((req: any, _res: any, next: any) => {
     if (req.method === 'POST') {
-      if (req.url?.startsWith('/auth/request-password-reset') || req.originalUrl?.startsWith('/auth/request-password-reset')) {
-        req.url = '/auth/forget-password';
-      }
       if (req.url?.startsWith('/auth/forget-password') || req.originalUrl?.startsWith('/auth/forget-password')) {
+        req.url = req.url.replace('/auth/forget-password', '/auth/request-password-reset');
+      }
+      if (req.url?.startsWith('/auth/request-password-reset') || req.originalUrl?.startsWith('/auth/request-password-reset')) {
         if (req.body?.email && typeof req.body.email === 'string') {
           req.body.email = req.body.email.trim().toLowerCase();
         }
