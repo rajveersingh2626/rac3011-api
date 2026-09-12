@@ -13,6 +13,7 @@ import type { RequestContext, ResolvedAccess } from '../common/types/access';
 import { MeService } from '../me/me.service';
 import { NotificationPort } from '../notifications/notification.port';
 import { PointsEngineService } from '../points/engine/points-engine.service';
+import { CacheInvalidator } from '../cache/cache-invalidator.service';
 import type { CreateProjectInput, UpdateProjectInput } from './dto/project.dto';
 import { ShowcaseAdminRepository } from './showcase-admin.repository';
 import { SHOWCASE_PUBLISHED_EVENT } from './showcase.events';
@@ -49,6 +50,7 @@ export class ShowcaseAdminService {
     private readonly notifications: NotificationPort,
     private readonly events: EventEmitter2,
     private readonly pointsEngine: PointsEngineService,
+    private readonly cache: CacheInvalidator,
   ) {}
 
   async list(
@@ -102,6 +104,7 @@ export class ShowcaseAdminService {
       { clubId: profile.clubId, role: 'lead' },
       ...requestedCollaborators.map((clubId) => ({ clubId, role: 'collaborator' as const })),
     ]);
+    await this.cache.purge(['projects', 'content', 'clubs']);
     return this.mustFind(created.id);
   }
 
@@ -139,6 +142,7 @@ export class ShowcaseAdminService {
     }
 
     await this.repo.remove(id);
+    await this.cache.purge(['projects', 'content', 'clubs']);
     await this.audit.record({
       actorId: ctx.user.id,
       action: 'showcase.deleted',
@@ -216,6 +220,7 @@ export class ShowcaseAdminService {
       }
     }
 
+    await this.cache.purge(['projects', 'content', 'clubs']);
     return this.mustFind(existing.id);
   }
 
@@ -305,6 +310,7 @@ export class ShowcaseAdminService {
       });
     }
 
+    await this.cache.purge(['projects', 'content', 'clubs']);
     return this.mustFind(existing.id);
   }
 

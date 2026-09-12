@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CacheModule } from '../cache/cache.module';
 import { MeModule } from '../me/me.module';
 import { PointsModule } from '../points/points.module';
 import { ShowcaseAdminController } from './showcase-admin.controller';
@@ -8,7 +9,7 @@ import { ShowcaseRepository } from './showcase.repository';
 import { ShowcaseService } from './showcase.service';
 
 @Module({
-  imports: [MeModule, PointsModule],
+  imports: [CacheModule, MeModule, PointsModule],
   controllers: [ShowcaseAdminController],
   providers: [ShowcaseRepository, ShowcaseService, ShowcaseAdminRepository, ShowcaseAdminService],
   exports: [ShowcaseService],
