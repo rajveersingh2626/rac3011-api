@@ -18,8 +18,8 @@ async function bootstrap() {
   app.set('trust proxy', 1);
   app.use(helmet());
   app.use((req: any, _res: any, next: any) => {
-    if (req.method === 'POST' && (req.url === '/auth/forget-password' || req.originalUrl === '/auth/forget-password')) {
-      req.url = '/auth/request-password-reset';
+    if (req.method === 'POST' && (req.url?.startsWith('/auth/request-password-reset') || req.originalUrl?.startsWith('/auth/request-password-reset'))) {
+      req.url = '/auth/forget-password';
     }
     next();
   });
