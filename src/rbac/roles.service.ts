@@ -19,7 +19,7 @@ export class RolesService {
     private readonly audit: AuditService,
     @Optional() private readonly emailPool?: EmailProviderPool,
     @Optional() private readonly prisma?: PrismaService,
-  ) {}
+  ) { }
 
   listRoles(): Promise<RoleRecord[]> {
     return this.repo.listRoles();

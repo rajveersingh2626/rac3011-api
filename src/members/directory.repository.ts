@@ -53,6 +53,7 @@ export class DirectoryRepository {
   ): Promise<{ items: DirectoryEntryRow[]; total: number }> {
     const where: Prisma.MemberProfileWhereInput = {
       status: 'approved',
+      NOT: { directoryOptIn: false },
       clubId: filter.clubId,
       skills: filter.skill ? { has: filter.skill } : undefined,
       interests: filter.interest ? { has: filter.interest } : undefined,

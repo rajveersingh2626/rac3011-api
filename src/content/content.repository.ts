@@ -23,10 +23,14 @@ export class ContentRepository {
 
   async findPublishedBlocks(pageKey: string): Promise<ContentBlockRow[]> {
     const rows = await this.prisma.contentBlock.findMany({
-      where: { pageKey, publishedAt: { not: null } },
-      select: { sectionKey: true, type: true, publishedValue: true },
+      where: { pageKey },
+      select: { sectionKey: true, type: true, publishedValue: true, draftValue: true },
     });
-    return rows;
+    return rows.map((r) => ({
+      sectionKey: r.sectionKey,
+      type: r.type,
+      publishedValue: r.publishedValue ?? r.draftValue,
+    }));
   }
 
   async getSetting(key: string): Promise<SettingValue> {
