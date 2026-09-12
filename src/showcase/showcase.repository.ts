@@ -10,8 +10,11 @@ const CLUB_SELECT = {
 const SELECT = {
   id: true,
   slug: true,
+  title: true,
   category: true,
   date: true,
+  summary: true,
+  body: true,
   beneficiaries: true,
   photos: true,
   publishedTitle: true,

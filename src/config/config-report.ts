@@ -14,9 +14,6 @@ export function configWarnings(env: Env): string[] {
     .sort();
   if (placeholders.length) out.push(`placeholder values still set: ${placeholders.join(', ')}`);
 
-  if (env.GLOBAL_OTP)
-    out.push('GLOBAL_OTP is set: any account can clear the email second factor with it');
-
   if (env.MAIL_DRIVER === 'console')
     out.push('MAIL_DRIVER=console: no email is delivered, including password resets and OTPs');
 

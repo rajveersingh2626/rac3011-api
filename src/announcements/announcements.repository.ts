@@ -35,24 +35,106 @@ export class AnnouncementsRepository {
     userId: string,
     page: number,
     pageSize: number,
+    userContext?: {
+      memberId: string | null;
+      clubId: string | null;
+      zoneId: string | null;
+      roleGrants: { roleKey: string; scopeType: string; scopeId: string | null }[];
+    },
   ): Promise<{ items: AnnouncementRow[]; total: number }> {
-    const where = { sentAt: { not: null } };
-    const [rows, total] = await Promise.all([
-      this.prisma.announcement.findMany({
-        where,
-        orderBy: { sentAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      this.prisma.announcement.count({ where }),
-    ]);
-    if (rows.length > 0) {
+    const allSent = await this.prisma.announcement.findMany({
+      where: { sentAt: { not: null } },
+      orderBy: { sentAt: 'desc' },
+    });
+
+    let matched = allSent;
+    if (userContext) {
+      const { memberId, clubId, zoneId, roleGrants } = userContext;
+      const userRoleKeys = new Set(roleGrants.map((g) => g.roleKey));
+      const userScopedClubs = new Set(
+        roleGrants.filter((g) => g.scopeType === 'club' && g.scopeId).map((g) => g.scopeId as string),
+      );
+      const userScopedZones = new Set(
+        roleGrants.filter((g) => g.scopeType === 'zone' && g.scopeId).map((g) => g.scopeId as string),
+      );
+
+      matched = allSent.filter((row) => {
+        if (row.createdById === userId) return true;
+        const aud = (row.audience ?? {}) as {
+          roleKeys?: string[];
+          zoneIds?: string[];
+          clubIds?: string[];
+          memberIds?: string[];
+        };
+
+        const hasRoles = (aud.roleKeys?.length ?? 0) > 0;
+        const hasZones = (aud.zoneIds?.length ?? 0) > 0;
+        const hasClubs = (aud.clubIds?.length ?? 0) > 0;
+        const hasMembers = (aud.memberIds?.length ?? 0) > 0;
+
+        // Global broadcast
+        if (!hasRoles && !hasZones && !hasClubs && !hasMembers) return true;
+
+        // Explicit member target
+        if (hasMembers && memberId && aud.memberIds!.includes(memberId)) return true;
+
+        // Role-based target
+        if (hasRoles) {
+          const matchesAnyRole = aud.roleKeys!.some((rk) => userRoleKeys.has(rk));
+          if (matchesAnyRole) {
+            if (!hasZones && !hasClubs) return true;
+            if (hasClubs && clubId && aud.clubIds!.includes(clubId)) return true;
+            if (hasClubs && aud.clubIds!.some((cid) => userScopedClubs.has(cid))) return true;
+            if (hasZones && zoneId && aud.zoneIds!.includes(zoneId)) return true;
+            if (hasZones && aud.zoneIds!.some((zid) => userScopedZones.has(zid))) return true;
+          }
+          return false;
+        }
+
+        // Club or Zone only target
+        if (hasClubs && clubId && aud.clubIds!.includes(clubId)) return true;
+        if (hasClubs && aud.clubIds!.some((cid) => userScopedClubs.has(cid))) return true;
+        if (hasZones && zoneId && aud.zoneIds!.includes(zoneId)) return true;
+        if (hasZones && aud.zoneIds!.some((zid) => userScopedZones.has(zid))) return true;
+
+        return false;
+      });
+    }
+
+    const total = matched.length;
+    const paged = matched.slice((page - 1) * pageSize, page * pageSize);
+
+    if (paged.length > 0) {
       await this.prisma.announcementRead.createMany({
-        data: rows.map((row) => ({ announcementId: row.id, userId })),
+        data: paged.map((row) => ({ announcementId: row.id, userId })),
         skipDuplicates: true,
       });
     }
-    return { items: rows.map(toRow), total };
+    return { items: paged.map(toRow), total };
+  }
+
+  async findUserAudienceContext(userId: string) {
+    const [profile, grants] = await Promise.all([
+      this.prisma.memberProfile.findFirst({
+        where: { userId },
+        select: { id: true, clubId: true, club: { select: { zoneId: true } } },
+      }),
+      this.prisma.userRole.findMany({
+        where: { userId },
+        select: { role: { select: { key: true } }, scopeType: true, scopeId: true },
+      }),
+    ]);
+
+    return {
+      memberId: profile?.id ?? null,
+      clubId: profile?.clubId ?? null,
+      zoneId: profile?.club?.zoneId ?? null,
+      roleGrants: grants.map((g) => ({
+        roleKey: g.role.key,
+        scopeType: g.scopeType,
+        scopeId: g.scopeId,
+      })),
+    };
   }
 
   // A club-scoped grant also counts as scoped to that club's zone and vice versa, so a

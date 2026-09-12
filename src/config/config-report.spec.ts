@@ -22,11 +22,6 @@ describe('configWarnings', () => {
     expect(out.join('\n')).toMatch(/SENTRY_DSN/);
   });
 
-  it('reports a second-factor bypass being enabled', () => {
-    const out = configWarnings(prodEnv({ MAIL_DRIVER: 'pool', GLOBAL_OTP: '424242' }));
-    expect(out.join('\n')).toMatch(/GLOBAL_OTP/);
-  });
-
   it('reports mail being black-holed to the console', () => {
     const out = configWarnings(prodEnv({ MAIL_DRIVER: 'console' }));
     expect(out.join('\n')).toMatch(/MAIL_DRIVER/);

@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequirePermission } from '../common/decorators/access.decorators';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -31,5 +31,19 @@ export class DirectoryController {
       q.pageSize,
     );
     return paginate(items.map(directoryEntryDto), total, q);
+  }
+
+  @Post(':memberId/request-contact')
+  @RequirePermission('directory:view')
+  async requestContact(
+    @CurrentUser() ctx: RequestContext,
+    @Param('memberId') memberId: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.directory.requestContact(
+      { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email },
+      memberId,
+      body?.reason,
+    );
   }
 }

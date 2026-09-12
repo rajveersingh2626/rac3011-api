@@ -96,7 +96,6 @@ export const envSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === '1'),
-  GLOBAL_OTP: optionalString,
   NOTIFICATIONS_RETRY_DELAY_MS: intWithDefault(30000),
 });
 

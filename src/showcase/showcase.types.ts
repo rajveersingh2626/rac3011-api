@@ -1,8 +1,11 @@
 export type PublishedProjectRow = {
   id: string;
   slug: string | null;
+  title: string;
   category: string;
   date: Date;
+  summary: string;
+  body: string | null;
   beneficiaries: number | null;
   photos: string[];
   publishedTitle: string | null;

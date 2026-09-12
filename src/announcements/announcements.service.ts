@@ -15,12 +15,13 @@ export class AnnouncementsService {
     private readonly notifications: NotificationPort,
   ) {}
 
-  feed(
+  async feed(
     ctx: RequestContext,
     page: number,
     pageSize: number,
   ): Promise<{ items: AnnouncementRow[]; total: number }> {
-    return this.repo.findFeed(ctx.user.id, page, pageSize);
+    const userContext = await this.repo.findUserAudienceContext(ctx.user.id);
+    return this.repo.findFeed(ctx.user.id, page, pageSize, userContext);
   }
 
   async estimate(ctx: RequestContext, audience: AnnouncementAudience): Promise<number> {

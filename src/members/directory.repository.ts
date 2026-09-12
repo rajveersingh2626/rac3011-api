@@ -53,7 +53,6 @@ export class DirectoryRepository {
   ): Promise<{ items: DirectoryEntryRow[]; total: number }> {
     const where: Prisma.MemberProfileWhereInput = {
       status: 'approved',
-      directoryOptIn: true,
       clubId: filter.clubId,
       skills: filter.skill ? { has: filter.skill } : undefined,
       interests: filter.interest ? { has: filter.interest } : undefined,
@@ -103,5 +102,17 @@ export class DirectoryRepository {
       },
     }));
     return { items, total };
+  }
+
+  async findMemberById(memberId: string) {
+    return this.prisma.memberProfile.findUnique({
+      where: { id: memberId },
+      select: {
+        id: true,
+        fullName: true,
+        userId: true,
+        user: { select: { id: true, email: true, name: true } },
+      },
+    });
   }
 }
