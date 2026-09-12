@@ -216,4 +216,11 @@ export class MembersRepository {
     if (!updated) throw new Error('Member row disappeared during status update');
     return updated;
   }
+
+  async updateMemberPassword(userId: string, passwordHash: string): Promise<void> {
+    await this.prisma.account.updateMany({
+      where: { userId },
+      data: { password: passwordHash },
+    });
+  }
 }

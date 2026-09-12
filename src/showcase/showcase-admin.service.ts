@@ -128,15 +128,24 @@ export class ShowcaseAdminService {
   async remove(ctx: RequestContext, id: string): Promise<void> {
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundException();
-    if (existing.submittedById !== ctx.user.id) throw new NotFoundException();
-    await this.scope.assertCanAccessClub(ctx.access, 'showcase:submit', this.leadClubId(existing));
-    if (existing.status !== 'draft') {
-      throw new CodedConflictException(
-        'INVALID_TRANSITION',
-        'Only a draft submission can be deleted',
-      );
+
+    const canPublish = this.hasPublishGrant(ctx.access);
+    if (!canPublish) {
+      const leadClubId = this.leadClubId(existing);
+      await this.scope.assertCanAccessClub(ctx.access, 'showcase:submit', leadClubId);
+      if (existing.submittedById !== ctx.user.id && !ctx.access.isSuperAdmin) {
+        throw new ForbiddenException('Not authorized to delete this showcase post');
+      }
     }
+
     await this.repo.remove(id);
+    await this.audit.record({
+      actorId: ctx.user.id,
+      action: 'showcase.deleted',
+      resourceType: 'project',
+      resourceId: id,
+      before: { title: existing.title, status: existing.status },
+    });
   }
 
   private async updateAsOwner(

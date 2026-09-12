@@ -57,7 +57,7 @@ export class ShowcaseAdminController {
 
   @Delete(':id')
   @HttpCode(204)
-  @RequirePermission('showcase:submit')
+  @RequirePermission('showcase:submit', 'showcase:publish')
   async remove(@CurrentUser() ctx: RequestContext, @Param('id') id: string): Promise<void> {
     await this.service.remove(ctx, id);
   }

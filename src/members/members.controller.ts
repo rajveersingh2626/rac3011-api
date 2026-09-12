@@ -77,4 +77,23 @@ export class MembersController {
   ) {
     return memberDto(await this.members.updateStatus(ctx.access, id, dto));
   }
+
+  @Post(':id/change-password')
+  @RequirePermission('members:approve', 'roles:manage')
+  async changePassword(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+    @Body() body: { password?: string },
+  ) {
+    return this.members.changePassword(ctx.access, id, body?.password);
+  }
+
+  @Post(':id/reset-password')
+  @RequirePermission('members:approve', 'roles:manage')
+  async resetPassword(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+  ) {
+    return this.members.changePassword(ctx.access, id);
+  }
 }

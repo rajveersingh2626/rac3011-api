@@ -133,4 +133,31 @@ export class MembersService {
 
     return updated;
   }
+
+  async changePassword(
+    access: ResolvedAccess,
+    id: string,
+    newPassword?: string,
+  ): Promise<{ temporaryPassword?: string; message: string }> {
+    const member = await this.repo.findById(id);
+    if (!member) throw new NotFoundException('Member not found');
+    await this.scope.assertCanAccessClubAny(access, ['members:approve', 'roles:manage'], member.clubId);
+
+    const tempPwd = newPassword || `Rotaract@${Math.random().toString(36).slice(-6)}!2026`;
+    const passwordHash = await hashPassword(tempPwd);
+    await this.repo.updateMemberPassword(member.userId, passwordHash);
+
+    await this.audit.record({
+      actorId: access.userId,
+      action: 'member.password_changed',
+      resourceType: 'member_profile',
+      resourceId: id,
+      after: { email: member.email, changedBy: access.userId },
+    });
+
+    return {
+      temporaryPassword: newPassword ? undefined : tempPwd,
+      message: newPassword ? 'Password has been successfully updated.' : 'Temporary password generated successfully.',
+    };
+  }
 }
