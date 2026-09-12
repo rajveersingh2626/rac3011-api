@@ -23,14 +23,21 @@ import { TrustedDevicesService } from './trusted-devices.service';
           database: adapter.create(),
           sendOtpEmail: ({ email, otp, type }) =>
             notifications.notify({ template: 'otp', to: [{ email }], data: { otp, type } }),
-          sendResetPasswordEmail: ({ email, name, token, url }) => {
+          sendResetPasswordEmail: async ({ email, name, token, url }) => {
             const webOrigin = env.WEB_ORIGINS[0] || 'https://rotaract3011.org';
             const resetUrl = url || `${webOrigin}/portal/reset-password?token=${encodeURIComponent(token)}`;
-            return notifications.notify({
-              template: 'password-reset',
-              to: [{ email }],
-              data: { name, url: resetUrl },
-            });
+            console.log(`[AUTH] Dispatching password reset email to: ${email}, URL: ${resetUrl}`);
+            try {
+              await notifications.notify({
+                template: 'password-reset',
+                to: [{ email }],
+                data: { name, url: resetUrl },
+              });
+              console.log(`[AUTH] Password reset notification queued for ${email}`);
+            } catch (err: any) {
+              console.error(`[AUTH] Failed to dispatch password reset email to ${email}:`, err?.message || err);
+              throw err;
+            }
           },
         }),
       }),

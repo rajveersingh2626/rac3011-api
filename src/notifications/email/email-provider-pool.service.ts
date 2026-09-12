@@ -68,7 +68,8 @@ export class EmailProviderPool {
           from: env.MAIL_FROM,
         });
         return { provider: name };
-      } catch {
+      } catch (error) {
+        console.error(`[EmailProviderPool] Provider "${name}" failed to send to ${rewritten.to}:`, (error as Error).message);
         await this.usage.decrement(name, day);
         this.failedAt.set(name, this.clock.now().getTime());
       }

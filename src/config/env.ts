@@ -47,6 +47,8 @@ export const envSchema = z.object({
   ORACLE_SMTP_PASSWORD: optionalString,
   ORACLE_DAILY_CAP: intWithDefault(100),
   RESEND_API_KEY: optionalString,
+  RESEND_API_KEY_PRIMARY: optionalString,
+  RESEND_API_KEY_FALLBACK: optionalString,
   RESEND_DAILY_CAP: intWithDefault(100),
   MAILGUN_API_KEY: optionalString,
   MAILGUN_DOMAIN: optionalString,
