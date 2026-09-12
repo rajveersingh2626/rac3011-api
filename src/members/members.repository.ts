@@ -119,6 +119,8 @@ export class MembersRepository {
         scopeId: clubId,
         role: { key: { in: ['president', 'secretary'] } },
       },
+      select: { userId: true },
+    });
     return [...new Set(rows.map((r) => r.userId))];
   }
 
