@@ -5,13 +5,9 @@ import { BOOKING_DECISIONS } from '../drr-bookings.types';
 export const decideDrrBookingSchema = z
   .object({
     status: z.enum(BOOKING_DECISIONS),
-    decisionReason: z.string().trim().min(1).max(1000).optional(),
+    decisionReason: z.string().trim().max(1000).optional().nullable(),
   })
-  .strict()
-  .refine((v) => v.status !== 'declined' || !!v.decisionReason, {
-    message: 'decisionReason is required when declining',
-    path: ['decisionReason'],
-  });
+  .strict();
 
 export type DecideDrrBookingInput = z.infer<typeof decideDrrBookingSchema>;
 

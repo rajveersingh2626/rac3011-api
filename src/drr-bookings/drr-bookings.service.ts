@@ -112,7 +112,7 @@ export class DrrBookingsService {
       } catch (err) {
         this.logger.error(`failed to sync booking ${row.reference} to events calendar: ${(err as Error).message}`);
       }
-    } else if (input.status === 'declined' && before.status === 'confirmed') {
+    } else if (input.status === 'declined') {
       try {
         await this.repo.removeCalendarEvent(row.reference);
       } catch (err) {
