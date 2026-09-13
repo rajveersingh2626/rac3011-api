@@ -5,6 +5,8 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { env } from '../config/env';
 import { MeService } from '../me/me.service';
@@ -31,6 +33,7 @@ export class StorageService {
     private readonly repo: StorageRepository,
     private readonly port: StoragePort,
     private readonly scope: ScopeService,
+    @Inject(forwardRef(() => MeService))
     private readonly me: MeService,
   ) {}
 
