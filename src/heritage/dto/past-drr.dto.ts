@@ -18,14 +18,13 @@ export const createPastDrrSchema = z
     photoUrl: z.preprocess(emptyToNull, z.string().trim().max(1024).nullable().optional()),
     bio: z.preprocess(emptyToNull, z.string().trim().max(4000).nullable().optional()),
     isLowResPhoto: z.boolean().optional(),
-  })
-  .strict();
+  });
 
 export type CreatePastDrrInput = z.infer<typeof createPastDrrSchema>;
 
 export class CreatePastDrrDto extends createZodDto(createPastDrrSchema) {}
 
-export const updatePastDrrSchema = createPastDrrSchema.partial().strict();
+export const updatePastDrrSchema = createPastDrrSchema.partial();
 
 export type UpdatePastDrrInput = z.infer<typeof updatePastDrrSchema>;
 

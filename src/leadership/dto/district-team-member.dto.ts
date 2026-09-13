@@ -16,14 +16,13 @@ export const createDistrictTeamMemberSchema = z
     email: z.preprocess(emptyToNull, z.string().trim().max(255).nullable().optional()),
     bio: z.preprocess(emptyToNull, z.string().trim().max(4000).nullable().optional()),
     clubId: z.preprocess(emptyToNull, z.string().trim().min(1).nullable().optional()),
-  })
-  .strict();
+  });
 
 export type CreateDistrictTeamMemberInput = z.infer<typeof createDistrictTeamMemberSchema>;
 
 export class CreateDistrictTeamMemberDto extends createZodDto(createDistrictTeamMemberSchema) {}
 
-export const updateDistrictTeamMemberSchema = createDistrictTeamMemberSchema.partial().strict();
+export const updateDistrictTeamMemberSchema = createDistrictTeamMemberSchema.partial();
 
 export type UpdateDistrictTeamMemberInput = z.infer<typeof updateDistrictTeamMemberSchema>;
 

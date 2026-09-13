@@ -15,14 +15,13 @@ export const createResourceSchema = z
     isLocked: z.boolean().optional(),
     requiredPermission: z.preprocess(emptyToNull, z.string().trim().max(120).nullable().optional()),
     comingSoonMonth: z.preprocess(emptyToNull, z.string().trim().max(40).nullable().optional()),
-  })
-  .strict();
+  });
 
 export type CreateResourceInput = z.infer<typeof createResourceSchema>;
 
 export class CreateResourceDto extends createZodDto(createResourceSchema) {}
 
-export const updateResourceSchema = createResourceSchema.partial().strict();
+export const updateResourceSchema = createResourceSchema.partial();
 
 export type UpdateResourceInput = z.infer<typeof updateResourceSchema>;
 

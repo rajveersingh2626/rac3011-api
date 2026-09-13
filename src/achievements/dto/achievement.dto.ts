@@ -12,14 +12,13 @@ export const createAchievementSchema = z
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD'),
     certificateUrl: z.preprocess(emptyToNull, z.string().trim().max(1024).nullable().optional()),
     description: z.preprocess(emptyToNull, z.string().trim().max(2000).nullable().optional()),
-  })
-  .strict();
+  });
 
 export type CreateAchievementInput = z.infer<typeof createAchievementSchema>;
 
 export class CreateAchievementDto extends createZodDto(createAchievementSchema) {}
 
-export const updateAchievementSchema = createAchievementSchema.partial().strict();
+export const updateAchievementSchema = createAchievementSchema.partial();
 
 export type UpdateAchievementInput = z.infer<typeof updateAchievementSchema>;
 

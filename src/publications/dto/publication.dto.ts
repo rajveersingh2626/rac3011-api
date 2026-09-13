@@ -11,14 +11,13 @@ export const createPublicationSchema = z
     url: z.string().trim().max(1024),
     month: z.string().regex(/^\d{4}-\d{2}$/, 'Expected YYYY-MM'),
     coverUrl: z.preprocess(emptyToNull, z.string().trim().max(1024).nullable().optional()),
-  })
-  .strict();
+  });
 
 export type CreatePublicationInput = z.infer<typeof createPublicationSchema>;
 
 export class CreatePublicationDto extends createZodDto(createPublicationSchema) {}
 
-export const updatePublicationSchema = createPublicationSchema.partial().strict();
+export const updatePublicationSchema = createPublicationSchema.partial();
 
 export type UpdatePublicationInput = z.infer<typeof updatePublicationSchema>;
 
