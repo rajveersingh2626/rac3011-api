@@ -34,6 +34,12 @@ export const UPLOAD_TARGETS = {
     ownership: 'project',
     projectKey: 'ride',
   },
+  ride_gallery_item: {
+    tier: 'dynamic',
+    permissions: ['subdomain:ride:manage'],
+    ownership: 'project',
+    projectKey: 'ride',
+  },
   partner_logo: { tier: 'permanent', permissions: PUBLIC_CONTENT, ownership: 'district' },
   past_drr_photo: { tier: 'permanent', permissions: PUBLIC_CONTENT, ownership: 'district' },
   district_team_photo: { tier: 'permanent', permissions: PUBLIC_CONTENT, ownership: 'district' },
