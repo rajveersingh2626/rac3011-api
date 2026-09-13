@@ -47,7 +47,19 @@ export class MeRepository {
         },
       });
     }
-    return this.prisma.memberProfile.update({ where: { userId }, data, select: PROFILE_SELECT });
+    const updated = await this.prisma.memberProfile.update({ where: { userId }, data, select: PROFILE_SELECT });
+    if (data.photoUrl !== undefined) {
+      await this.prisma.districtTeamMember.updateMany({
+        where: {
+          OR: [
+            { memberId: updated.id },
+            { email: { equals: updated.email, mode: 'insensitive' } },
+          ],
+        },
+        data: { photoUrl: data.photoUrl },
+      });
+    }
+    return updated;
   }
 
   async findClubsInScope(filter: ClubScopeFilter): Promise<ClubSummaryDto[]> {
