@@ -1,5 +1,4 @@
-import { Injectable, Module, forwardRef } from '@nestjs/common';
-import { MeModule } from '../me/me.module';
+import { Injectable, Module } from '@nestjs/common';
 import { env } from '../config/env';
 import { R2Adapter } from './adapters/r2.adapter';
 import { StubStorageAdapter } from './adapters/stub-storage.adapter';
@@ -79,7 +78,6 @@ const portProvider =
 
 @Module({
   controllers: [StorageController],
-  imports: [forwardRef(() => MeModule)],
   providers: [
     StorageRepository,
     StorageService,

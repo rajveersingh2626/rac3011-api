@@ -5,11 +5,8 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  Inject,
-  forwardRef,
 } from '@nestjs/common';
 import { env } from '../config/env';
-import { MeService } from '../me/me.service';
 import { ScopeService } from '../common/scope/scope.service';
 import type { RequestContext } from '../common/types/access';
 import { CodedConflictException } from '../common/errors/conflict.error';
@@ -33,8 +30,6 @@ export class StorageService {
     private readonly repo: StorageRepository,
     private readonly port: StoragePort,
     private readonly scope: ScopeService,
-    @Inject(forwardRef(() => MeService))
-    private readonly me: MeService,
   ) {}
 
   async createGrant(
