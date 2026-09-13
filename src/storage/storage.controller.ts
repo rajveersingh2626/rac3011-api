@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { Authenticated } from '../common/decorators/access.decorators';
@@ -16,6 +29,15 @@ export class StorageController {
   @Authenticated()
   createGrant(@CurrentUser() ctx: RequestContext, @Body() dto: CreateGrantDto) {
     return this.storage.createGrant(ctx, dto);
+  }
+
+  @Post('files/upload/:grantId')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadDirect(
+    @Param('grantId') grantId: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.storage.handleDirectUpload(grantId, file);
   }
 
   @Patch('files/grants/:grantId')

@@ -24,4 +24,9 @@ export abstract class StoragePort {
     fileId: string,
   ): Promise<{ stream: NodeJS.ReadableStream; mimeType: string; name: string }>;
   abstract delete(fileId: string): Promise<void>;
+  handleUpload?(
+    grantId: string,
+    file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+    tier?: StorageTier,
+  ): Promise<{ key: string; url: string }>;
 }

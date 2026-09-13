@@ -29,7 +29,21 @@ export class StubStorageAdapter extends StoragePort {
   }): Promise<{ grantId: string; uploadUrl: string; fields?: Record<string, string> }> {
     const grantId = randomUUID();
     this.grants.set(grantId, input);
-    return Promise.resolve({ grantId, uploadUrl: `stub://upload/${grantId}`, fields: { grantId } });
+    return Promise.resolve({
+      grantId,
+      uploadUrl: `/files/upload/${grantId}`,
+      fields: { key: grantId },
+    });
+  }
+
+  handleUpload(
+    grantId: string,
+    file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+  ): Promise<{ key: string; url: string }> {
+    return Promise.resolve({
+      key: grantId,
+      url: `stub://cdn/${grantId}`,
+    });
   }
 
   finalise(grantId: string, providerKey: string): Promise<StoredFile> {

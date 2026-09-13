@@ -47,6 +47,19 @@ class TieredStoragePort extends StoragePort {
     return fileId.includes(':') ? this.uploadThing.delete(fileId) : this.r2.delete(fileId);
   }
 
+  async handleUpload(
+    grantId: string,
+    file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+    tierHint?: StorageTier,
+  ): Promise<{ key: string; url: string }> {
+    const tier = this.grantTiers.get(grantId) ?? tierHint ?? 'permanent';
+    const adapter = this.forTier(tier);
+    if (adapter.handleUpload) {
+      return adapter.handleUpload(grantId, file, tier);
+    }
+    throw new Error(`Adapter for tier ${tier} does not support direct upload`);
+  }
+
   private forTier(tier: StorageTier): StoragePort {
     return tier === 'private' ? this.r2 : this.uploadThing;
   }

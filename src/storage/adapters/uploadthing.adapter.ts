@@ -1,18 +1,25 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { UTApi } from 'uploadthing/server';
+import { UTApi, UTFile } from 'uploadthing/server';
 import { env } from '../../config/env';
 import type { StorageTier, StoredFile } from '../storage.port';
 import { StoragePort } from '../storage.port';
 
 type PublicTier = 'permanent' | 'dynamic';
 type PendingGrant = { tier: PublicTier; mimeType: string; size: number };
+type UploadedFileRecord = {
+  tier: PublicTier;
+  key: string;
+  url: string;
+  name: string;
+  mimeType: string;
+  size: number;
+};
 
-// UTApi has no client-presign API: the client uploads via UploadThing's hosted SDK against the
-// tier's token, then PATCH /files/grants/:grantId reports the key back for this adapter to resolve.
 @Injectable()
 export class UploadThingAdapter extends StoragePort {
   private readonly pending = new Map<string, PendingGrant>();
+  private readonly uploaded = new Map<string, UploadedFileRecord>();
   private permanentApi?: UTApi;
   private dynamicApi?: UTApi;
 
@@ -27,10 +34,61 @@ export class UploadThingAdapter extends StoragePort {
     const tier = this.assertPublicTier(input.tier);
     const grantId = randomUUID();
     this.pending.set(grantId, { tier, mimeType: input.mimeType, size: input.size });
-    return Promise.resolve({ grantId, uploadUrl: `uploadthing://${tier}`, fields: { tier } });
+    return Promise.resolve({
+      grantId,
+      uploadUrl: `/files/upload/${grantId}`,
+      fields: { key: grantId },
+    });
+  }
+
+  async handleUpload(
+    grantId: string,
+    file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+    tierHint?: StorageTier,
+  ): Promise<{ key: string; url: string }> {
+    const grant = this.pending.get(grantId);
+    const tier = grant?.tier ?? (tierHint && tierHint !== 'private' ? tierHint : 'permanent');
+    const filename = file.originalname || 'upload.webp';
+    const utFile = new UTFile([file.buffer], filename, { type: file.mimetype });
+
+    const res = await this.apiFor(tier).uploadFiles(utFile);
+    if (res.error) {
+      throw new Error(`uploadthing upload failed: ${res.error.message}`);
+    }
+    if (!res.data) {
+      throw new Error('uploadthing storage: no data returned from upload');
+    }
+
+    const key = res.data.key;
+    const url = res.data.ufsUrl || res.data.url;
+    this.uploaded.set(grantId, {
+      tier,
+      key,
+      url,
+      name: file.originalname || key,
+      mimeType: file.mimetype,
+      size: file.size,
+    });
+
+    return { key, url };
   }
 
   async finalise(grantId: string, providerKey: string): Promise<StoredFile> {
+    const uploaded = this.uploaded.get(grantId);
+    if (uploaded) {
+      this.uploaded.delete(grantId);
+      this.pending.delete(grantId);
+      return {
+        id: `${uploaded.tier}:${uploaded.key}`,
+        tier: uploaded.tier,
+        key: uploaded.key,
+        url: uploaded.url,
+        name: uploaded.name,
+        mimeType: uploaded.mimeType,
+        size: uploaded.size,
+      };
+    }
+
     const grant = this.pending.get(grantId);
     if (!grant) throw new Error(`uploadthing storage: unknown grant ${grantId}`);
     this.pending.delete(grantId);

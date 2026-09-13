@@ -72,6 +72,36 @@ export class StorageService {
     return grant;
   }
 
+  async handleDirectUpload(
+    grantId: string,
+    file?: Express.Multer.File,
+  ): Promise<{ ok: boolean; key: string; url: string }> {
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No file uploaded');
+    }
+    const grant = await this.repo.findGrant(grantId);
+    if (!grant) throw new NotFoundException('Upload grant not found');
+    if (grant.status !== 'pending')
+      throw new CodedConflictException('INVALID_TRANSITION', 'Grant already used');
+    if (grant.expiresAt.getTime() < Date.now())
+      throw new CodedConflictException('INVALID_TRANSITION', 'Grant expired');
+
+    if (this.port.handleUpload) {
+      const result = await this.port.handleUpload(
+        grantId,
+        {
+          buffer: file.buffer,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+        },
+        grant.tier,
+      );
+      return { ok: true, key: result.key, url: result.url };
+    }
+    return { ok: true, key: grantId, url: '' };
+  }
+
   async finaliseGrant(
     ctx: RequestContext,
     grantId: string,
