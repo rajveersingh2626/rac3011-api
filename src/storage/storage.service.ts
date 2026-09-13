@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   BadRequestException,
   ForbiddenException,
@@ -117,6 +119,41 @@ export class StorageService {
     await this.assertCanUpload(ctx, target, file.resourceId ?? undefined);
     await this.port.delete(id);
     await this.repo.deleteFile(id);
+  }
+
+  async purgeAssetByUrl(urlOrPath: string): Promise<void> {
+    if (!urlOrPath) return;
+
+    // 1. Check if tracked in files database table (UploadThing / R2)
+    const file = await this.repo.findFileByUrlOrKey(urlOrPath);
+    if (file) {
+      try {
+        await this.port.delete(file.id);
+      } catch {
+        // Continue to remove DB record even if provider already deleted
+      }
+      await this.repo.deleteFile(file.id);
+      return;
+    }
+
+    // 2. Local static asset (/showcase_images/<name>)
+    if (urlOrPath.startsWith('/showcase_images/')) {
+      const filename = urlOrPath.split('/').pop();
+      if (filename) {
+        const candidatePaths = [
+          path.resolve(process.cwd(), '../rac3011-web/public/showcase_images', filename),
+          path.resolve(process.cwd(), 'public/showcase_images', filename),
+          path.join('/usr/share/nginx/html/showcase_images', filename),
+        ];
+        for (const candidate of candidatePaths) {
+          if (fs.existsSync(candidate)) {
+            try {
+              await fs.promises.unlink(candidate);
+            } catch {}
+          }
+        }
+      }
+    }
   }
 
   private providerNameFor(tier: 'permanent' | 'dynamic' | 'private'): string {

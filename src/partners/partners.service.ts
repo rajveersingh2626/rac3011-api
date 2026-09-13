@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
+import { CacheInvalidator } from '../cache/cache-invalidator.service';
+import { StorageService } from '../storage/storage.service';
 import { PartnersRepository } from './partners.repository';
 import type { PartnerRow } from './partners.types';
 import type { CreatePartnerInput, UpdatePartnerInput } from './dto/partner.dto';
@@ -9,6 +11,8 @@ export class PartnersService {
   constructor(
     private readonly repo: PartnersRepository,
     private readonly audit: AuditService,
+    private readonly storage: StorageService,
+    private readonly cache: CacheInvalidator,
   ) {}
 
   list(): Promise<PartnerRow[]> {
@@ -23,6 +27,7 @@ export class PartnersService {
 
   async create(actorId: string, input: CreatePartnerInput): Promise<PartnerRow> {
     const row = await this.repo.create(input);
+    await this.cache.purge(['partners']);
     await this.audit.record({
       actorId,
       action: 'partner.created',
@@ -36,6 +41,7 @@ export class PartnersService {
   async update(actorId: string, id: string, input: UpdatePartnerInput): Promise<PartnerRow> {
     const before = await this.get(id);
     const row = await this.repo.update(id, input);
+    await this.cache.purge(['partners']);
     await this.audit.record({
       actorId,
       action: 'partner.updated',
@@ -50,6 +56,14 @@ export class PartnersService {
   async remove(actorId: string, id: string): Promise<void> {
     const before = await this.get(id);
     await this.repo.delete(id);
+
+    if (before.logoUrl) {
+      try {
+        await this.storage.purgeAssetByUrl(before.logoUrl);
+      } catch {}
+    }
+
+    await this.cache.purge(['partners']);
     await this.audit.record({
       actorId,
       action: 'partner.deleted',
@@ -61,6 +75,7 @@ export class PartnersService {
 
   async reorder(actorId: string, ids: string[]): Promise<PartnerRow[]> {
     await this.repo.reorder(ids);
+    await this.cache.purge(['partners']);
     const items = await this.list();
     await this.audit.record({
       actorId,

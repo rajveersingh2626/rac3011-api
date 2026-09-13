@@ -90,6 +90,18 @@ export class StorageRepository {
     return this.prisma.storedFileRow.findUnique({ where: { id } });
   }
 
+  async findFileByUrlOrKey(urlOrKey: string): Promise<StoredFileRecord | null> {
+    return this.prisma.storedFileRow.findFirst({
+      where: {
+        OR: [
+          { url: urlOrKey },
+          { providerKey: urlOrKey },
+          { id: urlOrKey },
+        ],
+      },
+    });
+  }
+
   async deleteFile(id: string): Promise<void> {
     await this.prisma.storedFileRow.delete({ where: { id } });
   }

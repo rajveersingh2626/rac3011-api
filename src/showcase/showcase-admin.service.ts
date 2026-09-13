@@ -14,6 +14,7 @@ import { MeService } from '../me/me.service';
 import { NotificationPort } from '../notifications/notification.port';
 import { PointsEngineService } from '../points/engine/points-engine.service';
 import { CacheInvalidator } from '../cache/cache-invalidator.service';
+import { StorageService } from '../storage/storage.service';
 import type { CreateProjectInput, UpdateProjectInput } from './dto/project.dto';
 import { ShowcaseAdminRepository } from './showcase-admin.repository';
 import { SHOWCASE_PUBLISHED_EVENT } from './showcase.events';
@@ -51,6 +52,7 @@ export class ShowcaseAdminService {
     private readonly events: EventEmitter2,
     private readonly pointsEngine: PointsEngineService,
     private readonly cache: CacheInvalidator,
+    private readonly storage: StorageService,
   ) {}
 
   async list(
@@ -142,6 +144,18 @@ export class ShowcaseAdminService {
     }
 
     await this.repo.remove(id);
+
+    // Automatically delete associated photos from storage (UploadThing, R2, and local static disk)
+    if (existing.photos && existing.photos.length > 0) {
+      for (const photo of existing.photos) {
+        try {
+          await this.storage.purgeAssetByUrl(photo);
+        } catch {
+          // Log or continue cleanup
+        }
+      }
+    }
+
     await this.cache.purge(['projects', 'content', 'clubs']);
     await this.audit.record({
       actorId: ctx.user.id,
