@@ -41,6 +41,11 @@ export class PartnersService {
   async update(actorId: string, id: string, input: UpdatePartnerInput): Promise<PartnerRow> {
     const before = await this.get(id);
     const row = await this.repo.update(id, input);
+    if (input.logoUrl !== undefined && input.logoUrl !== before.logoUrl && before.logoUrl) {
+      try {
+        await this.storage.purgeAssetByUrl(before.logoUrl);
+      } catch {}
+    }
     await this.cache.purge(['partners']);
     await this.audit.record({
       actorId,

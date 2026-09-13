@@ -200,6 +200,14 @@ export class ShowcaseAdminService {
         throw new BadRequestException('Consent must be confirmed before submitting');
     }
 
+    if (input.photos !== undefined && existing.photos && existing.photos.length > 0) {
+      const newPhotosSet = new Set(input.photos);
+      const removedPhotos = existing.photos.filter((p) => !newPhotosSet.has(p));
+      for (const p of removedPhotos) {
+        await this.storage.purgeAssetByUrl(p).catch(() => {});
+      }
+    }
+
     await this.repo.update(existing.id, {
       title: input.title,
       category: input.category,

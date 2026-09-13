@@ -294,4 +294,16 @@ export class PublicController {
     if (!isBookingReference(reference)) throw new NotFoundException();
     return drrBookingPublicDto(await this.drrBookings.byReference(reference));
   }
+
+  @Get('drr-calendar')
+  @Public()
+  @CacheTags('drr-calendar')
+  async getDrrCalendar(
+    @Query('from') fromStr?: string,
+    @Query('to') toStr?: string,
+  ) {
+    const from = parseDateParam(fromStr);
+    const to = parseDateParam(toStr);
+    return this.drrBookings.getPublicCalendar(from, to);
+  }
 }

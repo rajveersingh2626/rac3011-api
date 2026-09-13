@@ -104,5 +104,105 @@ export class StorageRepository {
 
   async deleteFile(id: string): Promise<void> {
     await this.prisma.storedFileRow.delete({ where: { id } });
+    await this.prisma.uploadGrant.deleteMany({ where: { fileId: id } });
+  }
+
+  async findStoredFilesOlderThan(cutoff: Date): Promise<StoredFileRecord[]> {
+    return this.prisma.storedFileRow.findMany({
+      where: {
+        createdAt: { lt: cutoff },
+      },
+    });
+  }
+
+  async cleanExpiredGrants(cutoff: Date): Promise<number> {
+    const res = await this.prisma.uploadGrant.deleteMany({
+      where: {
+        OR: [
+          { status: 'expired' },
+          { status: 'pending', expiresAt: { lt: cutoff } },
+        ],
+      },
+    });
+    return res.count;
+  }
+
+  async getAllReferencedUrls(): Promise<Set<string>> {
+    const refs = new Set<string>();
+
+    const add = (val: unknown) => {
+      if (!val) return;
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        if (trimmed) {
+          refs.add(trimmed);
+          // Also add extracted key if it's an uploadthing url
+          if (trimmed.includes('/f/')) {
+            const key = trimmed.split('/f/')[1]?.split('?')[0];
+            if (key) refs.add(key);
+          }
+        }
+      } else if (Array.isArray(val)) {
+        for (const item of val) add(item);
+      }
+    };
+
+    const [
+      projects,
+      pastDrrs,
+      districtTeam,
+      partners,
+      events,
+      publications,
+      memberProfiles,
+      users,
+      clubs,
+      achievements,
+      resources,
+      contentBlocks,
+    ] = await Promise.all([
+      this.prisma.project.findMany({ select: { photos: true } }),
+      this.prisma.pastDrr.findMany({ select: { photoUrl: true } }),
+      this.prisma.districtTeamMember.findMany({ select: { photoUrl: true } }),
+      this.prisma.partner.findMany({ select: { logoUrl: true } }),
+      this.prisma.event.findMany({ select: { coverUrl: true, photos: true } }),
+      this.prisma.publication.findMany({ select: { coverUrl: true, url: true } }),
+      this.prisma.memberProfile.findMany({ select: { photoUrl: true } }),
+      this.prisma.user.findMany({ select: { image: true } }),
+      this.prisma.club.findMany({ select: { logoUrl: true } }),
+      this.prisma.achievement.findMany({ select: { certificateUrl: true } }),
+      this.prisma.resource.findMany({ select: { url: true } }),
+      this.prisma.contentBlock.findMany({ select: { draftValue: true, publishedValue: true } }),
+    ]);
+
+    for (const p of projects) add(p.photos);
+    for (const d of pastDrrs) add(d.photoUrl);
+    for (const t of districtTeam) add(t.photoUrl);
+    for (const p of partners) add(p.logoUrl);
+    for (const e of events) {
+      add(e.coverUrl);
+      add(e.photos);
+    }
+    for (const pub of publications) {
+      add(pub.coverUrl);
+      add(pub.url);
+    }
+    for (const m of memberProfiles) add(m.photoUrl);
+    for (const u of users) add(u.image);
+    for (const c of clubs) add(c.logoUrl);
+    for (const a of achievements) add(a.certificateUrl);
+    for (const r of resources) add(r.url);
+    for (const cb of contentBlocks) {
+      if (cb.draftValue && typeof cb.draftValue === 'object') {
+        const val = (cb.draftValue as Record<string, unknown>).url;
+        if (typeof val === 'string') add(val);
+      }
+      if (cb.publishedValue && typeof cb.publishedValue === 'object') {
+        const val = (cb.publishedValue as Record<string, unknown>).url;
+        if (typeof val === 'string') add(val);
+      }
+    }
+
+    return refs;
   }
 }

@@ -29,7 +29,7 @@ export class FeedbackService {
     const anonymous = input.anonymous ?? false;
     if (anonymous) {
       const allowed = (await this.settings.listAll())['feedback.allowAnonymous'];
-      if (allowed !== true) throw new BadRequestException('Anonymous feedback is not enabled');
+      if (allowed === false) throw new BadRequestException('Anonymous feedback is currently disabled');
     }
 
     const profile = anonymous ? null : await this.me.getProfile(ctx);

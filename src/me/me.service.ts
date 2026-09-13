@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import { ScopeService } from '../common/scope/scope.service';
 import { ClubsService } from '../clubs/clubs.service';
 import type { ClubSummaryDto } from '../clubs/clubs.transformer';
@@ -9,6 +9,7 @@ import { MeRepository } from './me.repository';
 import { buildCardId } from './member-card.util';
 import type { MemberProfileRow, MemberProfileUpdate } from './me.types';
 import type { UpdateMeInput } from './dto/update-me.dto';
+import { StorageService } from '../storage/storage.service';
 
 export type MemberCard = {
   memberId: string;
@@ -26,6 +27,8 @@ export class MeService {
     private readonly repo: MeRepository,
     private readonly scope: ScopeService,
     private readonly clubs: ClubsService,
+    @Inject(forwardRef(() => StorageService))
+    private readonly storage: StorageService,
   ) {}
 
   async getProfile(ctx: RequestContext): Promise<MemberProfileRow | null> {
@@ -40,6 +43,9 @@ export class MeService {
   async updateProfile(ctx: RequestContext, input: UpdateMeInput): Promise<MemberProfileRow> {
     const existing = await this.repo.findProfileByUserId(ctx.user.id);
     if (!existing) throw new NotFoundException('No member profile for this account');
+    if (input.photoUrl !== undefined && input.photoUrl !== existing.photoUrl && existing.photoUrl) {
+      await this.storage.purgeAssetByUrl(existing.photoUrl).catch(() => {});
+    }
     return this.repo.updateProfileByUserId(ctx.user.id, toProfileUpdate(input));
   }
 

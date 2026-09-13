@@ -38,6 +38,8 @@ export type EventDecorated = EventRow & {
   checkinCount?: number;
 };
 
+import { StorageService } from '../storage/storage.service';
+
 @Injectable()
 export class EventsAdminService {
   constructor(
@@ -45,6 +47,7 @@ export class EventsAdminService {
     private readonly scope: ScopeService,
     private readonly me: MeService,
     private readonly attendance: AttendanceRecomputeTrigger,
+    private readonly storage: StorageService,
   ) {}
 
   async list(
@@ -152,6 +155,18 @@ export class EventsAdminService {
     }
 
     const slug = input.slug ? await this.uniqueSlug(input.slug, existing.id) : undefined;
+
+    if (input.coverUrl !== undefined && input.coverUrl !== existing.coverUrl && existing.coverUrl) {
+      await this.storage.purgeAssetByUrl(existing.coverUrl).catch(() => {});
+    }
+    if (input.photos !== undefined && existing.photos && existing.photos.length > 0) {
+      const newPhotosSet = new Set(input.photos);
+      const removedPhotos = existing.photos.filter((p) => !newPhotosSet.has(p));
+      for (const p of removedPhotos) {
+        await this.storage.purgeAssetByUrl(p).catch(() => {});
+      }
+    }
+
     const updated = await this.repo.update(id, {
       title: input.title,
       slug,
@@ -183,6 +198,15 @@ export class EventsAdminService {
       if (!allowed) throw new NotFoundException();
     }
     await this.repo.remove(id);
+
+    if (existing.coverUrl) {
+      await this.storage.purgeAssetByUrl(existing.coverUrl).catch(() => {});
+    }
+    if (existing.photos && existing.photos.length > 0) {
+      for (const p of existing.photos) {
+        await this.storage.purgeAssetByUrl(p).catch(() => {});
+      }
+    }
   }
 
   async rsvp(

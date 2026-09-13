@@ -157,4 +157,48 @@ export class DrrBookingsRepository {
       },
     });
   }
+
+  async listBlocks(from?: Date, to?: Date) {
+    const where: Prisma.DrrBlockWhereInput = {};
+    if (from || to) {
+      where.startsAt = {
+        ...(from ? { gte: from } : {}),
+        ...(to ? { lte: to } : {}),
+      };
+    }
+    return this.prisma.drrBlock.findMany({
+      where,
+      orderBy: { startsAt: 'asc' },
+    });
+  }
+
+  async createBlock(data: { startsAt: Date; endsAt: Date; reason?: string | null; createdById: string }) {
+    return this.prisma.drrBlock.create({
+      data: {
+        startsAt: data.startsAt,
+        endsAt: data.endsAt,
+        reason: data.reason ?? null,
+        createdById: data.createdById,
+      },
+    });
+  }
+
+  async deleteBlock(id: string) {
+    await this.prisma.drrBlock.delete({ where: { id } });
+  }
+
+  async findConfirmedBookings(from?: Date, to?: Date) {
+    const where: Prisma.DrrBookingWhereInput = { status: 'confirmed' };
+    if (from || to) {
+      where.startsAt = {
+        ...(from ? { gte: from } : {}),
+        ...(to ? { lte: to } : {}),
+      };
+    }
+    return this.prisma.drrBooking.findMany({
+      where,
+      include: { club: { select: { id: true, name: true, shortName: true } } },
+      orderBy: { startsAt: 'asc' },
+    });
+  }
 }

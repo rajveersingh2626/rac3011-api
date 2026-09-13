@@ -111,11 +111,52 @@ export class UploadThingAdapter extends StoragePort {
   }
 
   async delete(fileId: string): Promise<void> {
-    const separator = fileId.indexOf(':');
-    if (separator === -1) throw new Error(`uploadthing storage: malformed file id ${fileId}`);
-    const tier = this.assertPublicTier(fileId.slice(0, separator) as StorageTier);
-    const key = fileId.slice(separator + 1);
-    await this.apiFor(tier).deleteFiles(key);
+    if (!fileId) return;
+
+    let key = fileId;
+    let explicitTier: PublicTier | null = null;
+
+    // Handle full URLs like https://hi0o78q25u.ufs.sh/f/<key> or https://utfs.io/f/<key>
+    if (key.includes('/f/')) {
+      const parts = key.split('/f/');
+      key = parts[1]?.split('?')[0] || key;
+    }
+
+    const separator = key.indexOf(':');
+    if (separator !== -1) {
+      const tierPrefix = key.slice(0, separator);
+      if (tierPrefix === 'permanent' || tierPrefix === 'dynamic') {
+        explicitTier = tierPrefix as PublicTier;
+        key = key.slice(separator + 1);
+      }
+    }
+
+    if (explicitTier) {
+      try {
+        await this.apiFor(explicitTier).deleteFiles(key);
+      } catch (err) {
+        // Log or suppress if already deleted
+      }
+      return;
+    }
+
+    // If no explicit tier, attempt deleting from both configured tiers
+    const promises: Promise<unknown>[] = [];
+    if (env.UPLOADTHING_TOKEN_PERMANENT) {
+      promises.push(
+        this.apiFor('permanent')
+          .deleteFiles(key)
+          .catch(() => {}),
+      );
+    }
+    if (env.UPLOADTHING_TOKEN_DYNAMIC) {
+      promises.push(
+        this.apiFor('dynamic')
+          .deleteFiles(key)
+          .catch(() => {}),
+      );
+    }
+    await Promise.all(promises);
   }
 
   private assertPublicTier(tier: StorageTier): PublicTier {

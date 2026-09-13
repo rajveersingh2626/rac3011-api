@@ -6,12 +6,14 @@ import type {
   CreateDistrictTeamMemberInput,
   UpdateDistrictTeamMemberInput,
 } from './dto/district-team-member.dto';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class LeadershipService {
   constructor(
     private readonly repo: LeadershipRepository,
     private readonly audit: AuditService,
+    private readonly storage: StorageService,
   ) {}
 
   currentTeam(): Promise<DistrictTeamRow[]> {
@@ -47,6 +49,9 @@ export class LeadershipService {
   ): Promise<DistrictTeamRow> {
     const before = await this.get(id);
     const row = await this.repo.update(id, input);
+    if (input.photoUrl !== undefined && input.photoUrl !== before.photoUrl && before.photoUrl) {
+      await this.storage.purgeAssetByUrl(before.photoUrl);
+    }
     await this.audit.record({
       actorId,
       action: 'district_team.updated',
@@ -61,6 +66,9 @@ export class LeadershipService {
   async remove(actorId: string, id: string): Promise<void> {
     const before = await this.get(id);
     await this.repo.delete(id);
+    if (before.photoUrl) {
+      await this.storage.purgeAssetByUrl(before.photoUrl);
+    }
     await this.audit.record({
       actorId,
       action: 'district_team.deleted',

@@ -4,8 +4,10 @@ import { DistrictTeamController } from './leadership.controller';
 import { LeadershipRepository } from './leadership.repository';
 import { LeadershipService } from './leadership.service';
 
+import { StorageModule } from '../storage/storage.module';
+
 @Module({
-  imports: [AuditModule],
+  imports: [AuditModule, StorageModule],
   controllers: [DistrictTeamController],
   providers: [LeadershipRepository, LeadershipService],
   exports: [LeadershipService],

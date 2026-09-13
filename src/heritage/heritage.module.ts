@@ -4,8 +4,10 @@ import { PastDrrsController } from './heritage.controller';
 import { HeritageRepository } from './heritage.repository';
 import { HeritageService } from './heritage.service';
 
+import { StorageModule } from '../storage/storage.module';
+
 @Module({
-  imports: [AuditModule],
+  imports: [AuditModule, StorageModule],
   controllers: [PastDrrsController],
   providers: [HeritageRepository, HeritageService],
   exports: [HeritageService],

@@ -45,7 +45,13 @@ class TieredStoragePort extends StoragePort {
   }
 
   delete(fileId: string): Promise<void> {
-    return fileId.includes(':') ? this.uploadThing.delete(fileId) : this.r2.delete(fileId);
+    const isUploadThing =
+      fileId.includes(':') ||
+      fileId.includes('/f/') ||
+      fileId.includes('ufs.sh') ||
+      fileId.includes('utfs.io') ||
+      fileId.startsWith('dhfz');
+    return isUploadThing ? this.uploadThing.delete(fileId) : this.r2.delete(fileId);
   }
 
   override async handleUpload(

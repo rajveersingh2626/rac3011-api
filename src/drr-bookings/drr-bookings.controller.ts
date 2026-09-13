@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequirePermission } from '../common/decorators/access.decorators';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { paginate, parseListQuery } from '../common/query/list-query';
 import type { RequestContext } from '../common/types/access';
 import { DecideDrrBookingDto } from './dto/decide-drr-booking.dto';
+import { CreateDrrBlockDto } from './dto/create-drr-block.dto';
 import { DrrBookingsService } from './drr-bookings.service';
 import { drrBookingAdminDto } from './drr-bookings.transformer';
 import type { BookingStatus } from './drr-bookings.types';
@@ -54,5 +55,33 @@ export class DrrBookingsController {
     @Body() dto: DecideDrrBookingDto,
   ) {
     return drrBookingAdminDto(await this.service.decide(ctx, id, dto));
+  }
+
+  @Get('blocks/all')
+  @RequirePermission('drr_calendar:manage')
+  async listBlocks(@Query('from') fromStr?: string, @Query('to') toStr?: string) {
+    const from = parseDateFilter(fromStr);
+    const to = parseDateFilter(toStr);
+    const items = await this.service.listBlocks(from, to);
+    return { items };
+  }
+
+  @Post('blocks')
+  @RequirePermission('drr_calendar:manage')
+  async createBlock(
+    @CurrentUser() ctx: RequestContext,
+    @Body() dto: CreateDrrBlockDto,
+  ) {
+    return this.service.createBlock(ctx.user.id, dto);
+  }
+
+  @Delete('blocks/:id')
+  @RequirePermission('drr_calendar:manage')
+  async deleteBlock(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+  ) {
+    await this.service.deleteBlock(ctx.user.id, id);
+    return { success: true };
   }
 }

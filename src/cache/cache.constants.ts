@@ -20,6 +20,7 @@ export const CACHE_TAGS = [
   'ride',
   'careerbridge',
   'rcl',
+  'drr-calendar',
 ] as const;
 
 export type CacheTag = (typeof CACHE_TAGS)[number];

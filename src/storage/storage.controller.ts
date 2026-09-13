@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   Param,
@@ -67,6 +68,15 @@ export class StorageController {
     res.setHeader('Content-Type', file.mimeType);
     res.setHeader('Content-Disposition', `inline; filename="${file.name}"`);
     file.stream.pipe(res);
+  }
+
+  @Post('files/cleanup-orphans')
+  @Authenticated()
+  async cleanupOrphans(@CurrentUser() ctx: RequestContext) {
+    if (!ctx.access.isSuperAdmin) {
+      throw new ForbiddenException('Only super admins can run orphan file cleanup');
+    }
+    return this.storage.cleanOrphanFiles();
   }
 
   @Delete('files/:id')

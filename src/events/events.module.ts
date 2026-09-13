@@ -12,10 +12,13 @@ import { EventsAdminService } from './events-admin.service';
 import { EventsRepository } from './events.repository';
 import { EventsService } from './events.service';
 
+import { StorageModule } from '../storage/storage.module';
+
 @Module({
   imports: [
     MeModule,
     PointsModule,
+    StorageModule,
     BullModule.forRoot(bullRootOptions()),
     BullModule.registerQueue({ name: ATTENDANCE_RECOMPUTE_QUEUE }),
   ],

@@ -172,6 +172,67 @@ export class DrrBookingsService {
     throw new InternalServerErrorException('Could not allocate a booking reference');
   }
 
+  async listBlocks(from?: Date, to?: Date) {
+    return this.repo.listBlocks(from, to);
+  }
+
+  async createBlock(actorId: string, input: { startsAt: string; endsAt: string; reason?: string }) {
+    const startsAt = new Date(input.startsAt);
+    const endsAt = new Date(input.endsAt);
+    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+      throw new BadRequestException('Invalid date format');
+    }
+    const block = await this.repo.createBlock({
+      startsAt,
+      endsAt,
+      reason: input.reason,
+      createdById: actorId,
+    });
+    await this.audit.record({
+      actorId,
+      action: 'drr_calendar.block_created',
+      resourceType: 'drr_block',
+      resourceId: block.id,
+      after: block,
+    });
+    return block;
+  }
+
+  async deleteBlock(actorId: string, id: string) {
+    await this.repo.deleteBlock(id);
+    await this.audit.record({
+      actorId,
+      action: 'drr_calendar.block_deleted',
+      resourceType: 'drr_block',
+      resourceId: id,
+    });
+  }
+
+  async getPublicCalendar(from?: Date, to?: Date) {
+    const [confirmed, blocks] = await Promise.all([
+      this.repo.findConfirmedBookings(from, to),
+      this.repo.listBlocks(from, to),
+    ]);
+
+    return {
+      dailyCapacity: 2, // Default max 2 official visits per day
+      confirmed: confirmed.map((c) => ({
+        id: c.id,
+        reference: c.reference,
+        purpose: c.purpose,
+        clubName: c.club?.shortName || c.club?.name || 'Rotaract Club',
+        startsAt: c.startsAt,
+        endsAt: c.endsAt,
+      })),
+      blocks: blocks.map((b) => ({
+        id: b.id,
+        startsAt: b.startsAt,
+        endsAt: b.endsAt,
+        reason: b.reason || 'Blocked',
+      })),
+    };
+  }
+
   private async notifyOfficers(row: DrrBookingRow): Promise<void> {
     const officers = await this.repo.findOfficers(OFFICER_PERMISSION);
     if (officers.length === 0) {

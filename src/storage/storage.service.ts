@@ -166,7 +166,15 @@ export class StorageService {
       return;
     }
 
-    // 2. Local static asset (/showcase_images/<name>)
+    // 2. Direct UploadThing URL or key not in DB
+    if (urlOrPath.includes('/f/') || urlOrPath.startsWith('permanent:') || urlOrPath.startsWith('dynamic:')) {
+      try {
+        await this.port.delete(urlOrPath);
+      } catch {}
+      return;
+    }
+
+    // 3. Local static asset (/showcase_images/<name>)
     if (urlOrPath.startsWith('/showcase_images/')) {
       const filename = urlOrPath.split('/').pop();
       if (filename) {
@@ -184,6 +192,37 @@ export class StorageService {
         }
       }
     }
+  }
+
+  async cleanOrphanFiles(): Promise<{ deletedCount: number; expiredGrantsCleaned: number; deletedIds: string[] }> {
+    const activeRefs = await this.repo.getAllReferencedUrls();
+    // Safety grace period: only delete files uploaded more than 1 hour ago
+    const cutoff = new Date(Date.now() - 60 * 60 * 1000);
+    const candidateFiles = await this.repo.findStoredFilesOlderThan(cutoff);
+
+    const deletedIds: string[] = [];
+    for (const file of candidateFiles) {
+      const isReferenced =
+        (file.url && activeRefs.has(file.url)) ||
+        (file.providerKey && activeRefs.has(file.providerKey)) ||
+        activeRefs.has(file.id);
+
+      if (!isReferenced) {
+        try {
+          await this.port.delete(file.id);
+        } catch {}
+        await this.repo.deleteFile(file.id);
+        deletedIds.push(file.id);
+      }
+    }
+
+    const expiredGrantsCleaned = await this.repo.cleanExpiredGrants(cutoff);
+
+    return {
+      deletedCount: deletedIds.length,
+      expiredGrantsCleaned,
+      deletedIds,
+    };
   }
 
   private providerNameFor(tier: 'permanent' | 'dynamic' | 'private'): string {

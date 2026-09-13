@@ -31,12 +31,18 @@ export class EnquiriesService {
     if (input.website) return { honeypot: true };
     const routing = await this.content.setting<RoutingTable>('enquiry_routing', FALLBACK_ROUTING);
     const target = routing[input.kind] ?? FALLBACK_ROUTING[input.kind];
+
+    const name = input.anonymous ? 'Anonymous' : input.name || 'Anonymous';
+    const email = input.anonymous ? 'anonymous@rotaract3011.org' : input.email || 'anonymous@rotaract3011.org';
+    const phone = input.anonymous ? undefined : input.phone ?? undefined;
+    const organisation = input.anonymous ? undefined : input.organisation ?? undefined;
+
     const { id } = await this.repo.create({
       kind: input.kind,
-      name: input.name,
-      email: input.email,
-      phone: input.phone,
-      organisation: input.organisation,
+      name,
+      email,
+      phone,
+      organisation,
       message: input.message,
       payload: input.payload,
       routedTo: target.email || 'unrouted',
@@ -45,7 +51,7 @@ export class EnquiriesService {
       await this.notifications.notify({
         template: 'enquiry-received',
         to: [{ email: target.email }],
-        data: { kind: input.kind, name: input.name, email: input.email, message: input.message },
+        data: { kind: input.kind, name, email, message: input.message },
       });
     }
     return { id, routedToName: target.name };

@@ -4,12 +4,14 @@ import { CodedConflictException } from '../common/errors/conflict.error';
 import { HeritageRepository } from './heritage.repository';
 import type { PastDrrRow } from './heritage.types';
 import type { CreatePastDrrInput, UpdatePastDrrInput } from './dto/past-drr.dto';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class HeritageService {
   constructor(
     private readonly repo: HeritageRepository,
     private readonly audit: AuditService,
+    private readonly storage: StorageService,
   ) {}
 
   list(): Promise<PastDrrRow[]> {
@@ -49,6 +51,9 @@ export class HeritageService {
       throw new CodedConflictException('ALREADY_EXISTS', 'A past DRR with this slug exists');
     }
     const row = await this.repo.update(id, input);
+    if (input.photoUrl !== undefined && input.photoUrl !== before.photoUrl && before.photoUrl) {
+      await this.storage.purgeAssetByUrl(before.photoUrl);
+    }
     await this.audit.record({
       actorId,
       action: 'past_drr.updated',
@@ -63,6 +68,9 @@ export class HeritageService {
   async remove(actorId: string, id: string): Promise<void> {
     const before = await this.get(id);
     await this.repo.delete(id);
+    if (before.photoUrl) {
+      await this.storage.purgeAssetByUrl(before.photoUrl);
+    }
     await this.audit.record({
       actorId,
       action: 'past_drr.deleted',
