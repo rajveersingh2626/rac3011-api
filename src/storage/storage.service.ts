@@ -14,7 +14,7 @@ import { CodedConflictException } from '../common/errors/conflict.error';
 import { assertUploadAllowed } from './mime';
 import type { StoredFileRecord } from './storage.repository';
 import { StorageRepository } from './storage.repository';
-import type { StoredFile } from './storage.port';
+import type { StoredFile, UploadedBinaryFile } from './storage.port';
 import { StoragePort } from './storage.port';
 import type { UploadTarget } from './upload-targets';
 import { resolveUploadTarget } from './upload-targets';
@@ -74,7 +74,7 @@ export class StorageService {
 
   async handleDirectUpload(
     grantId: string,
-    file?: Express.Multer.File,
+    file?: UploadedBinaryFile,
   ): Promise<{ ok: boolean; key: string; url: string }> {
     if (!file || !file.buffer) {
       throw new BadRequestException('No file uploaded');

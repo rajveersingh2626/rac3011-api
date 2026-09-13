@@ -41,7 +41,7 @@ export class UploadThingAdapter extends StoragePort {
     });
   }
 
-  async handleUpload(
+  override async handleUpload(
     grantId: string,
     file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
     tierHint?: StorageTier,
@@ -49,7 +49,7 @@ export class UploadThingAdapter extends StoragePort {
     const grant = this.pending.get(grantId);
     const tier = grant?.tier ?? (tierHint && tierHint !== 'private' ? tierHint : 'permanent');
     const filename = file.originalname || 'upload.webp';
-    const utFile = new UTFile([file.buffer], filename, { type: file.mimetype });
+    const utFile = new UTFile([new Uint8Array(file.buffer)], filename, { type: file.mimetype });
 
     const res = await this.apiFor(tier).uploadFiles(utFile);
     if (res.error) {

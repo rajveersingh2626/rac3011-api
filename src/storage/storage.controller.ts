@@ -19,6 +19,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { RequestContext } from '../common/types/access';
 import { CreateGrantDto, FinaliseGrantDto } from './dto/create-grant.dto';
 import { StorageService } from './storage.service';
+import type { UploadedBinaryFile } from './storage.port';
 
 @ApiTags('files')
 @Controller()
@@ -35,7 +36,7 @@ export class StorageController {
   @UseInterceptors(FileInterceptor('file'))
   uploadDirect(
     @Param('grantId') grantId: string,
-    @UploadedFile() file?: Express.Multer.File,
+    @UploadedFile() file?: UploadedBinaryFile,
   ) {
     return this.storage.handleDirectUpload(grantId, file);
   }

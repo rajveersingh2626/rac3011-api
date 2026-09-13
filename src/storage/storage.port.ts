@@ -10,6 +10,13 @@ export interface StoredFile {
   size: number;
 }
 
+export type UploadedBinaryFile = {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
+  size: number;
+};
+
 export abstract class StoragePort {
   abstract createUploadGrant(input: {
     tier: StorageTier;
@@ -26,7 +33,7 @@ export abstract class StoragePort {
   abstract delete(fileId: string): Promise<void>;
   handleUpload?(
     grantId: string,
-    file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+    file: UploadedBinaryFile,
     tier?: StorageTier,
   ): Promise<{ key: string; url: string }>;
 }

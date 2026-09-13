@@ -36,7 +36,7 @@ export class StubStorageAdapter extends StoragePort {
     });
   }
 
-  handleUpload(
+  override handleUpload(
     grantId: string,
     file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
   ): Promise<{ key: string; url: string }> {

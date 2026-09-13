@@ -47,7 +47,7 @@ class TieredStoragePort extends StoragePort {
     return fileId.includes(':') ? this.uploadThing.delete(fileId) : this.r2.delete(fileId);
   }
 
-  async handleUpload(
+  override async handleUpload(
     grantId: string,
     file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
     tierHint?: StorageTier,
