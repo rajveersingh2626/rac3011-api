@@ -35,7 +35,10 @@ export class HttpErrorFilter implements ExceptionFilter {
         zodError instanceof ZodError
           ? zodError.issues.map((i) => ({ path: i.path.map(String).join('.'), message: i.message }))
           : [];
-      return { statusCode: 400, error: 'ValidationError', details };
+      const message = details.length
+        ? details.map((d) => (d.path ? `${d.path}: ${d.message}` : d.message)).join('; ')
+        : 'Validation failed';
+      return { statusCode: 400, error: 'ValidationError', message, details };
     }
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
