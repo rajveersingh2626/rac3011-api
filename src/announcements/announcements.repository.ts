@@ -65,15 +65,26 @@ export class AnnouncementsRepository {
           zoneIds?: string[];
           clubIds?: string[];
           memberIds?: string[];
+          userIds?: string[];
         };
 
         const hasRoles = (aud.roleKeys?.length ?? 0) > 0;
         const hasZones = (aud.zoneIds?.length ?? 0) > 0;
         const hasClubs = (aud.clubIds?.length ?? 0) > 0;
         const hasMembers = (aud.memberIds?.length ?? 0) > 0;
+        const hasUserIds = (aud.userIds?.length ?? 0) > 0;
+
+        // User ID targeted announcement (e.g. Access Grant)
+        // Only visible to ALL super admins and the specific ID that received access
+        if (hasUserIds) {
+          const isTargetedUser = aud.userIds!.includes(userId);
+          const isSuperAdmin = userRoleKeys.has('super_admin') || userRoleKeys.has('district_admin');
+          if (isTargetedUser || isSuperAdmin) return true;
+          return false;
+        }
 
         // Global broadcast
-        if (!hasRoles && !hasZones && !hasClubs && !hasMembers) return true;
+        if (!hasRoles && !hasZones && !hasClubs && !hasMembers && !hasUserIds) return true;
 
         // Explicit member target
         if (hasMembers && memberId && aud.memberIds!.includes(memberId)) return true;

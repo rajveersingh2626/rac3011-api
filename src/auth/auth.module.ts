@@ -25,7 +25,16 @@ import { TrustedDevicesService } from './trusted-devices.service';
             notifications.notify({ template: 'otp', to: [{ email }], data: { otp, type } }),
           sendResetPasswordEmail: async ({ email, name, token, url }) => {
             const webOrigin = env.WEB_ORIGINS[0] || 'https://rotaract3011.org';
-            const resetUrl = url || `${webOrigin}/portal/reset-password?token=${encodeURIComponent(token)}`;
+            let resolvedToken = token;
+            if (!resolvedToken && url) {
+              try {
+                const parsed = new URL(url);
+                resolvedToken = parsed.searchParams.get('token') || '';
+              } catch {
+                resolvedToken = '';
+              }
+            }
+            const resetUrl = `${webOrigin}/portal/reset-password?token=${encodeURIComponent(resolvedToken)}`;
             console.log(`[AUTH] Dispatching password reset email to: ${email}, URL: ${resetUrl}`);
             try {
               await notifications.notify({

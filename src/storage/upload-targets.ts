@@ -45,6 +45,11 @@ export const UPLOAD_TARGETS = {
   },
   content_block: { tier: 'permanent', permissions: PUBLIC_CONTENT, ownership: 'district' },
   resource_document: { tier: 'private', permissions: ['resources:manage'], ownership: 'district' },
+  report_activity_photo: {
+    tier: 'dynamic',
+    permissions: ['reports:submit', 'reports:review'],
+    ownership: 'own_club',
+  },
 } as const satisfies Record<string, UploadTarget>;
 
 export type UploadResourceType = keyof typeof UPLOAD_TARGETS;

@@ -7,6 +7,7 @@ export type AnnouncementAudience = {
   zoneIds?: string[];
   clubIds?: string[];
   memberIds?: string[];
+  userIds?: string[];
 };
 
 export type AnnouncementRow = {
