@@ -14,7 +14,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
-import { Authenticated } from '../common/decorators/access.decorators';
+import { Authenticated, Public } from '../common/decorators/access.decorators';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { RequestContext } from '../common/types/access';
 import { CreateGrantDto, FinaliseGrantDto } from './dto/create-grant.dto';
@@ -33,6 +33,7 @@ export class StorageController {
   }
 
   @Post('files/upload/:grantId')
+  @Public()
   @UseInterceptors(FileInterceptor('file'))
   uploadDirect(
     @Param('grantId') grantId: string,
