@@ -55,6 +55,14 @@ export type CreateFileInput = Omit<StoredFileRecord, never>;
 export class StorageRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findProfileIdForUser(userId: string): Promise<string | null> {
+    const row = await this.prisma.memberProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    return row?.id ?? null;
+  }
+
   async createGrant(input: CreateGrantInput): Promise<void> {
     await this.prisma.uploadGrant.create({
       data: {

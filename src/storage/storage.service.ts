@@ -259,7 +259,7 @@ export class StorageService {
     if (target.ownership === 'own_member_row') {
       if (!resourceId)
         throw new BadRequestException('resourceId is required for this resourceType');
-      const ownProfileId = await this.me.findProfileIdForUser(ctx.user.id);
+      const ownProfileId = await this.repo.findProfileIdForUser(ctx.user.id);
       if (ownProfileId !== resourceId) throw new ForbiddenException();
     }
   }
@@ -293,7 +293,7 @@ export class StorageService {
       return;
     }
     if (target.ownership === 'own_member_row') {
-      const ownProfileId = await this.me.findProfileIdForUser(ctx.user.id);
+      const ownProfileId = await this.repo.findProfileIdForUser(ctx.user.id);
       if (!resourceId || ownProfileId !== resourceId) throw new NotFoundException();
     }
   }
