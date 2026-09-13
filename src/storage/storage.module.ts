@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Injectable, Module } from '@nestjs/common';
 import { MeModule } from '../me/me.module';
 import { env } from '../config/env';
 import { R2Adapter } from './adapters/r2.adapter';
@@ -12,6 +12,7 @@ import { StoragePort } from './storage.port';
 
 // STORAGE_DRIVER=stub is the default: this dev network blocks TLS to *.r2.cloudflarestorage.com,
 // so live UploadThing/R2 adapters are only exercised via STORAGE_DRIVER=live on the VPS.
+@Injectable()
 class TieredStoragePort extends StoragePort {
   private readonly grantTiers = new Map<string, StorageTier>();
 
