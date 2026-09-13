@@ -58,6 +58,7 @@ model Club {
   rclTeams               RclTeam[]
   rideSupportClubs       RideSupportClub[]
   rideDelegationHosts    RideDelegationHost[]
+  pastDrrs               PastDrr[]
 
   @@index([email], map: "idx_clubs_email")
   @@index([rotaryId], map: "idx_clubs_rotary_id")

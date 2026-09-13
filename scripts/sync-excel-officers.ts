@@ -140,7 +140,7 @@ async function findClub(name: string) {
 }
 
 export async function syncExcelOfficers() {
-  console.log('🔄 Starting District 3011 Excel synchronization...');
+  console.log('[SYNC] Starting District 3011 Excel synchronization...');
   const dataDir = join(__dirname, '..', 'data');
   const presPath = join(dataDir, 'President Database 2026-27.xlsx');
   const secPath = join(dataDir, 'Secretary Database 2026-27.xlsx');
@@ -232,7 +232,7 @@ export async function syncExcelOfficers() {
     }
   }
 
-  console.log(`✅ Synchronization completed!`);
+  console.log(`[SYNC COMPLETED] Synchronization completed!`);
   console.log(`- Updated ${updatedPresidents} club presidents.`);
   console.log(`- Updated ${updatedSecretaries} club secretaries.`);
 }

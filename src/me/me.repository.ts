@@ -48,7 +48,15 @@ export class MeRepository {
       });
     }
     const updated = await this.prisma.memberProfile.update({ where: { userId }, data, select: PROFILE_SELECT });
-    if (data.photoUrl !== undefined) {
+
+    // Sync to District Team Members (DAC)
+    const teamUpdateData: Prisma.DistrictTeamMemberUpdateInput = {};
+    if (data.photoUrl !== undefined) teamUpdateData.photoUrl = data.photoUrl;
+    if (data.fullName) teamUpdateData.name = data.fullName;
+    if (data.phone !== undefined) teamUpdateData.phone = data.phone;
+    if (data.bio !== undefined) teamUpdateData.bio = data.bio;
+
+    if (Object.keys(teamUpdateData).length > 0) {
       await this.prisma.districtTeamMember.updateMany({
         where: {
           OR: [
@@ -56,9 +64,31 @@ export class MeRepository {
             { email: { equals: updated.email, mode: 'insensitive' } },
           ],
         },
-        data: { photoUrl: data.photoUrl },
+        data: teamUpdateData,
       });
     }
+
+    // Sync to Past DRRs
+    if (data.photoUrl !== undefined || data.fullName || data.bio !== undefined) {
+      const pastDrrUpdateData: Prisma.PastDrrUpdateInput = {};
+      if (data.photoUrl !== undefined) pastDrrUpdateData.photoUrl = data.photoUrl;
+      if (data.fullName) pastDrrUpdateData.name = data.fullName;
+      if (data.bio !== undefined) pastDrrUpdateData.bio = data.bio;
+
+      if (Object.keys(pastDrrUpdateData).length > 0 && updated.fullName) {
+        const cleanName = updated.fullName.replace(/^(Rtn\.?\s*|Rtr\.?\s*|PDRR\s*|DRR\s*)+/gi, '').trim();
+        await this.prisma.pastDrr.updateMany({
+          where: {
+            OR: [
+              { name: { contains: cleanName, mode: 'insensitive' } },
+              { slug: { contains: cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-'), mode: 'insensitive' } },
+            ],
+          },
+          data: pastDrrUpdateData,
+        });
+      }
+    }
+
     return updated;
   }
 

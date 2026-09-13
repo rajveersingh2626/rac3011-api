@@ -84,8 +84,8 @@ export class LeadershipRepository {
     });
   }
 
-  update(id: string, input: DistrictTeamMemberWrite): Promise<DistrictTeamRow> {
-    return this.prisma.districtTeamMember.update({
+  async update(id: string, input: DistrictTeamMemberWrite): Promise<DistrictTeamRow> {
+    const updated = await this.prisma.districtTeamMember.update({
       where: { id },
       data: {
         ...(input.memberId !== undefined ? { memberId: input.memberId } : {}),
@@ -101,6 +101,46 @@ export class LeadershipRepository {
       },
       select: SELECT,
     });
+
+    // If member has a linked user account, keep their profile in sync
+    if (updated.email || updated.id) {
+      const email = updated.email ? updated.email.trim().toLowerCase() : undefined;
+      if (input.photoUrl !== undefined || input.name || input.phone !== undefined || input.bio !== undefined) {
+        const memberProfile = await this.prisma.memberProfile.findFirst({
+          where: {
+            OR: [
+              ...(updated.id ? [{ id: updated.id }] : []),
+              ...(email ? [{ email: { equals: email, mode: 'insensitive' as Prisma.QueryMode } }] : []),
+            ],
+          },
+          select: { id: true, userId: true },
+        });
+
+        if (memberProfile) {
+          await this.prisma.memberProfile.update({
+            where: { id: memberProfile.id },
+            data: {
+              ...(input.photoUrl !== undefined ? { photoUrl: input.photoUrl } : {}),
+              ...(input.name ? { fullName: input.name } : {}),
+              ...(input.phone !== undefined ? { phone: input.phone } : {}),
+              ...(input.bio !== undefined ? { bio: input.bio } : {}),
+            },
+          });
+
+          if (input.photoUrl !== undefined || input.name) {
+            await this.prisma.user.update({
+              where: { id: memberProfile.userId },
+              data: {
+                ...(input.photoUrl !== undefined ? { image: input.photoUrl } : {}),
+                ...(input.name ? { name: input.name } : {}),
+              },
+            });
+          }
+        }
+      }
+    }
+
+    return updated;
   }
 
   async delete(id: string): Promise<void> {

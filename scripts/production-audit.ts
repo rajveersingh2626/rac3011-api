@@ -14,8 +14,8 @@ const results: AuditResult[] = [];
 
 function record(category: string, check: string, status: 'PASS' | 'FAIL' | 'WARN', details: string) {
   results.push({ category, check, status, details });
-  const icon = status === 'PASS' ? '✅' : status === 'WARN' ? '⚠️' : '❌';
-  console.log(`${icon} [${category}] ${check}: ${details}`);
+  const marker = status === 'PASS' ? '[PASS]' : status === 'WARN' ? '[WARN]' : '[FAIL]';
+  console.log(`${marker} [${category}] ${check}: ${details}`);
 }
 
 async function runAudit() {
@@ -240,13 +240,13 @@ async function runAudit() {
   const passes = results.filter((r) => r.status === 'PASS').length;
   const warns = results.filter((r) => r.status === 'WARN').length;
   const fails = results.filter((r) => r.status === 'FAIL').length;
-  console.log(`Total Checks: ${results.length} | ✅ PASS: ${passes} | ⚠️ WARN: ${warns} | ❌ FAIL: ${fails}\n`);
+  console.log(`Total Checks: ${results.length} | PASS: ${passes} | WARN: ${warns} | FAIL: ${fails}\n`);
 
   if (fails > 0) {
-    console.error('❌ Audit encountered failures that must be addressed prior to launch!');
+    console.error('[AUDIT FAILED] Audit encountered failures that must be addressed prior to launch!');
     process.exit(1);
   } else {
-    console.log('🎉 All systems, data models, RBAC policies, and API endpoints verified healthy for production launch!');
+    console.log('[AUDIT PASSED] All systems, data models, RBAC policies, and API endpoints verified healthy for production launch!');
   }
 }
 

@@ -63,6 +63,7 @@ model PastDrr {
   slug          String   @unique
   terms         String[]
   homeClubId    String?  @map("home_club_id")
+  homeClub      Club?    @relation(fields: [homeClubId], references: [id])
   photoUrl      String?  @map("photo_url")
   bio           String?
   order         Int
@@ -70,6 +71,7 @@ model PastDrr {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
+  @@index([homeClubId])
   @@map("past_drrs")
 }
 
