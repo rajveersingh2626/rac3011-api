@@ -23,6 +23,7 @@ export const TAG_URL_MAP: Partial<Record<CacheTag, string[]>> = {
   careerbridge: ['/public/careerbridge/listings'],
   ride: ['/public/ride/incoming', '/public/ride/gallery', '/public/ride/dashboard'],
   rcl: ['/public/rcl/standings', '/public/rcl/fixtures'],
+  'drr-calendar': ['/public/drr-calendar'],
 };
 
 export function urlsForTags(tags: CacheTag[]): string[] {

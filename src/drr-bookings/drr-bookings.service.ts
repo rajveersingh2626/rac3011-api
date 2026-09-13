@@ -14,6 +14,7 @@ import { buildBookingReference } from './booking-reference.util';
 import type { CreateDrrBookingInput } from './dto/create-drr-booking.dto';
 import type { DecideDrrBookingInput } from './dto/decide-drr-booking.dto';
 import { DrrBookingsRepository } from './drr-bookings.repository';
+import { CacheInvalidator } from '../cache/cache-invalidator.service';
 import {
   DuplicateBookingReferenceError,
   type DrrBookingListFilter,
@@ -32,6 +33,7 @@ export class DrrBookingsService {
     private readonly notifications: NotificationPort,
     private readonly audit: AuditService,
     private readonly scope: ScopeService,
+    private readonly cache: CacheInvalidator,
   ) {}
 
   async submit(
@@ -110,6 +112,12 @@ export class DrrBookingsService {
       } catch (err) {
         this.logger.error(`failed to sync booking ${row.reference} to events calendar: ${(err as Error).message}`);
       }
+    } else if (input.status === 'declined' && before.status === 'confirmed') {
+      try {
+        await this.repo.removeCalendarEvent(row.reference);
+      } catch (err) {
+        this.logger.error(`failed to remove booking ${row.reference} from events calendar: ${(err as Error).message}`);
+      }
     }
 
     // The decision is already committed and audited; a queue outage must not 500 the officer.
@@ -128,6 +136,12 @@ export class DrrBookingsService {
       this.logger.error(
         `booking ${row.reference} decided but requester notification failed: ${(err as Error).message}`,
       );
+    }
+
+    try {
+      await this.cache.purge(['drr-calendar', 'events']);
+    } catch (err) {
+      this.logger.warn(`failed to purge cache after booking decision: ${(err as Error).message}`);
     }
 
     return row;
@@ -173,21 +187,48 @@ export class DrrBookingsService {
   }
 
   async listBlocks(from?: Date, to?: Date) {
-    return this.repo.listBlocks(from, to);
+    const rows = await this.repo.listBlocks(from, to);
+    return rows.map((b) => ({
+      id: b.id,
+      date: b.startsAt.toISOString().split('T')[0],
+      startsAt: b.startsAt.toISOString(),
+      endsAt: b.endsAt.toISOString(),
+      reason: b.reason ?? null,
+      createdById: b.createdById,
+      createdAt: b.createdAt.toISOString(),
+      updatedAt: b.updatedAt.toISOString(),
+    }));
   }
 
-  async createBlock(actorId: string, input: { startsAt: string; endsAt: string; reason?: string }) {
-    const startsAt = new Date(input.startsAt);
-    const endsAt = new Date(input.endsAt);
+  async createBlock(
+    actorId: string,
+    input: { date?: string; startsAt?: string; endsAt?: string; reason?: string },
+  ) {
+    let startsAt: Date;
+    let endsAt: Date;
+
+    if (input.date) {
+      const dateStr = input.date.trim();
+      startsAt = new Date(`${dateStr}T00:00:00.000Z`);
+      endsAt = new Date(`${dateStr}T23:59:59.999Z`);
+    } else if (input.startsAt && input.endsAt) {
+      startsAt = new Date(input.startsAt);
+      endsAt = new Date(input.endsAt);
+    } else {
+      throw new BadRequestException('Either date or startsAt/endsAt is required');
+    }
+
     if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
       throw new BadRequestException('Invalid date format');
     }
+
     const block = await this.repo.createBlock({
       startsAt,
       endsAt,
       reason: input.reason,
       createdById: actorId,
     });
+
     await this.audit.record({
       actorId,
       action: 'drr_calendar.block_created',
@@ -195,7 +236,23 @@ export class DrrBookingsService {
       resourceId: block.id,
       after: block,
     });
-    return block;
+
+    try {
+      await this.cache.purge(['drr-calendar']);
+    } catch (err) {
+      this.logger.warn(`failed to purge cache after block creation: ${(err as Error).message}`);
+    }
+
+    return {
+      id: block.id,
+      date: block.startsAt.toISOString().split('T')[0],
+      startsAt: block.startsAt.toISOString(),
+      endsAt: block.endsAt.toISOString(),
+      reason: block.reason ?? null,
+      createdById: block.createdById,
+      createdAt: block.createdAt.toISOString(),
+      updatedAt: block.updatedAt.toISOString(),
+    };
   }
 
   async deleteBlock(actorId: string, id: string) {
@@ -206,28 +263,87 @@ export class DrrBookingsService {
       resourceType: 'drr_block',
       resourceId: id,
     });
+    try {
+      await this.cache.purge(['drr-calendar']);
+    } catch (err) {
+      this.logger.warn(`failed to purge cache after block deletion: ${(err as Error).message}`);
+    }
   }
 
   async getPublicCalendar(from?: Date, to?: Date) {
+    const defaultFrom = from ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const defaultTo = to ?? new Date(new Date().getFullYear(), new Date().getMonth() + 2, 0);
+
     const [confirmed, blocks] = await Promise.all([
-      this.repo.findConfirmedBookings(from, to),
-      this.repo.listBlocks(from, to),
+      this.repo.findConfirmedBookings(defaultFrom, defaultTo),
+      this.repo.listBlocks(defaultFrom, defaultTo),
     ]);
 
+    const capacityPerDay = 2;
+    const confirmedCountByDate: Record<string, number> = {};
+    for (const c of confirmed) {
+      const dateKey = c.startsAt.toISOString().split('T')[0];
+      confirmedCountByDate[dateKey] = (confirmedCountByDate[dateKey] ?? 0) + 1;
+    }
+
+    const blockedDatesMap: Record<string, string | undefined> = {};
+    const blockedDatesList: { date: string; reason?: string | null }[] = [];
+    for (const b of blocks) {
+      const dateKey = b.startsAt.toISOString().split('T')[0];
+      blockedDatesMap[dateKey] = b.reason ?? undefined;
+      blockedDatesList.push({ date: dateKey, reason: b.reason ?? null });
+    }
+
+    const confirmedDatesList = Object.entries(confirmedCountByDate).map(([date, count]) => ({
+      date,
+      count,
+    }));
+
+    // Build dayStatus map across all relevant dates
+    const dayStatus: Record<
+      string,
+      { blocked: boolean; reason?: string; bookedCount: number; slotsRemaining: number }
+    > = {};
+
+    const allDateKeys = new Set([
+      ...Object.keys(confirmedCountByDate),
+      ...Object.keys(blockedDatesMap),
+    ]);
+
+    for (const dateKey of allDateKeys) {
+      const isBlocked = blockedDatesMap[dateKey] !== undefined;
+      const bookedCount = confirmedCountByDate[dateKey] ?? 0;
+      const slotsRemaining = isBlocked ? 0 : Math.max(0, capacityPerDay - bookedCount);
+
+      dayStatus[dateKey] = {
+        blocked: isBlocked,
+        reason: blockedDatesMap[dateKey],
+        bookedCount,
+        slotsRemaining,
+      };
+    }
+
     return {
-      dailyCapacity: 2, // Default max 2 official visits per day
+      capacityPerDay,
+      dailyCapacity: capacityPerDay,
+      from: defaultFrom.toISOString(),
+      to: defaultTo.toISOString(),
+      blockedDates: blockedDatesList,
+      confirmedDates: confirmedDatesList,
+      dayStatus,
       confirmed: confirmed.map((c) => ({
         id: c.id,
         reference: c.reference,
         purpose: c.purpose,
         clubName: c.club?.shortName || c.club?.name || 'Rotaract Club',
-        startsAt: c.startsAt,
-        endsAt: c.endsAt,
+        startsAt: c.startsAt.toISOString(),
+        endsAt: c.endsAt.toISOString(),
       })),
       blocks: blocks.map((b) => ({
         id: b.id,
-        startsAt: b.startsAt,
-        endsAt: b.endsAt,
+        date: b.startsAt.toISOString().split('T')[0],
+        startsAt: b.startsAt.toISOString(),
+        endsAt: b.endsAt.toISOString(),
         reason: b.reason || 'Blocked',
       })),
     };

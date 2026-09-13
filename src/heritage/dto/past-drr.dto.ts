@@ -1,6 +1,9 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
+const emptyToNull = (val: unknown) =>
+  typeof val === 'string' && val.trim() === '' ? null : val;
+
 export const createPastDrrSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
@@ -11,9 +14,9 @@ export const createPastDrrSchema = z
       .max(200)
       .regex(/^[a-z0-9-]+$/, 'Expected a lowercase, hyphenated slug'),
     terms: z.array(z.string().trim().min(1)).min(1),
-    homeClubId: z.string().trim().min(1).nullable().optional(),
-    photoUrl: z.string().url().max(1024).nullable().optional(),
-    bio: z.string().trim().max(4000).nullable().optional(),
+    homeClubId: z.preprocess(emptyToNull, z.string().trim().min(1).nullable().optional()),
+    photoUrl: z.preprocess(emptyToNull, z.string().trim().max(1024).nullable().optional()),
+    bio: z.preprocess(emptyToNull, z.string().trim().max(4000).nullable().optional()),
     isLowResPhoto: z.boolean().optional(),
   })
   .strict();

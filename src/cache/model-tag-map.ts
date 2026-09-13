@@ -15,6 +15,8 @@ export const MODEL_TAG_MAP: Record<string, CacheTag[]> = {
   ContentBlock: ['content'],
   Setting: ['settings'],
   Event: ['events'],
+  DrrBooking: ['drr-calendar', 'events'],
+  DrrBlock: ['drr-calendar'],
   Project: ['projects'],
   ProjectClub: ['projects'],
   MemberProfile: ['members'],

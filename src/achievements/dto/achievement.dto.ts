@@ -1,14 +1,17 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
+const emptyToNull = (val: unknown) =>
+  typeof val === 'string' && val.trim() === '' ? null : val;
+
 export const createAchievementSchema = z
   .object({
     type: z.enum(['chartered_club', 'award', 'milestone']),
     title: z.string().trim().min(1).max(300),
-    clubId: z.string().trim().min(1).nullable().optional(),
+    clubId: z.preprocess(emptyToNull, z.string().trim().min(1).nullable().optional()),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD'),
-    certificateUrl: z.string().url().max(1024).nullable().optional(),
-    description: z.string().trim().max(2000).nullable().optional(),
+    certificateUrl: z.preprocess(emptyToNull, z.string().trim().max(1024).nullable().optional()),
+    description: z.preprocess(emptyToNull, z.string().trim().max(2000).nullable().optional()),
   })
   .strict();
 

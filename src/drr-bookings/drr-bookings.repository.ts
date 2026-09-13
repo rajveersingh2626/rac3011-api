@@ -158,6 +158,11 @@ export class DrrBookingsRepository {
     });
   }
 
+  async removeCalendarEvent(reference: string): Promise<void> {
+    const slug = `drr-${reference.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+    await this.prisma.event.deleteMany({ where: { slug } });
+  }
+
   async listBlocks(from?: Date, to?: Date) {
     const where: Prisma.DrrBlockWhereInput = {};
     if (from || to) {

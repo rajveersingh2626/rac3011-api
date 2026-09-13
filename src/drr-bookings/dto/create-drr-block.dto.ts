@@ -3,11 +3,14 @@ import { z } from 'zod';
 
 export const createDrrBlockSchema = z
   .object({
-    startsAt: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)),
-    endsAt: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}/).optional(),
+    startsAt: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)).optional(),
+    endsAt: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)).optional(),
     reason: z.string().trim().max(500).optional(),
   })
-  .strict();
+  .refine((data) => Boolean(data.date || (data.startsAt && data.endsAt)), {
+    message: 'Either date or startsAt and endsAt must be provided',
+  });
 
 export type CreateDrrBlockInput = z.infer<typeof createDrrBlockSchema>;
 export class CreateDrrBlockDto extends createZodDto(createDrrBlockSchema) {}

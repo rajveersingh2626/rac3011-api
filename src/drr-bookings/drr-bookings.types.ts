@@ -14,7 +14,12 @@ export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 export const BOOKING_DECISIONS = ['confirmed', 'declined'] as const;
 export type BookingDecision = (typeof BOOKING_DECISIONS)[number];
 
-export const DECIDABLE_FROM: readonly BookingStatus[] = ['requested', 'held'];
+export const DECIDABLE_FROM: readonly BookingStatus[] = [
+  'requested',
+  'held',
+  'confirmed',
+  'declined',
+];
 
 export type DrrBookingRow = {
   id: string;

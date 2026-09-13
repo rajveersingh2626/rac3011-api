@@ -79,7 +79,7 @@ export function renderHtml(body: EmailBody): string {
 </head>
 <body style="margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: #0A0B10; color: #E5E7EB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
   <div style="background-color: #0A0B10; background: #0A0B10 radial-gradient(circle at 50% 0%, #220D1A 0%, #0A0B10 70%); width: 100%; padding: 40px 10px;">
-    <!-- Main Email Container -->
+    <!-- Main Content Container -->
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 580px; margin: 0 auto; width: 100%;">
       <tr>
         <td>
