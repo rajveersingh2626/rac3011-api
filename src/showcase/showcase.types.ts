@@ -14,7 +14,14 @@ export type PublishedProjectRow = {
   publishedAt: Date | null;
   clubs: {
     role: 'lead' | 'collaborator';
-    club: { id: string; name: string; shortName: string | null; slug: string | null };
+    club: {
+      id: string;
+      name: string;
+      shortName: string | null;
+      slug: string | null;
+      zoneId?: string | null;
+      zoneRef?: { id: string; name: string } | null;
+    };
   }[];
 };
 

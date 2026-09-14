@@ -240,3 +240,20 @@ model PageView {
 
   @@map("page_views")
 }
+
+model GalleryItem {
+  id          String   @id @default(cuid())
+  title       String
+  eventName   String?  @map("event_name")
+  category    String   @default("general")
+  imageUrl    String   @map("image_url")
+  caption     String?
+  date        DateTime @default(now()) @db.Date
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@map("gallery_items")
+}
+

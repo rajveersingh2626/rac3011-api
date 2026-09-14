@@ -6,6 +6,7 @@ import { ContentModule } from '../content/content.module';
 import { DrrBookingsModule } from '../drr-bookings/drr-bookings.module';
 import { EnquiriesModule } from '../enquiries/enquiries.module';
 import { EventsModule } from '../events/events.module';
+import { GalleryModule } from '../gallery/gallery.module';
 import { HeritageModule } from '../heritage/heritage.module';
 import { LeadershipModule } from '../leadership/leadership.module';
 import { PartnersModule } from '../partners/partners.module';
@@ -28,6 +29,7 @@ import { PublicController } from './public.controller';
     DrrBookingsModule,
     EnquiriesModule,
     EventsModule,
+    GalleryModule,
     HeritageModule,
     LeadershipModule,
     PartnersModule,

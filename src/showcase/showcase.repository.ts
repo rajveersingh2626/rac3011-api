@@ -4,7 +4,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { PublishedProjectFilter, PublishedProjectRow } from './showcase.types';
 
 const CLUB_SELECT = {
-  club: { select: { id: true, name: true, shortName: true, slug: true } },
+  club: {
+    select: {
+      id: true,
+      name: true,
+      shortName: true,
+      slug: true,
+      zoneId: true,
+      zoneRef: { select: { id: true, name: true } },
+    },
+  },
 } as const;
 
 const SELECT = {

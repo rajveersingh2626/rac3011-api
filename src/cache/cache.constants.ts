@@ -10,6 +10,7 @@ export const CACHE_TAGS = [
   'partners',
   'publications',
   'resources',
+  'gallery',
   'content',
   'settings',
   'initiatives',

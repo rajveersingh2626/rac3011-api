@@ -1,7 +1,16 @@
 import type { PublishedProjectRow } from './showcase.types';
 
 export function publicProjectSummaryDto(row: PublishedProjectRow) {
-  const lead = row.clubs.find((c) => c.role === 'lead')?.club ?? null;
+  const leadRow = row.clubs.find((c) => c.role === 'lead')?.club ?? null;
+  const lead = leadRow
+    ? {
+        id: leadRow.id,
+        name: leadRow.name,
+        shortName: leadRow.shortName,
+        slug: leadRow.slug,
+        zone: leadRow.zoneRef?.name ?? null,
+      }
+    : null;
   return {
     id: row.id,
     slug: row.slug || row.id,

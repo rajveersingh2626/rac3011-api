@@ -41,7 +41,8 @@ export const PAST_DRRS_SEED: { name: string; terms: string[]; homeClub: string |
   { name: 'Rtr. Manoj Singhal', terms: ['1993-94'], homeClub: null },
   { name: 'Rtr. Raman Magan', terms: ['1992-93'], homeClub: null },
   { name: 'Rtr. Sudhir Ralan', terms: ['1991-92'], homeClub: null },
-  { name: 'Rtr. Tejwant Chhatwal', terms: ['1989-90', '1990-91'], homeClub: null },
+  { name: 'Rtr. Tejwant Chhatwal', terms: ['1990-91'], homeClub: null },
+  { name: 'Rtr. Tejwant Chhatwal', terms: ['1989-90'], homeClub: null },
   { name: 'Rtr. Divender Singh Sirohi', terms: ['1988-89'], homeClub: null },
   { name: 'Rtr. Bawa Preetranjan Singh', terms: ['1987-88'], homeClub: null },
   { name: 'Rtr. Rajeev Saxena', terms: ['1986-87'], homeClub: null },
@@ -526,7 +527,7 @@ export const ACHIEVEMENTS_SEED: {
     title: 'Clubs Chartered During the Year',
     type: 'chartered_club',
     description:
-      'Three new community and campus Rotaract clubs chartered this Rotary year, expanding youth leadership and service reach across Delhi NCR.',
+      'Four new Community/University based Rotaract Clubs chartered this Rotary year, expanding youth leadership and service reach across Delhi NCR.',
     // No single charter date exists for the set, so this is pinned to the start of the Rotary year.
     date: '2026-07-01',
     order: 0,

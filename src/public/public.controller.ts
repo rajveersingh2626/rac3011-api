@@ -29,6 +29,8 @@ import { EnquiriesService } from '../enquiries/enquiries.service';
 import { eventToIcs, eventsToIcs } from '../events/ics.util';
 import { publicEventDto } from '../events/events.transformer';
 import { EventsService } from '../events/events.service';
+import { GalleryService } from '../gallery/gallery.service';
+import { galleryItemPublicDto } from '../gallery/gallery.transformer';
 import { HeritageService } from '../heritage/heritage.service';
 import { pastDrrDto } from '../heritage/heritage.transformer';
 import { LeadershipService } from '../leadership/leadership.service';
@@ -66,6 +68,7 @@ export class PublicController {
     private readonly analytics: AnalyticsService,
     private readonly clubs: PublicClubsService,
     private readonly showcase: ShowcaseService,
+    private readonly gallery: GalleryService,
     private readonly heritage: HeritageService,
     private readonly leadership: LeadershipService,
     private readonly achievements: AchievementsService,
@@ -200,6 +203,13 @@ export class PublicController {
   @CacheTags('resources')
   async listResources() {
     return { items: (await this.resources.list()).map(publicResourceDto) };
+  }
+
+  @Get('gallery')
+  @Public()
+  @CacheTags('gallery')
+  async listGallery() {
+    return { items: (await this.gallery.listPublic()).map(galleryItemPublicDto) };
   }
 
   @Get('content/:pageKey')
