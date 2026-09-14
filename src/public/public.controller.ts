@@ -209,7 +209,12 @@ export class PublicController {
   @Public()
   @CacheTags('gallery')
   async listGallery() {
-    return { items: (await this.gallery.listPublic()).map(galleryItemPublicDto) };
+    try {
+      const items = await this.gallery.listPublic();
+      return { items: (items || []).map(galleryItemPublicDto) };
+    } catch {
+      return { items: [] };
+    }
   }
 
   @Get('content/:pageKey')
