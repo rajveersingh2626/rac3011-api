@@ -59,12 +59,15 @@ export type ClubWithRelations = ClubRow & {
   facts?: ClubFactsRow[];
 };
 
+import type { Prisma } from '@prisma/client';
+
 export type ClubUpdate = {
   name?: string;
   shortName?: string | null;
   slug?: string | null;
   zone?: string | null;
   zoneId?: string | null;
+  zoneRef?: Prisma.ZoneUpdateOneWithoutClubsNestedInput;
   lat?: number | null;
   lng?: number | null;
   president?: string | null;

@@ -44,7 +44,7 @@ export class ClubsService {
       shortName: input.shortName ?? null,
       slug,
       zone: input.zone ?? null,
-      zoneId: input.zoneId ?? null,
+      zoneRef: input.zoneId ? { connect: { id: input.zoneId } } : undefined,
       lat: input.lat ?? null,
       lng: input.lng ?? null,
       president: input.president ?? null,
@@ -99,13 +99,17 @@ export class ClubsService {
 }
 
 function toClubUpdate(input: UpdateClubInput): ClubUpdate {
+  const { zoneId, charterDate, ...rest } = input;
   return {
-    ...input,
+    ...rest,
+    ...(zoneId !== undefined
+      ? { zoneRef: zoneId ? { connect: { id: zoneId } } : { disconnect: true } }
+      : {}),
     charterDate:
-      input.charterDate === undefined
+      charterDate === undefined
         ? undefined
-        : input.charterDate
-          ? new Date(input.charterDate)
+        : charterDate
+          ? new Date(charterDate)
           : null,
   };
 }
