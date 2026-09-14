@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
+import { CacheInvalidator } from '../cache/cache-invalidator.service';
 import { AchievementsRepository } from './achievements.repository';
 import type { AchievementRow } from './achievements.types';
 import type { CreateAchievementInput, UpdateAchievementInput } from './dto/achievement.dto';
@@ -9,6 +10,7 @@ export class AchievementsService {
   constructor(
     private readonly repo: AchievementsRepository,
     private readonly audit: AuditService,
+    private readonly cache: CacheInvalidator,
   ) {}
 
   list(): Promise<AchievementRow[]> {
@@ -23,6 +25,7 @@ export class AchievementsService {
 
   async create(actorId: string, input: CreateAchievementInput): Promise<AchievementRow> {
     const row = await this.repo.create(input);
+    await this.cache.purge(['achievements']);
     await this.audit.record({
       actorId,
       action: 'achievement.created',
@@ -40,6 +43,7 @@ export class AchievementsService {
   ): Promise<AchievementRow> {
     const before = await this.get(id);
     const row = await this.repo.update(id, input);
+    await this.cache.purge(['achievements']);
     await this.audit.record({
       actorId,
       action: 'achievement.updated',
@@ -54,6 +58,7 @@ export class AchievementsService {
   async remove(actorId: string, id: string): Promise<void> {
     const before = await this.get(id);
     await this.repo.delete(id);
+    await this.cache.purge(['achievements']);
     await this.audit.record({
       actorId,
       action: 'achievement.deleted',
@@ -65,6 +70,7 @@ export class AchievementsService {
 
   async reorder(actorId: string, ids: string[]): Promise<AchievementRow[]> {
     await this.repo.reorder(ids);
+    await this.cache.purge(['achievements']);
     const items = await this.list();
     await this.audit.record({
       actorId,

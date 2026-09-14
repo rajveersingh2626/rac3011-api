@@ -9,7 +9,7 @@ export const createAchievementSchema = z
     type: z.enum(['chartered_club', 'award', 'milestone']),
     title: z.string().trim().min(1).max(300),
     clubId: z.preprocess(emptyToNull, z.string().trim().min(1).nullable().optional()),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD'),
+    date: z.preprocess((val) => typeof val === 'string' ? val.slice(0, 10) : val, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD')),
     certificateUrl: z.preprocess(emptyToNull, z.string().trim().max(1024).nullable().optional()),
     description: z.preprocess(emptyToNull, z.string().trim().max(2000).nullable().optional()),
   });

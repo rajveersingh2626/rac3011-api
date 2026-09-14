@@ -47,12 +47,13 @@ export class AchievementsRepository {
     input: Required<Pick<AchievementWrite, 'type' | 'title' | 'date'>> & AchievementWrite,
   ): Promise<AchievementRow> {
     const order = await this.nextOrder();
+    const cleanDate = input.date.slice(0, 10);
     return this.prisma.achievement.create({
       data: {
         type: input.type,
         title: input.title,
         clubId: input.clubId ?? null,
-        date: new Date(`${input.date}T00:00:00.000Z`),
+        date: new Date(`${cleanDate}T00:00:00.000Z`),
         certificateUrl: input.certificateUrl ?? null,
         description: input.description ?? null,
         order,
@@ -68,7 +69,9 @@ export class AchievementsRepository {
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.clubId !== undefined ? { clubId: input.clubId } : {}),
-        ...(input.date !== undefined ? { date: new Date(`${input.date}T00:00:00.000Z`) } : {}),
+        ...(input.date !== undefined
+          ? { date: new Date(`${input.date.slice(0, 10)}T00:00:00.000Z`) }
+          : {}),
         ...(input.certificateUrl !== undefined ? { certificateUrl: input.certificateUrl } : {}),
         ...(input.description !== undefined ? { description: input.description } : {}),
       },
