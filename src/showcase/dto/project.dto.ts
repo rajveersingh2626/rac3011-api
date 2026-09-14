@@ -15,8 +15,10 @@ export const createProjectSchema = z
     photos: z.array(photoUrlSchema).max(20).optional(),
     collaboratingClubIds: z.array(z.string().trim().min(1)).max(20).optional(),
     consentConfirmed: z.boolean().optional(),
+    clubId: z.string().trim().min(1).optional(),
   })
   .strict();
+
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export class CreateProjectDto extends createZodDto(createProjectSchema) {}
 

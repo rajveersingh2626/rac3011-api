@@ -81,10 +81,17 @@ export class ShowcaseAdminService {
   async create(ctx: RequestContext, input: CreateProjectInput): Promise<ProjectRow> {
     const profile = await this.me.getProfile(ctx);
     if (!profile) throw new BadRequestException('No member profile for this account');
-    await this.scope.assertCanAccessClub(ctx.access, 'showcase:submit', profile.clubId);
+
+    let leadClubId = profile.clubId;
+    if (input.clubId && input.clubId !== profile.clubId) {
+      await this.scope.assertCanAccessClub(ctx.access, 'showcase:submit', input.clubId);
+      leadClubId = input.clubId;
+    } else {
+      await this.scope.assertCanAccessClub(ctx.access, 'showcase:submit', profile.clubId);
+    }
 
     const requestedCollaborators = [...new Set(input.collaboratingClubIds ?? [])].filter(
-      (id) => id !== profile.clubId,
+      (id) => id !== leadClubId,
     );
     const validIds = await this.repo.findExistingClubIds(requestedCollaborators);
     const invalid = requestedCollaborators.filter((id) => !validIds.has(id));
@@ -103,12 +110,13 @@ export class ShowcaseAdminService {
       consentConfirmed: input.consentConfirmed ?? false,
     });
     await this.repo.replaceClubs(created.id, [
-      { clubId: profile.clubId, role: 'lead' },
+      { clubId: leadClubId, role: 'lead' },
       ...requestedCollaborators.map((clubId) => ({ clubId, role: 'collaborator' as const })),
     ]);
     await this.cache.purge(['projects', 'content', 'clubs']);
     return this.mustFind(created.id);
   }
+
 
   async update(ctx: RequestContext, id: string, input: UpdateProjectInput): Promise<ProjectRow> {
     const existing = await this.repo.findById(id);
