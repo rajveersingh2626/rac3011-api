@@ -7,7 +7,14 @@ const PROJECT_SUMMARY_URLS = PROJECT_KEYS.map((key) => `/public/projects-summary
 // Parameter-free URLs only; detail routes are purged from L2 via tags but self-heal at the edge (docs/decisions.md).
 export const TAG_URL_MAP: Partial<Record<CacheTag, string[]>> = {
   clubs: ['/public/clubs'],
-  projects: ['/public/projects', '/public/home'],
+  projects: [
+    '/public/projects',
+    '/public/projects?page=1&pageSize=100',
+    '/public/projects?page=1&pageSize=12',
+    '/public/projects?page=1&pageSize=6',
+    '/public/projects?page=1&pageSize=50',
+    '/public/home',
+  ],
   events: ['/public/events'],
   heritage: ['/public/past-drrs'],
   'district-team': ['/public/district-team'],
@@ -15,6 +22,7 @@ export const TAG_URL_MAP: Partial<Record<CacheTag, string[]>> = {
   partners: ['/public/partners'],
   publications: ['/public/publications'],
   resources: ['/public/resources'],
+  gallery: ['/public/gallery'],
   content: ['/public/home'],
   settings: ['/public/home', '/public/initiatives', ...PROJECT_SUMMARY_URLS],
   initiatives: ['/public/initiatives', ...PROJECT_SUMMARY_URLS],

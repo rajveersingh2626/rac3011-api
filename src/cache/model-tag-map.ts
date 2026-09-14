@@ -20,6 +20,7 @@ export const MODEL_TAG_MAP: Record<string, CacheTag[]> = {
   Project: ['projects'],
   ProjectClub: ['projects'],
   MemberProfile: ['members'],
+  User: ['district-team', 'members'],
   Report: ['reports'],
   ClubPointEntry: ['points'],
   M3011Camp: ['mission3011'],

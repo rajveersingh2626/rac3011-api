@@ -13,6 +13,7 @@ export const SITE_REBUILD_TAGS: readonly CacheTag[] = [
   'partners',
   'publications',
   'resources',
+  'gallery',
   'events',
   'initiatives',
   'mission3011',
