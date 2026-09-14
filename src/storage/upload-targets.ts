@@ -40,6 +40,7 @@ export const UPLOAD_TARGETS = {
     ownership: 'project',
     projectKey: 'ride',
   },
+  gallery_photo: { tier: 'dynamic', permissions: PUBLIC_CONTENT, ownership: 'district' },
   partner_logo: { tier: 'permanent', permissions: PUBLIC_CONTENT, ownership: 'district' },
   past_drr_photo: { tier: 'permanent', permissions: PUBLIC_CONTENT, ownership: 'district' },
   district_team_photo: { tier: 'permanent', permissions: PUBLIC_CONTENT, ownership: 'district' },

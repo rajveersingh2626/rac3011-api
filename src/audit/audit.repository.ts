@@ -22,6 +22,8 @@ export type AuditFilter = {
 export type AuditRow = {
   id: string;
   actorId: string | null;
+  actorName: string | null;
+  actorEmail: string | null;
   action: string;
   resourceType: string;
   resourceId: string | null;
@@ -61,7 +63,7 @@ export class AuditRepository {
       actorId: filter.actorId,
       at: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
     };
-    const [items, total] = await this.prisma.$transaction([
+    const [rawItems, total] = await this.prisma.$transaction([
       this.prisma.auditLog.findMany({
         where,
         orderBy: { at: 'desc' },
@@ -70,6 +72,28 @@ export class AuditRepository {
       }),
       this.prisma.auditLog.count({ where }),
     ]);
+
+    const actorIds = Array.from(
+      new Set(rawItems.map((i) => i.actorId).filter((id): id is string => Boolean(id))),
+    );
+    const users =
+      actorIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: actorIds } },
+            select: { id: true, name: true, email: true },
+          })
+        : [];
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const items: AuditRow[] = rawItems.map((item) => {
+      const user = item.actorId ? userMap.get(item.actorId) : undefined;
+      return {
+        ...item,
+        actorName: user?.name ?? null,
+        actorEmail: user?.email ?? null,
+      };
+    });
+
     return { items, total };
   }
 }
