@@ -36,9 +36,10 @@ export const CACHE_TAG_SET_PREFIX = 'rac3011:tag:';
 export const CACHE_PURGE_QUEUE = 'cache.purge';
 
 export const PUBLIC_CACHEABLE_CACHE_CONTROL =
-  'public, max-age=60, s-maxage=600, stale-while-revalidate=86400';
-export const PUBLIC_LIVE_CACHE_CONTROL = 'public, max-age=5, s-maxage=5';
+  'public, max-age=0, must-revalidate';
+export const PUBLIC_LIVE_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
 export const NO_STORE_CACHE_CONTROL = 'no-store';
 export const PRIVATE_NO_STORE_CACHE_CONTROL = 'private, no-store';
+
 
 export const CLOUDFLARE_PURGE_BATCH_SIZE = 30;

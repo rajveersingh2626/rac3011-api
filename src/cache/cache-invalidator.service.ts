@@ -24,10 +24,11 @@ export class CacheInvalidator {
   ) {}
 
   async purge(tags: CacheTag[]): Promise<void> {
-    if (tags.length === 0 || env.CACHE_INVALIDATION === 'off') return;
+    if (tags.length === 0) return;
     try {
       await Promise.all(tags.map((tag) => this.cache.delByTag(tag)));
     } catch {}
+    if (env.CACHE_INVALIDATION === 'off') return;
     await this.queue.add('purge', { tags }, JOB_OPTS);
     await this.siteRebuild.maybeEnqueue(tags);
   }
@@ -36,7 +37,9 @@ export class CacheInvalidator {
     try {
       await this.cache.purgeAllKeys();
     } catch {}
+    if (env.CACHE_INVALIDATION === 'off') return;
     await this.queue.add('purge-all', { all: true }, JOB_OPTS);
   }
+
 }
 
