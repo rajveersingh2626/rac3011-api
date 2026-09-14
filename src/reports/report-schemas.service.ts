@@ -52,9 +52,22 @@ export class ReportSchemasService {
     return schema;
   }
 
-  async create(access: ResolvedAccess): Promise<ReportSchemaWithFields> {
-    const base = await this.repo.findActive();
-    const nextVersion = (await this.repo.maxVersion()) + 1;
+  async create(
+    access: ResolvedAccess,
+    baseVersion?: number,
+  ): Promise<ReportSchemaWithFields> {
+    const maxVer = await this.repo.maxVersion();
+    const nextVersion = maxVer + 1;
+    let base: ReportSchemaWithFields | null = null;
+    if (baseVersion) {
+      base = await this.repo.findByVersion(baseVersion);
+    }
+    if (!base && maxVer > 0) {
+      base = await this.repo.findByVersion(maxVer);
+    }
+    if (!base) {
+      base = await this.repo.findActive();
+    }
     const fields = (base?.fields ?? []).map((f) => ({
       section: f.section,
       fieldKey: f.fieldKey,
@@ -73,7 +86,7 @@ export class ReportSchemasService {
       action: 'report_schema.drafted',
       resourceType: 'report_form_schema',
       resourceId: created.id,
-      after: { version: created.version },
+      after: { version: created.version, basedOnVersion: base?.version },
     });
     return created;
   }
@@ -105,19 +118,49 @@ export class ReportSchemasService {
       });
     }
 
-    if (input.status === 'active') {
-      if (schema.status === 'active')
-        throw new ConflictException({ code: 'INVALID_TRANSITION', message: 'Already active' });
-      await this.repo.publish(schema.id);
-      await this.audit.record({
-        actorId: access.userId,
-        action: 'report_schema.published',
-        resourceType: 'report_form_schema',
-        resourceId: schema.id,
-        after: { version: schema.version },
-      });
+    if (input.status) {
+      if (input.status === 'active') {
+        if (schema.status === 'active')
+          throw new ConflictException({ code: 'INVALID_TRANSITION', message: 'Already active' });
+        await this.repo.publish(schema.id);
+        await this.audit.record({
+          actorId: access.userId,
+          action: 'report_schema.published',
+          resourceType: 'report_form_schema',
+          resourceId: schema.id,
+          after: { version: schema.version },
+        });
+      } else {
+        await this.repo.setStatus(schema.id, input.status);
+        await this.audit.record({
+          actorId: access.userId,
+          action: input.status === 'draft' ? 'report_schema.unpublished' : 'report_schema.retired',
+          resourceType: 'report_form_schema',
+          resourceId: schema.id,
+          after: { version: schema.version, status: input.status },
+        });
+      }
     }
 
     return this.getByVersion(version);
+  }
+
+  async remove(access: ResolvedAccess, version: number): Promise<void> {
+    const schema = await this.repo.findByVersion(version);
+    if (!schema) throw new NotFoundException();
+    if (schema.status !== 'draft') {
+      throw new ConflictException({
+        code: 'INVALID_TRANSITION',
+        message: 'Only a draft schema can be deleted',
+      });
+    }
+    await this.repo.deleteDraft(schema.id);
+    await this.audit.record({
+      actorId: access.userId,
+      action: 'report_schema.deleted',
+      resourceType: 'report_form_schema',
+      resourceId: schema.id,
+      before: { version: schema.version },
+    });
   }
 }

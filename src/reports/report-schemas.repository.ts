@@ -112,4 +112,22 @@ export class ReportSchemasRepository {
       }),
     ]);
   }
+
+  async setStatus(schemaId: string, status: SchemaStatus): Promise<void> {
+    if (status === 'active') {
+      await this.publish(schemaId);
+    } else {
+      await this.prisma.reportFormSchema.update({
+        where: { id: schemaId },
+        data: { status },
+      });
+    }
+  }
+
+  async deleteDraft(schemaId: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.reportFormField.deleteMany({ where: { schemaId } }),
+      this.prisma.reportFormSchema.delete({ where: { id: schemaId } }),
+    ]);
+  }
 }

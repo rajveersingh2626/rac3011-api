@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequirePermission } from '../common/decorators/access.decorators';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { parseListQuery } from '../common/query/list-query';
 import type { RequestContext } from '../common/types/access';
-import { UpdateReportSchemaDto } from './dto/report-schema.dto';
+import { CreateReportSchemaDto, UpdateReportSchemaDto } from './dto/report-schema.dto';
 import { ReportSchemasService } from './report-schemas.service';
 import type { ReportSchemaWithFields } from './reports.types';
 import { reportSchemaDto, reportSchemaSummaryDto } from './report-schemas.transformer';
@@ -33,8 +33,8 @@ export class ReportSchemasController {
 
   @Post()
   @RequirePermission('requests:manage')
-  async create(@CurrentUser() ctx: RequestContext) {
-    return reportSchemaDto(await this.service.create(ctx.access));
+  async create(@CurrentUser() ctx: RequestContext, @Body() dto?: CreateReportSchemaDto) {
+    return reportSchemaDto(await this.service.create(ctx.access, dto?.baseVersion));
   }
 
   @Patch(':version')
@@ -45,5 +45,15 @@ export class ReportSchemasController {
     @Body() dto: UpdateReportSchemaDto,
   ) {
     return reportSchemaDto(await this.service.update(ctx.access, version, dto));
+  }
+
+  @Delete(':version')
+  @HttpCode(204)
+  @RequirePermission('requests:manage')
+  async remove(
+    @CurrentUser() ctx: RequestContext,
+    @Param('version', ParseIntPipe) version: number,
+  ): Promise<void> {
+    await this.service.remove(ctx.access, version);
   }
 }

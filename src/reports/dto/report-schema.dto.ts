@@ -31,10 +31,14 @@ export const reportFieldInputSchema = z.object({
   pointSourceKey: z.string().trim().max(120).nullable().optional(),
 });
 
+export const createReportSchemaSchema = z.object({
+  baseVersion: z.number().int().positive().optional(),
+});
+
 export const updateReportSchemaSchema = z
   .object({
     fields: z.array(reportFieldInputSchema).max(60).optional(),
-    status: z.literal('active').optional(),
+    status: z.enum(['active', 'draft', 'retired']).optional(),
   })
   .strict()
   .refine((v) => v.fields !== undefined || v.status !== undefined, {
@@ -42,5 +46,7 @@ export const updateReportSchemaSchema = z
   });
 
 export type ReportFieldInputDto = z.infer<typeof reportFieldInputSchema>;
+export type CreateReportSchemaInput = z.infer<typeof createReportSchemaSchema>;
+export class CreateReportSchemaDto extends createZodDto(createReportSchemaSchema) {}
 export type UpdateReportSchemaInput = z.infer<typeof updateReportSchemaSchema>;
 export class UpdateReportSchemaDto extends createZodDto(updateReportSchemaSchema) {}
