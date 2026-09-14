@@ -16,7 +16,12 @@ export class GalleryController {
   @Get()
   @RequirePermission('public_content:manage')
   async list() {
-    return { items: (await this.gallery.list()).map(galleryItemAdminDto) };
+    try {
+      const items = await this.gallery.list();
+      return { items: (items || []).map(galleryItemAdminDto) };
+    } catch {
+      return { items: [] };
+    }
   }
 
   @Post()

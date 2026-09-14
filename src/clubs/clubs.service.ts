@@ -4,6 +4,7 @@ import type { ResolvedAccess } from '../common/types/access';
 import type { ClubIncludes, ClubListFilter } from './clubs.repository';
 import { ClubsRepository } from './clubs.repository';
 import type { ClubUpdate, ClubWithRelations, ZoneRow } from './clubs.types';
+import type { CreateClubInput } from './dto/create-club.dto';
 import type { PutBoardInput } from './dto/put-board.dto';
 import type { UpdateClubInput } from './dto/update-club.dto';
 
@@ -33,6 +34,36 @@ export class ClubsService {
     return club;
   }
 
+  async create(access: ResolvedAccess, input: CreateClubInput): Promise<ClubWithRelations> {
+    const id = input.id?.trim() || `c_${Date.now()}`;
+    await this.scope.assertCanAccessClub(access, 'clubs:edit', id);
+    const slug = input.slug?.trim() || input.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+    return this.repo.create({
+      id,
+      name: input.name,
+      shortName: input.shortName ?? null,
+      slug,
+      zone: input.zone ?? null,
+      zoneId: input.zoneId ?? null,
+      lat: input.lat ?? null,
+      lng: input.lng ?? null,
+      president: input.president ?? null,
+      isDirector: input.isDirector ?? '',
+      phone: input.phone ?? null,
+      email: input.email ?? null,
+      rotaryId: input.rotaryId ?? null,
+      secretary: input.secretary ?? null,
+      secretaryEmail: input.secretaryEmail ?? null,
+      secretaryPhone: input.secretaryPhone ?? null,
+      charterDate: input.charterDate ? new Date(input.charterDate) : null,
+      isActive: input.isActive ?? true,
+      meetingInfo: input.meetingInfo ?? null,
+      socialLinks: (input.socialLinks as any) ?? {},
+      logoUrl: input.logoUrl ?? null,
+      memberCount: input.memberCount ?? 0,
+    });
+  }
+
   async update(
     access: ResolvedAccess,
     id: string,
@@ -41,6 +72,12 @@ export class ClubsService {
     await this.scope.assertCanAccessClub(access, 'clubs:edit', id);
     if (!(await this.repo.exists(id))) throw new NotFoundException();
     return this.repo.update(id, toClubUpdate(input));
+  }
+
+  async delete(access: ResolvedAccess, id: string): Promise<void> {
+    await this.scope.assertCanAccessClub(access, 'clubs:edit', id);
+    if (!(await this.repo.exists(id))) throw new NotFoundException();
+    await this.repo.delete(id);
   }
 
   async putBoard(

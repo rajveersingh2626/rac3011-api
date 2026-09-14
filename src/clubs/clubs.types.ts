@@ -63,8 +63,12 @@ export type ClubUpdate = {
   name?: string;
   shortName?: string | null;
   slug?: string | null;
+  zone?: string | null;
+  zoneId?: string | null;
   lat?: number | null;
   lng?: number | null;
+  president?: string | null;
+  isDirector?: string | null;
   phone?: string | null;
   email?: string | null;
   rotaryId?: string | null;
@@ -76,6 +80,7 @@ export type ClubUpdate = {
   meetingInfo?: string | null;
   socialLinks?: unknown;
   logoUrl?: string | null;
+  memberCount?: number;
 };
 
 export type BoardMemberInput = {

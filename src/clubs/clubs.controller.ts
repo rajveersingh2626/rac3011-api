@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Authenticated, RequirePermission } from '../common/decorators/access.decorators';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -6,6 +6,7 @@ import { paginate, parseListQuery } from '../common/query/list-query';
 import type { RequestContext } from '../common/types/access';
 import { ClubsService } from './clubs.service';
 import { clubDto, zoneDto } from './clubs.transformer';
+import { CreateClubDto } from './dto/create-club.dto';
 import { PutBoardDto } from './dto/put-board.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
 
@@ -46,6 +47,12 @@ export class ClubsController {
     return clubDto(club);
   }
 
+  @Post()
+  @RequirePermission('clubs:edit')
+  async create(@CurrentUser() ctx: RequestContext, @Body() dto: CreateClubDto) {
+    return clubDto(await this.clubs.create(ctx.access, dto));
+  }
+
   @Patch(':id')
   @RequirePermission('clubs:edit')
   async update(
@@ -54,6 +61,13 @@ export class ClubsController {
     @Body() dto: UpdateClubDto,
   ) {
     return clubDto(await this.clubs.update(ctx.access, id, dto));
+  }
+
+  @Delete(':id')
+  @RequirePermission('clubs:edit')
+  async delete(@CurrentUser() ctx: RequestContext, @Param('id') id: string) {
+    await this.clubs.delete(ctx.access, id);
+    return { ok: true };
   }
 
   @Put(':id/board')

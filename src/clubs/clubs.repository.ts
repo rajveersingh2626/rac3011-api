@@ -90,6 +90,14 @@ export class ClubsRepository {
     return (await this.prisma.club.count({ where: { id } })) > 0;
   }
 
+  async create(data: Prisma.ClubCreateInput): Promise<ClubWithRelations> {
+    const row = await this.prisma.club.create({
+      data,
+      select: CLUB_SELECT,
+    });
+    return row;
+  }
+
   async update(id: string, data: ClubUpdate): Promise<ClubWithRelations> {
     const row = await this.prisma.club.update({
       where: { id },
@@ -97,6 +105,14 @@ export class ClubsRepository {
       select: CLUB_SELECT,
     });
     return row;
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.clubBoardMember.deleteMany({ where: { clubId: id } }),
+      this.prisma.clubFacts.deleteMany({ where: { clubId: id } }),
+      this.prisma.club.delete({ where: { id } }),
+    ]);
   }
 
   async replaceBoard(clubId: string, ryYear: number, members: BoardMemberInput[]): Promise<void> {
