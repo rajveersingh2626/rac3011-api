@@ -3,7 +3,7 @@ import { defineTemplate } from './layout';
 import { link } from './links';
 
 export const memberRejectedTemplate = defineTemplate({
-  subject: () => 'Your Rotaract District 3011 membership request',
+  subject: () => 'Your Rotaract District Organisation membership request',
   body: (data) => ({
     heading: 'Your membership request was not approved',
     paragraphs: [

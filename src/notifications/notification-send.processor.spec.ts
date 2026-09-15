@@ -10,7 +10,7 @@ function row(overrides: Partial<OutboxRow> = {}): OutboxRow {
     toUserId: null,
     toAddress: 'a@example.com',
     template: 'otp',
-    subject: 'Your Rotaract District 3011 code is 123456',
+    subject: 'Your Rotaract District Organisation code is 123456',
     payload: { otp: '123456', type: 'sign-in' },
     status: 'queued',
     provider: null,

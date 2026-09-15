@@ -10,7 +10,7 @@ function otpOf(data: Record<string, unknown>): string {
 
 export const otpTemplate: NotificationTemplate = {
   subject(data) {
-    return `Your Rotaract District 3011 code is ${otpOf(data)}`;
+    return `Your Rotaract District Organisation code is ${otpOf(data)}`;
   },
   html(data) {
     const otp = escapeHtml(otpOf(data));
@@ -22,7 +22,7 @@ export const otpTemplate: NotificationTemplate = {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="format-detection" content="telephone=no, address=no, email=no, date=no, url=no">
-  <title>Verification Code - Rotaract District 3011</title>
+  <title>Verification Code - Rotaract District Organisation</title>
   <!--[if mso]>
   <noscript>
     <xml>
@@ -55,7 +55,7 @@ export const otpTemplate: NotificationTemplate = {
                 <!-- District Branding Badge -->
                 <div style="display: inline-block; padding: 6px 14px; background-color: #24111D; background: rgba(216, 27, 96, 0.14); border: 1px solid rgba(216, 27, 96, 0.35); border-radius: 999px; margin-bottom: 8px;">
                   <span style="color: #F0407F; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;">
-                    Rotaract District 3011
+                    Rotaract District Organisation
                   </span>
                 </div>
                 <div style="color: #9CA3AF; font-size: 13px; font-weight: 500; letter-spacing: 0.5px;">
@@ -97,7 +97,7 @@ export const otpTemplate: NotificationTemplate = {
                   Official District Portal: <a href="https://rotaract3011.org" style="color: #F0407F; text-decoration: none; font-weight: 600;">rotaract3011.org</a>
                 </p>
                 <p style="margin: 0; font-size: 11px; color: #4B5563; line-height: 1.5;">
-                  &copy; 2026-27 Rotaract District 3011. All rights reserved.
+                  &copy; 2026-27 Rotaract District Organisation. All rights reserved.
                 </p>
               </td>
             </tr>
@@ -113,7 +113,7 @@ export const otpTemplate: NotificationTemplate = {
   text(data) {
     const otp = otpOf(data);
     return [
-      'Rotaract District 3011',
+      'Rotaract District Organisation',
       '',
       `Your code: ${otp}`,
       '',
@@ -122,7 +122,7 @@ export const otpTemplate: NotificationTemplate = {
   },
   push(data) {
     return {
-      title: 'Rotaract District 3011',
+      title: 'Rotaract District Organisation',
       body: `Your code is ${otpOf(data)}`,
       url: '/',
     };

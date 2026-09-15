@@ -51,7 +51,7 @@ export class ResendTransport implements EmailTransport {
           if (statusCode === 403 || String(errMsg).includes('domain is not verified')) {
             console.warn(`[Resend] Domain ${message.from} not verified. Attempting fallback to onboarding@resend.dev...`);
             const devResult = await client.emails.send({
-              from: 'Rotaract District 3011 <onboarding@resend.dev>',
+                from: 'Rotaract District Organisation <onboarding@resend.dev>',
               to: [message.to],
               subject: message.subject,
               html: message.html,

@@ -88,7 +88,7 @@ export class ReportsExportService {
         // Header
         doc.rect(0, 0, doc.page.width, 90).fill('#1A1D2D');
 
-        doc.fillColor('#D81B60').fontSize(11).text('ROTARACT DISTRICT 3011', 40, 25, {
+        doc.fillColor('#D81B60').fontSize(11).text('ROTARACT DISTRICT ORGANISATION', 40, 25, {
           characterSpacing: 1.5,
         });
 

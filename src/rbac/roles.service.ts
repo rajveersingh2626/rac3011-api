@@ -306,7 +306,7 @@ export class RolesService {
       if (this.emailPool && targetUserEmail) {
         const recipientName = targetUserName || 'Rotaractor';
         const scopeDesc = scopeType === 'none' ? 'District-Wide' : `${scopeType.toUpperCase()}${scopeId ? ` (${scopeId})` : ''}`;
-        const plainText = `Hello ${recipientName},\n\nYou have been assigned the ${roleName} role with ${scopeDesc} scope by the District Administrator.\n\nSign in to the District Portal: https://rac3011.org/portal\n\nRotaract District 3011`;
+        const plainText = `Hello ${recipientName},\n\nYou have been assigned the ${roleName} role with ${scopeDesc} scope by the District Administrator.\n\nSign in to the District Portal: https://rac3011.org/portal\n\nRotaract District Organisation`;
         await this.emailPool.send({
           to: targetUserEmail,
           subject: `Access Update: ${roleName} role assigned on RAC 3011`,
@@ -339,7 +339,7 @@ export class RolesService {
               </div>
               <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
               <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">
-                Rotaract District 3011 &bull; Delhi & National Capital Region &bull; Rotary International
+                Rotaract District Organisation &bull; Delhi & National Capital Region &bull; Rotary International
               </p>
             </div>
           `,

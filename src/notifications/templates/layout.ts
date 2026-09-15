@@ -9,7 +9,7 @@ export type EmailBody = {
   cta?: { label: string; url: string };
 };
 
-const BRAND = 'Rotaract District 3011';
+const BRAND = 'Rotaract District Organisation';
 
 export function renderHtml(body: EmailBody): string {
   const paragraphs = body.paragraphs
@@ -91,7 +91,7 @@ export function renderHtml(body: EmailBody): string {
                 <!-- District Branding Badge -->
                 <div style="display: inline-block; padding: 6px 14px; background-color: #24111D; background: rgba(216, 27, 96, 0.14); border: 1px solid rgba(216, 27, 96, 0.35); border-radius: 999px; margin-bottom: 8px;">
                   <span style="color: #F0407F; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;">
-                    Rotaract District 3011
+                    Rotaract District Organisation
                   </span>
                 </div>
                 <div style="color: #9CA3AF; font-size: 13px; font-weight: 500; letter-spacing: 0.5px;">
@@ -119,7 +119,7 @@ export function renderHtml(body: EmailBody): string {
                   Official District Portal: <a href="https://rotaract3011.org" style="color: #F0407F; text-decoration: none; font-weight: 600;">rotaract3011.org</a>
                 </p>
                 <p style="margin: 0; font-size: 11px; color: #6B7280; line-height: 1.5;">
-                  &copy; 2026-27 Rotaract District 3011. All rights reserved.
+                  &copy; 2026-27 Rotaract District Organisation. All rights reserved.
                 </p>
               </td>
             </tr>

@@ -3,7 +3,7 @@ import { defineTemplate } from './layout';
 import { link } from './links';
 
 export const announcementTemplate = defineTemplate({
-  subject: (data) => str(data, 'title', 'Announcement from Rotaract District 3011'),
+  subject: (data) => str(data, 'title', 'Announcement from Rotaract District Organisation'),
   body: (data) => {
     const rawBody = str(data, 'body');
     const paragraphs = rawBody

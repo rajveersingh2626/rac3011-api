@@ -3,7 +3,7 @@ import { defineTemplate } from './layout';
 import { link } from './links';
 
 export const certificateIssuedTemplate = defineTemplate({
-  subject: (data) => `Your certificate is ready: ${str(data, 'title', 'Rotaract District 3011')}`,
+  subject: (data) => `Your certificate is ready: ${str(data, 'title', 'Rotaract District Organisation')}`,
   body: (data) => ({
     heading: 'A certificate has been issued to you',
     paragraphs: ['You can download it any time from your portal profile.'],
