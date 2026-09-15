@@ -14,6 +14,7 @@ const CLUB_SELECT = {
   president: true,
   phone: true,
   email: true,
+  rotaryId: true,
   secretary: true,
   secretaryEmail: true,
   secretaryPhone: true,

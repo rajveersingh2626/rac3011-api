@@ -9,6 +9,7 @@ export type PublicClubRow = {
   president: string | null;
   phone: string | null;
   email: string | null;
+  rotaryId: string | null;
   secretary: string | null;
   secretaryEmail: string | null;
   secretaryPhone: string | null;

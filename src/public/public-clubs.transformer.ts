@@ -14,6 +14,12 @@ export function publicClubSummaryDto(row: PublicClubRow) {
     president: row.president,
     phone: row.phone,
     email: row.email,
+    rotaryId: row.rotaryId,
+    secretary: row.secretary,
+    secretaryEmail: row.secretaryEmail,
+    secretaryPhone: row.secretaryPhone,
+    meetingInfo: row.meetingInfo,
+    charterDate: day(row.charterDate),
     logoUrl: row.logoUrl,
     memberCount: row.memberCount,
   };
