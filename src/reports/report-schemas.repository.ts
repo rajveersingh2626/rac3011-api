@@ -38,6 +38,7 @@ export class ReportSchemasRepository {
   async findActive(): Promise<ReportSchemaWithFields | null> {
     const row = await this.prisma.reportFormSchema.findFirst({
       where: { status: 'active' },
+      orderBy: { version: 'desc' },
       include: { fields: { orderBy: { order: 'asc' } } },
     });
     return row;

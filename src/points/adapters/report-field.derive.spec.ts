@@ -39,13 +39,15 @@ describe('campsOrganised', () => {
 });
 
 describe('projectsInitiated', () => {
-  it('counts activities initiated by rotaract', () => {
+  it('counts activities initiated by rotaract or Your Club', () => {
     const activities = [
       activity({ initiated_by: 'rotaract' }),
+      activity({ initiated_by: 'Your Club' }),
+      activity({ initiated_by: 'Another Rotaract Club and you collaborated/Co-Hosted' }),
       activity({ initiated_by: 'rotary' }),
       activity({ initiated_by: 'other' }),
     ];
-    expect(projectsInitiated(activities)).toBe(1);
+    expect(projectsInitiated(activities)).toBe(3);
   });
 });
 
@@ -113,6 +115,19 @@ describe('deriveReportPointSources', () => {
     expect(derived['report_field:camps_organised']).toBe(1);
     expect(derived['project_collaboration:max_collaborators']).toBe(3);
     expect(derived['report_field:filed_on_time']).toBe(1);
+  });
+
+  it('counts per-activity social post links if numeric social_posts is absent', () => {
+    const values = {
+      activities: [
+        activity({ social_posts: 'https://instagram.com/p/123' }),
+        activity({ social_posts: 'https://instagram.com/p/456' }),
+        activity({ social_posts: '' }),
+        activity({}),
+      ],
+    };
+    const derived = deriveReportPointSources(values, false);
+    expect(derived['report_field:social_posts']).toBe(2);
   });
 
   it('defaults missing club fields to 0 and filedOnTime false/null to 0', () => {
