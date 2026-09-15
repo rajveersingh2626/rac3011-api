@@ -104,7 +104,7 @@ CREATE INDEX "ride_form_submissions_participant_id_idx" ON "ride_form_submission
 CREATE UNIQUE INDEX "ride_email_templates_slug_key" ON "ride_email_templates"("slug");
 
 -- AddForeignKey
-ALTER TABLE "ride_participants" ADD CONSTRAINT "ride_participants_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "ride_participants" ADD CONSTRAINT "ride_participants_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ride_participants" ADD CONSTRAINT "ride_participants_club_id_fkey" FOREIGN KEY ("club_id") REFERENCES "clubs"("id") ON DELETE SET NULL ON UPDATE CASCADE;
