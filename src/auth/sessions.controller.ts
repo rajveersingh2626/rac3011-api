@@ -34,8 +34,8 @@ function parseDeviceSummary(ua?: string | null): string {
   return `${browser} on ${os}`;
 }
 
-@ApiTags('auth')
-@Controller('auth/sessions')
+@ApiTags('admin')
+@Controller('admin/sessions')
 export class SessionsController {
   constructor(
     private readonly prisma: PrismaService,

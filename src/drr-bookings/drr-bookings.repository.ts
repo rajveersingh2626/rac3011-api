@@ -107,31 +107,50 @@ export class DrrBookingsRepository {
   }
 
   // Only notify the designated District Rotaract Representative (DRR),
-  // falling back to Super Admins if no specific DRR role is assigned.
-  // Never broadcast to all 50+ general council (DSC) members.
+  // Super Admins, Tech RID, and designated DSC secretariats (Himanshu, Shefali, Sarthak).
   async findOfficers(permissionKey: string): Promise<DrrOfficer[]> {
-    const drrRows = await this.prisma.userRole.findMany({
-      where: {
-        scopeType: 'none',
-        role: { key: 'drr' },
-      },
-      select: { userId: true, user: { select: { email: true } } },
-    });
-    if (drrRows.length > 0) {
-      const byUser = new Map<string, DrrOfficer>();
-      for (const row of drrRows) byUser.set(row.userId, { userId: row.userId, email: row.user.email });
-      return [...byUser.values()];
+    const TARGET_EMAILS = [
+      'himanshugulati.rotary@gmail.com',
+      'rtrshefali2004@gmail.com',
+      'sarthakmanchanda2@gmail.com',
+      'techrid3011@gmail.com',
+    ];
+
+    const [drrRows, adminRows, specificEmailUsers] = await Promise.all([
+      this.prisma.userRole.findMany({
+        where: {
+          scopeType: 'none',
+          role: { key: 'drr' },
+        },
+        select: { userId: true, user: { select: { email: true } } },
+      }),
+      this.prisma.userRole.findMany({
+        where: {
+          scopeType: 'none',
+          role: { key: 'super_admin' },
+        },
+        select: { userId: true, user: { select: { email: true } } },
+      }),
+      this.prisma.user.findMany({
+        where: {
+          email: { in: TARGET_EMAILS, mode: 'insensitive' },
+        },
+        select: { id: true, email: true },
+      }),
+    ]);
+
+    const byUser = new Map<string, DrrOfficer>();
+
+    for (const row of drrRows) {
+      if (row.user?.email) byUser.set(row.userId, { userId: row.userId, email: row.user.email });
+    }
+    for (const row of adminRows) {
+      if (row.user?.email) byUser.set(row.userId, { userId: row.userId, email: row.user.email });
+    }
+    for (const u of specificEmailUsers) {
+      if (u.email) byUser.set(u.id, { userId: u.id, email: u.email });
     }
 
-    const adminRows = await this.prisma.userRole.findMany({
-      where: {
-        scopeType: 'none',
-        role: { key: 'super_admin' },
-      },
-      select: { userId: true, user: { select: { email: true } } },
-    });
-    const byUser = new Map<string, DrrOfficer>();
-    for (const row of adminRows) byUser.set(row.userId, { userId: row.userId, email: row.user.email });
     return [...byUser.values()];
   }
 

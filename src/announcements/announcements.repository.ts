@@ -246,6 +246,7 @@ export class AnnouncementsRepository {
           { id: { in: memberIds } },
           { rotaryId: { in: memberIds } },
           { userId: { in: memberIds } },
+          { fullName: { in: memberIds, mode: 'insensitive' } },
         ],
         status: 'approved',
       },
@@ -264,15 +265,17 @@ export class AnnouncementsRepository {
           { id: { in: memberIds } },
           { rotaryId: { in: memberIds } },
           { userId: { in: memberIds } },
+          { fullName: { in: memberIds, mode: 'insensitive' } },
         ],
       },
-      select: { id: true, rotaryId: true, userId: true, clubId: true },
+      select: { id: true, rotaryId: true, userId: true, fullName: true, clubId: true },
     });
     const map = new Map<string, string>();
     for (const p of profiles) {
       map.set(p.id, p.clubId);
       if (p.rotaryId) map.set(p.rotaryId, p.clubId);
       if (p.userId) map.set(p.userId, p.clubId);
+      if (p.fullName) map.set(p.fullName, p.clubId);
     }
     return map;
   }
