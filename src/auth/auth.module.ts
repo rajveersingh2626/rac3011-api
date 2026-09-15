@@ -13,6 +13,7 @@ import { SecondFactorService } from './second-factor.service';
 import { SessionContextAdapter } from './session-context.adapter';
 import { TrustedDevicesController } from './trusted-devices.controller';
 import { TrustedDevicesService } from './trusted-devices.service';
+import { SessionsController } from './sessions.controller';
 
 @Module({
   imports: [
@@ -98,7 +99,7 @@ import { TrustedDevicesService } from './trusted-devices.service';
       }),
     }),
   ],
-  controllers: [SecondFactorController, TrustedDevicesController, AuthLookupController],
+  controllers: [SecondFactorController, TrustedDevicesController, AuthLookupController, SessionsController],
   providers: [
     AuthRepository,
     SecondFactorService,

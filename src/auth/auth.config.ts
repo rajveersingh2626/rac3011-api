@@ -52,8 +52,8 @@ export function createAuthInstance(deps: AuthConfigDeps) {
       },
     },
     session: {
-      expiresIn: 60 * 60 * 24 * 30,
-      updateAge: 60 * 60 * 24,
+      expiresIn: 60 * 60 * 5, // 5 hours (18,000 seconds)
+      updateAge: 60 * 60, // 1 hour rolling refresh
       additionalFields: {
         mfaPending: { type: 'boolean', required: false, input: false, defaultValue: true },
       },
