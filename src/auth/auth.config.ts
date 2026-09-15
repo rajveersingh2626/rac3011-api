@@ -52,8 +52,8 @@ export function createAuthInstance(deps: AuthConfigDeps) {
       },
     },
     session: {
-      expiresIn: 60 * 60 * 5, // 5 hours (18,000 seconds)
-      updateAge: 60 * 60, // 1 hour rolling refresh
+      expiresIn: 60 * 60 * 2, // 2 hours (7,200 seconds)
+      updateAge: 60 * 30, // 30 minute rolling refresh threshold
       additionalFields: {
         mfaPending: { type: 'boolean', required: false, input: false, defaultValue: true },
       },
@@ -63,12 +63,32 @@ export function createAuthInstance(deps: AuthConfigDeps) {
         create: {
           // twoFactor issues a fresh session on a verified TOTP check; without this it'd inherit
           // mfaPending:true and stay stuck behind SecondFactorStage forever.
-          before: (session, context) =>
-            Promise.resolve(
-              context?.path === '/two-factor/verify-totp'
-                ? { data: { mfaPending: false } }
-                : undefined,
-            ),
+          before: (session: any, context: any) => {
+            const updates: Record<string, any> = {};
+            if (context?.path === '/two-factor/verify-totp') {
+              updates.mfaPending = false;
+            }
+            if (!session?.ipAddress) {
+              const headers = context?.headers || context?.request?.headers;
+              const extractHeader = (hName: string): string | null => {
+                if (!headers) return null;
+                if (typeof headers.get === 'function') return headers.get(hName);
+                return headers[hName] || headers[hName.toLowerCase()] || null;
+              };
+              const rawIp =
+                extractHeader('cf-connecting-ip') ||
+                extractHeader('x-real-ip') ||
+                extractHeader('x-client-ip') ||
+                extractHeader('x-forwarded-for')?.split(',')[0]?.trim() ||
+                context?.request?.ip ||
+                context?.request?.socket?.remoteAddress ||
+                null;
+              if (rawIp) {
+                updates.ipAddress = String(rawIp).replace(/^::ffff:/, '').trim();
+              }
+            }
+            return Promise.resolve(Object.keys(updates).length > 0 ? { data: updates } : undefined);
+          },
           after: async (session, context) => {
             if (deps.onSessionCreated) {
               await deps.onSessionCreated(session as never, context);
@@ -85,6 +105,9 @@ export function createAuthInstance(deps: AuthConfigDeps) {
       },
     },
     advanced: {
+      ipAddress: {
+        ipAddressHeaders: ['cf-connecting-ip', 'x-real-ip', 'x-client-ip', 'x-forwarded-for'],
+      },
       cookies: {
         session_token: {
           name: 'rac3011.session',

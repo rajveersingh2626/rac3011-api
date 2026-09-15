@@ -63,7 +63,7 @@ describe('NotificationSendProcessor', () => {
     const outbox = fakeOutbox(row());
     const pool = fakePool(() => ({ provider: 'oracle' }));
     const queue = fakeQueue();
-    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool);
+    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool, {} as any);
 
     await processor.process(sendJob({ outboxId: 'outbox-1' }));
 
@@ -78,7 +78,7 @@ describe('NotificationSendProcessor', () => {
     const outbox = fakeOutbox(undefined);
     const pool = fakePool(() => ({ provider: 'oracle' }));
     const queue = fakeQueue();
-    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool);
+    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool, {} as any);
 
     await expect(processor.process(sendJob({ outboxId: 'missing' }))).resolves.toBeUndefined();
     expect(pool.send).not.toHaveBeenCalled();
@@ -88,7 +88,7 @@ describe('NotificationSendProcessor', () => {
     const outbox = fakeOutbox(row({ status: 'sent' }));
     const pool = fakePool(() => ({ provider: 'oracle' }));
     const queue = fakeQueue();
-    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool);
+    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool, {} as any);
 
     await processor.process(sendJob({ outboxId: 'outbox-1' }));
 
@@ -102,7 +102,7 @@ describe('NotificationSendProcessor', () => {
       throw new Error('smtp down');
     });
     const queue = fakeQueue();
-    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool);
+    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool, {} as any);
 
     await expect(
       processor.process(sendJob({ outboxId: 'outbox-1' }, { attempts: 5 })),
@@ -117,7 +117,7 @@ describe('NotificationSendProcessor', () => {
       throw new Error('smtp down');
     });
     const queue = fakeQueue();
-    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool);
+    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool, {} as any);
 
     const job = {
       name: 'send',
@@ -135,7 +135,7 @@ describe('NotificationSendProcessor', () => {
     outbox.findStaleQueued.mockResolvedValueOnce([row({ id: 'a' }), row({ id: 'b' })]);
     const pool = fakePool(() => ({ provider: 'oracle' }));
     const queue = fakeQueue();
-    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool);
+    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool, {} as any);
 
     await processor.process({ name: 'sweep', data: {} } as unknown as Job);
 
@@ -153,7 +153,7 @@ describe('NotificationSendProcessor', () => {
     const pool = fakePool(() => ({ provider: 'oracle' }));
     const queue = fakeQueue();
     queue.add.mockRejectedValueOnce(new Error('redis unavailable'));
-    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool);
+    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool, {} as any);
 
     await expect(
       processor.process({ name: 'sweep', data: {} } as unknown as Job),
@@ -169,7 +169,7 @@ describe('NotificationSendProcessor', () => {
     const outbox = fakeOutbox(row({ template: 'not-a-real-template' }));
     const pool = fakePool(() => ({ provider: 'oracle' }));
     const queue = fakeQueue();
-    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool);
+    const processor = new NotificationSendProcessor(queue.queue, outbox.repo, pool.pool, {} as any);
 
     await expect(processor.process(sendJob({ outboxId: 'outbox-1' }))).resolves.toBeUndefined();
 

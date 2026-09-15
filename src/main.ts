@@ -15,9 +15,27 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   for (const line of configWarnings(env)) app.get(Logger).warn(`config: ${line}`);
-  app.set('trust proxy', 1);
+  app.set('trust proxy', true);
   app.use(helmet());
   app.use((req: any, _res: any, next: any) => {
+    // Normalize and capture client IP for authentication and audit logging
+    const rawForwarded = req.headers['x-forwarded-for'];
+    const forwardedFirst = typeof rawForwarded === 'string' ? rawForwarded.split(',')[0].trim() : undefined;
+    const clientIp =
+      req.headers['cf-connecting-ip'] ||
+      req.headers['x-real-ip'] ||
+      req.headers['x-client-ip'] ||
+      forwardedFirst ||
+      req.ip ||
+      req.socket?.remoteAddress ||
+      '127.0.0.1';
+    const cleanIp = String(clientIp).replace(/^::ffff:/, '').trim();
+
+    if (cleanIp) {
+      req.headers['x-forwarded-for'] = cleanIp;
+      req.headers['x-real-ip'] = cleanIp;
+    }
+
     if (req.method === 'POST') {
       if (req.url?.startsWith('/auth/forget-password') || req.originalUrl?.startsWith('/auth/forget-password')) {
         req.url = req.url.replace('/auth/forget-password', '/auth/request-password-reset');

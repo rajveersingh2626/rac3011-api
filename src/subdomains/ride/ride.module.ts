@@ -10,6 +10,9 @@ import { RideDelegationsService } from './ride-delegations.service';
 import { RideGalleryController } from './ride-gallery.controller';
 import { RideGalleryRepository } from './ride-gallery.repository';
 import { RideGalleryService } from './ride-gallery.service';
+import { RideParticipantsController } from './ride-participants.controller';
+import { RideParticipantsRepository } from './ride-participants.repository';
+import { RideParticipantsService } from './ride-participants.service';
 import { RidePublicController } from './ride-public.controller';
 import { RideSupportClubsController } from './ride-support-clubs.controller';
 import { RideSupportClubsRepository } from './ride-support-clubs.repository';
@@ -22,6 +25,7 @@ import { RideSupportClubsService } from './ride-support-clubs.service';
     RideDelegationsController,
     RideGalleryController,
     RidePublicController,
+    RideParticipantsController,
   ],
   providers: [
     RideSupportClubsRepository,
@@ -30,6 +34,8 @@ import { RideSupportClubsService } from './ride-support-clubs.service';
     RideDelegationsService,
     RideGalleryRepository,
     RideGalleryService,
+    RideParticipantsRepository,
+    RideParticipantsService,
     RideDashboardService,
   ],
 })

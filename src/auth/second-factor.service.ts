@@ -49,7 +49,18 @@ export class SecondFactorService {
         throw new UnauthorizedException('Invalid code');
       }
     }
-    await this.repo.setSessionMfaPending(ctx.sessionId, false);
+    const rawForwarded = req.headers['x-forwarded-for'];
+    const forwardedFirst = typeof rawForwarded === 'string' ? rawForwarded.split(',')[0].trim() : undefined;
+    const clientIp =
+      req.headers['cf-connecting-ip'] ||
+      req.headers['x-real-ip'] ||
+      req.headers['x-client-ip'] ||
+      forwardedFirst ||
+      req.ip ||
+      req.socket?.remoteAddress;
+    const cleanIp = clientIp ? String(clientIp).replace(/^::ffff:/, '').trim() : undefined;
+
+    await this.repo.setSessionMfaPending(ctx.sessionId, false, cleanIp);
     if (input.rememberDevice)
       await this.issueTrustedDevice(res, ctx.user.id, req.headers['user-agent']);
   }

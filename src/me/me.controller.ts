@@ -30,6 +30,10 @@ export class MeController {
       grants: ctx.access.grants,
       clubs: await this.me.clubsInScope(ctx),
       theme: profile?.themePreference ?? 'system',
+      session: {
+        id: ctx.sessionId,
+        expiresAt: ctx.sessionExpiresAt ?? null,
+      },
     };
   }
 

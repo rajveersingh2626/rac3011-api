@@ -45,7 +45,12 @@ export class PermissionGuard implements CanActivate {
       throw new UnauthorizedException('Second factor required');
 
     const access = await this.resolver.resolve(session.user.id);
-    req.rac3011 = { user: session.user, sessionId: session.sessionId, access };
+    req.rac3011 = {
+      user: session.user,
+      sessionId: session.sessionId,
+      sessionExpiresAt: session.expiresAt ?? null,
+      access,
+    };
 
     const permissions = this.meta<PermissionKey[]>(REQUIRE_PERMISSION_KEY, ctx);
     if (!permissions || permissions.length === 0) {

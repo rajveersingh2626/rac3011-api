@@ -295,3 +295,104 @@ model RideGalleryItem {
   @@index([year])
   @@map("ride_gallery_items")
 }
+
+model RideParticipant {
+  id                String               @id @default(cuid())
+  ryYear            Int                  @default(2026) @map("ry_year")
+  edition           String               @default("delhi_meri_jaan_2026")
+  participantType   String               @default("external") @map("participant_type")
+  userId            String?              @map("user_id")
+  user              User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  fullName          String               @map("full_name")
+  email             String
+  phone             String
+  gender            String
+  rotaryId          String?              @map("rotary_id")
+  homeDistrict      String               @map("home_district")
+  homeClubName      String               @map("home_club_name")
+  cityState         String               @map("city_state")
+  country           String               @default("India")
+  clubDesignation   String?              @map("club_designation")
+
+  dietaryPref       String               @default("veg") @map("dietary_pref")
+  allergiesNotes    String?              @map("allergies_notes")
+  emergencyName     String               @map("emergency_name")
+  emergencyPhone    String               @map("emergency_phone")
+  emergencyRelation String               @map("emergency_relation")
+
+  arrivalAt         DateTime?            @map("arrival_at")
+  arrivalMode       String?              @map("arrival_mode")
+  arrivalNumber     String?              @map("arrival_number")
+  departureAt       DateTime?            @map("departure_at")
+
+  hostClubId        String?              @map("host_club_id")
+  hostClub          Club?                @relation(fields: [hostClubId], references: [id], onDelete: SetNull)
+  hostFamilyName    String?              @map("host_family_name")
+  hostFamilyPhone   String?              @map("host_family_phone")
+  hostAddress       String?              @map("host_address")
+
+  status            String               @default("submitted")
+  paymentStatus     String               @default("pending") @map("payment_status")
+  paymentRef        String?              @map("payment_ref")
+
+  formSubmissions   RideFormSubmission[]
+
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  @@index([ryYear, status])
+  @@index([email])
+  @@index([homeDistrict])
+  @@index([userId])
+  @@map("ride_participants")
+}
+
+model RideRegistrationForm {
+  id          String               @id @default(cuid())
+  slug        String               @unique
+  title       String
+  description String?
+  schema      Json
+  isActive    Boolean              @default(true) @map("is_active")
+  isPublic    Boolean              @default(true) @map("is_public")
+  version     Int                  @default(1)
+
+  submissions RideFormSubmission[]
+
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  @@map("ride_registration_forms")
+}
+
+model RideFormSubmission {
+  id            String               @id @default(cuid())
+  formId        String               @map("form_id")
+  form          RideRegistrationForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  participantId String               @map("participant_id")
+  participant   RideParticipant      @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  values        Json
+  ipAddress     String?              @map("ip_address")
+  userAgent     String?              @map("user_agent")
+
+  createdAt     DateTime             @default(now()) @map("created_at")
+
+  @@index([formId])
+  @@index([participantId])
+  @@map("ride_form_submissions")
+}
+
+model RideEmailTemplate {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  subject     String
+  htmlContent String   @map("html_content")
+  variables   String[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("ride_email_templates")
+}

@@ -23,5 +23,6 @@ export type SessionUser = {
 export type RequestContext = {
   user: SessionUser;
   sessionId: string;
+  sessionExpiresAt?: string | null;
   access: ResolvedAccess;
 };

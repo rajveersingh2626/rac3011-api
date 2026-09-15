@@ -39,6 +39,9 @@ export class SessionContextAdapter extends SessionContextPort {
       },
       sessionId: session.session.id,
       mfaPending,
+      expiresAt: (session.session as { expiresAt?: Date | string | null }).expiresAt
+        ? new Date((session.session as { expiresAt?: Date | string | null }).expiresAt!).toISOString()
+        : null,
     };
   }
 

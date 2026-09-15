@@ -12,8 +12,14 @@ export type TrustedDeviceRow = {
 export class AuthRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async setSessionMfaPending(sessionId: string, mfaPending: boolean): Promise<void> {
-    await this.prisma.session.update({ where: { id: sessionId }, data: { mfaPending } });
+  async setSessionMfaPending(sessionId: string, mfaPending: boolean, ipAddress?: string | null): Promise<void> {
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        mfaPending,
+        ...(ipAddress ? { ipAddress } : {}),
+      },
+    });
   }
 
   async hasValidTrustedDevice(userId: string, tokenHash: string): Promise<boolean> {
