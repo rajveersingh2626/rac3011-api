@@ -71,7 +71,17 @@ export class AnnouncementsService {
       for (const userId of userIds) result.add(userId);
     }
     if (audience.memberIds?.length) {
-      for (const userId of await this.repo.findUserIdsForMemberIds(audience.memberIds)) {
+      const normalized = [
+        ...new Set(
+          audience.memberIds.flatMap((id) =>
+            id
+              .split(/[,;\n\r]+/)
+              .map((s) => s.trim())
+              .filter(Boolean),
+          ),
+        ),
+      ];
+      for (const userId of await this.repo.findUserIdsForMemberIds(normalized)) {
         result.add(userId);
       }
     }
@@ -109,9 +119,20 @@ export class AnnouncementsService {
       if (!clubsInZones.every((id) => allowed.clubIds.includes(id))) throw new ForbiddenException();
     }
     if (audience.memberIds?.length) {
-      const clubIdByMemberId = await this.repo.findClubIdsForMemberIds(audience.memberIds);
-      for (const memberId of audience.memberIds) {
-        const clubId = clubIdByMemberId.get(memberId);
+      const normalized = [
+        ...new Set(
+          audience.memberIds.flatMap((id) =>
+            id
+              .split(/[,;\n\r]+/)
+              .map((s) => s.trim())
+              .filter(Boolean),
+          ),
+        ),
+      ];
+      const clubIdByMemberId = await this.repo.findClubIdsForMemberIds(normalized);
+      for (const memberId of normalized) {
+        const clubId =
+          clubIdByMemberId.get(memberId) ?? clubIdByMemberId.get(memberId.toLowerCase());
         if (!clubId || !allowed.clubIds.includes(clubId)) throw new ForbiddenException();
       }
     }

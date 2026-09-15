@@ -275,7 +275,10 @@ export class AnnouncementsRepository {
       map.set(p.id, p.clubId);
       if (p.rotaryId) map.set(p.rotaryId, p.clubId);
       if (p.userId) map.set(p.userId, p.clubId);
-      if (p.fullName) map.set(p.fullName, p.clubId);
+      if (p.fullName) {
+        map.set(p.fullName, p.clubId);
+        map.set(p.fullName.toLowerCase(), p.clubId);
+      }
     }
     return map;
   }
