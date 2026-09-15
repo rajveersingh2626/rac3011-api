@@ -14,6 +14,8 @@ const PROJECT_SELECT = {
   slug: true,
   title: true,
   category: true,
+  avenueOfService: true,
+  areasOfFocus: true,
   date: true,
   summary: true,
   body: true,
@@ -41,6 +43,8 @@ const PROJECT_SELECT = {
 export type ProjectCreate = {
   title: string;
   category: string;
+  avenueOfService?: string | null;
+  areasOfFocus?: string[];
   date: Date;
   summary: string;
   body: string | null;
@@ -53,6 +57,8 @@ export type ProjectCreate = {
 export type ProjectUpdate = Partial<{
   title: string;
   category: string;
+  avenueOfService: string | null;
+  areasOfFocus: string[];
   date: Date;
   summary: string;
   body: string | null;
@@ -76,7 +82,16 @@ export type ProjectClubInput = { clubId: string; role: ProjectClubRoleKind };
 function whereFor(filter: ProjectListFilter): Prisma.ProjectWhereInput[] {
   const clauses: Prisma.ProjectWhereInput[] = [];
   if (filter.status) clauses.push({ status: filter.status });
-  if (filter.category) clauses.push({ category: filter.category });
+  if (filter.category) {
+    clauses.push({
+      OR: [
+        { category: filter.category },
+        { areasOfFocus: { has: filter.category } },
+        { avenueOfService: filter.category },
+      ],
+    });
+  }
+  if (filter.avenueOfService) clauses.push({ avenueOfService: filter.avenueOfService });
   if (filter.clubId) clauses.push({ clubs: { some: { clubId: filter.clubId } } });
   return clauses;
 }

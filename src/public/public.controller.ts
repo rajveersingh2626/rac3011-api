@@ -140,9 +140,9 @@ export class PublicController {
   @Public()
   @CacheTags('projects')
   async listProjects(@Query() raw: Record<string, unknown>) {
-    const q = parseListQuery(raw, { filters: ['category', 'clubSlug'] as const });
+    const q = parseListQuery(raw, { filters: ['category', 'avenueOfService', 'clubSlug'] as const });
     const { items, total } = await this.showcase.list(
-      { category: q.filter.category, clubSlug: q.filter.clubSlug },
+      { category: q.filter.category, avenueOfService: q.filter.avenueOfService, clubSlug: q.filter.clubSlug },
       q.page,
       q.pageSize,
     );

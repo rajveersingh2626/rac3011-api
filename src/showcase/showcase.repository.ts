@@ -21,6 +21,8 @@ const SELECT = {
   slug: true,
   title: true,
   category: true,
+  avenueOfService: true,
+  areasOfFocus: true,
   date: true,
   summary: true,
   body: true,
@@ -38,11 +40,23 @@ export class ShowcaseRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private whereFor(filter: PublishedProjectFilter): Prisma.ProjectWhereInput {
-    return {
-      status: 'published',
-      category: filter.category,
-      clubs: filter.clubSlug ? { some: { club: { slug: filter.clubSlug } } } : undefined,
-    };
+    const clauses: Prisma.ProjectWhereInput[] = [{ status: 'published' }];
+    if (filter.category) {
+      clauses.push({
+        OR: [
+          { category: filter.category },
+          { areasOfFocus: { has: filter.category } },
+          { avenueOfService: filter.category },
+        ],
+      });
+    }
+    if (filter.avenueOfService) {
+      clauses.push({ avenueOfService: filter.avenueOfService });
+    }
+    if (filter.clubSlug) {
+      clauses.push({ clubs: { some: { club: { slug: filter.clubSlug } } } });
+    }
+    return clauses.length === 1 ? clauses[0] : { AND: clauses };
   }
 
   async findMany(

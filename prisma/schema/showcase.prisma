@@ -9,7 +9,9 @@ model Project {
   id               String        @id @default(cuid())
   slug             String?       @unique
   title            String
-  category         String
+  category         String        @default("")
+  avenueOfService  String?       @default("Community Services") @map("avenue_of_service")
+  areasOfFocus     String[]      @default([]) @map("areas_of_focus")
   date             DateTime      @db.Date
   summary          String
   body             String?

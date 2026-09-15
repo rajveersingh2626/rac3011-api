@@ -3,6 +3,8 @@ export type PublishedProjectRow = {
   slug: string | null;
   title: string;
   category: string;
+  avenueOfService: string | null;
+  areasOfFocus: string[];
   date: Date;
   summary: string;
   body: string | null;
@@ -25,7 +27,7 @@ export type PublishedProjectRow = {
   }[];
 };
 
-export type PublishedProjectFilter = { category?: string; clubSlug?: string };
+export type PublishedProjectFilter = { category?: string; avenueOfService?: string; clubSlug?: string };
 
 export type ProjectStatus = 'draft' | 'submitted' | 'published' | 'rejected';
 export type ProjectClubRoleKind = 'lead' | 'collaborator';
@@ -40,6 +42,8 @@ export type ProjectRow = {
   slug: string | null;
   title: string;
   category: string;
+  avenueOfService: string | null;
+  areasOfFocus: string[];
   date: Date;
   summary: string;
   body: string | null;
@@ -59,4 +63,4 @@ export type ProjectRow = {
   clubs: ProjectClubRef[];
 };
 
-export type ProjectListFilter = { status?: ProjectStatus; clubId?: string; category?: string };
+export type ProjectListFilter = { status?: ProjectStatus; clubId?: string; category?: string; avenueOfService?: string };

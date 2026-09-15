@@ -7,7 +7,9 @@ const photoUrlSchema = z.string().trim().url().max(1024);
 export const createProjectSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
-    category: z.string().trim().min(1).max(100),
+    category: z.string().trim().min(1).max(100).optional(),
+    avenueOfService: z.string().trim().min(1).max(100).optional(),
+    areasOfFocus: z.array(z.string().trim().min(1).max(100)).max(7).optional(),
     date: dateSchema,
     summary: z.string().trim().min(1).max(3000),
     body: z.string().trim().max(20000).nullable().optional(),
@@ -26,6 +28,8 @@ export const updateProjectSchema = z
   .object({
     title: z.string().trim().min(1).max(200).optional(),
     category: z.string().trim().min(1).max(100).optional(),
+    avenueOfService: z.string().trim().min(1).max(100).optional(),
+    areasOfFocus: z.array(z.string().trim().min(1).max(100)).max(7).optional(),
     date: dateSchema.optional(),
     summary: z.string().trim().min(1).max(3000).optional(),
     body: z.string().trim().max(20000).nullable().optional(),

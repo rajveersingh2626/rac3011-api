@@ -24,6 +24,8 @@ import type { ProjectListFilter, ProjectRow } from './showcase.types';
 const OWNER_KEYS = [
   'title',
   'category',
+  'avenueOfService',
+  'areasOfFocus',
   'date',
   'summary',
   'body',
@@ -98,9 +100,15 @@ export class ShowcaseAdminService {
     if (invalid.length > 0)
       throw new BadRequestException(`Unknown club id(s): ${invalid.join(', ')}`);
 
+    const category = input.category || input.areasOfFocus?.[0] || input.avenueOfService || '';
+    const avenueOfService = input.avenueOfService ?? 'Community Services';
+    const areasOfFocus = input.areasOfFocus ?? (input.category ? [input.category] : []);
+
     const created = await this.repo.create({
       title: input.title,
-      category: input.category,
+      category,
+      avenueOfService,
+      areasOfFocus,
       date: new Date(`${input.date}T00:00:00Z`),
       summary: input.summary,
       body: input.body ?? null,
@@ -218,7 +226,9 @@ export class ShowcaseAdminService {
 
     await this.repo.update(existing.id, {
       title: input.title,
-      category: input.category,
+      category: input.category || input.areasOfFocus?.[0] || undefined,
+      avenueOfService: input.avenueOfService,
+      areasOfFocus: input.areasOfFocus,
       date: input.date ? new Date(`${input.date}T00:00:00Z`) : undefined,
       summary: input.summary,
       body: input.body,

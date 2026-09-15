@@ -9,7 +9,7 @@ import { ShowcaseAdminService } from './showcase-admin.service';
 import { projectDto } from './showcase-admin.transformer';
 import type { ProjectStatus } from './showcase.types';
 
-const FILTERS = ['status', 'clubId', 'category'] as const;
+const FILTERS = ['status', 'clubId', 'category', 'avenueOfService'] as const;
 
 @ApiTags('showcase')
 @Controller('projects')
@@ -26,6 +26,7 @@ export class ShowcaseAdminController {
         status: q.filter.status as ProjectStatus | undefined,
         clubId: q.filter.clubId,
         category: q.filter.category,
+        avenueOfService: q.filter.avenueOfService,
       },
       q.page,
       q.pageSize,
