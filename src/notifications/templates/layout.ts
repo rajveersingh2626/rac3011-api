@@ -153,10 +153,163 @@ export function truncate(value: string, max = PUSH_BODY_MAX): string {
   return value.length <= max ? value : `${value.slice(0, max - 1).trimEnd()}…`;
 }
 
+export function renderRideHtml(body: EmailBody): string {
+  const paragraphs = body.paragraphs
+    .map(
+      (p) =>
+        `<p style="margin: 0 0 16px; font-size: 15px; line-height: 1.65; color: #374151;">${escapeHtml(p)}</p>`,
+    )
+    .join('');
+
+  const facts = (body.facts ?? []).filter(([, value]) => value !== '');
+  const factList = facts.length
+    ? `
+      <div style="margin: 20px 0; background-color: #FFFDF7; border: 2px solid #171515; border-radius: 14px; box-shadow: 4px 4px 0px #171515; overflow: hidden;">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13.5px; border-collapse: collapse;">
+          <tr style="background-color: #FBC02D; border-bottom: 2px solid #171515;">
+            <td colspan="2" style="padding: 10px 14px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #171515;">
+              Official RIDE Delegation Record
+            </td>
+          </tr>
+          ${facts
+            .map(
+              ([label, value], i) =>
+                `<tr style="${i < facts.length - 1 ? 'border-bottom: 1px solid #E5E7EB;' : ''}">
+                  <td style="padding: 10px 14px; color: #6B7280; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; vertical-align: top; width: 35%;">${escapeHtml(label)}</td>
+                  <td style="padding: 10px 14px; color: #171515; font-weight: 800; font-size: 14px; vertical-align: top;">${escapeHtml(value)}</td>
+                </tr>`,
+            )
+            .join('')}
+        </table>
+      </div>
+    `
+    : '';
+
+  const cta = body.cta
+    ? `
+      <div style="margin: 28px 0 12px; text-align: center;">
+        <a href="${escapeHtml(body.cta.url)}" style="background-color: #EA6623; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; padding: 14px 32px; border: 2px solid #171515; border-radius: 12px; text-decoration: none; display: inline-block; box-shadow: 4px 4px 0px #171515;">
+          <!--[if mso]><i style="letter-spacing: 25px; mso-font-width: -100%; mso-text-raise: 30pt">&nbsp;</i><![endif]-->
+          <span style="color: #FFFFFF;">${escapeHtml(body.cta.label)} &rarr;</span>
+          <!--[if mso]><i style="letter-spacing: 25px; mso-font-width: -100%">&nbsp;</i><![endif]-->
+        </a>
+      </div>
+    `
+    : '';
+
+  return `
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="format-detection" content="telephone=no, address=no, email=no, date=no, url=no">
+  <title>${escapeHtml(body.heading)}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style>
+    @media only screen and (max-width: 620px) {
+      .email-container { width: 100% !important; padding: 10px !important; }
+      .email-card { border-radius: 16px !important; border-width: 2px !important; }
+      .email-inner { padding: 24px 18px !important; }
+      .email-heading { font-size: 22px !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: #FDFBF7; color: #171515; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  
+  <!-- 1. CONTINUOUS HORIZONTAL YELLOW LINE TICKER (Homepage Signature Element) -->
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color: #FBC02D; border-bottom: 3px solid #171515;">
+    <tr>
+      <td style="padding: 10px 16px; text-align: center;">
+        <span style="font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; color: #171515;">
+          DELHI MERI JAAN 2026 &bull; ROTARY INTERNATIONAL DISTRICT 3011 &bull; THE RIDE
+        </span>
+      </td>
+    </tr>
+  </table>
+
+  <div style="background-color: #FDFBF7; width: 100%; padding: 36px 12px;">
+    <!-- Main Content Container -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 580px; margin: 0 auto; width: 100%;">
+      <tr>
+        <td>
+          <!-- Pop-Brutalist White Card -->
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="email-card" style="background-color: #FFFFFF; border: 3px solid #171515; border-radius: 20px; box-shadow: 6px 6px 0px #171515; overflow: hidden;">
+            <!-- Card Header -->
+            <tr>
+              <td style="padding: 28px 32px 20px; text-align: center; background-color: #FDFBF7; border-bottom: 2px solid #171515;">
+                <img src="https://ride.rotaract3011.org/ride/logos/2026_logo_coloured.png" alt="Delhi Meri Jaan 2026" width="180" style="max-width: 180px; height: auto; display: inline-block; margin-bottom: 12px;" />
+                <div>
+                  <span style="display: inline-block; padding: 4px 14px; background-color: #19539D; border: 2px solid #171515; border-radius: 999px; color: #FFFFFF; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;">
+                    Rotary District Exchange &bull; RID 3011
+                  </span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Card Body Content -->
+            <tr>
+              <td class="email-inner" style="padding: 32px;">
+                <h1 class="email-heading" style="margin: 0 0 20px; font-size: 24px; font-weight: 900; color: #171515; text-transform: uppercase; letter-spacing: -0.4px; line-height: 1.25;">
+                  ${escapeHtml(body.heading)}
+                </h1>
+                ${paragraphs}
+                ${factList}
+                ${cta}
+              </td>
+            </tr>
+
+            <!-- Continuous Yellow Accent Strip before Footer -->
+            <tr>
+              <td style="height: 6px; background-color: #FBC02D; border-top: 2px solid #171515; border-bottom: 1px solid #171515;"></td>
+            </tr>
+
+            <!-- Card Footer -->
+            <tr>
+              <td style="padding: 22px 32px; background-color: #FDFBF7; text-align: center;">
+                <p style="margin: 0 0 8px; font-size: 12px; font-weight: 700; color: #171515;">
+                  Rotaract International District 3011 &bull; The RIDE: Delhi Meri Jaan
+                </p>
+                <p style="margin: 0; font-size: 11px; color: #6B7280; line-height: 1.5;">
+                  Official Portal: <a href="https://ride.rotaract3011.org" style="color: #19539D; text-decoration: underline; font-weight: 700;">ride.rotaract3011.org</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>
+  `.trim();
+}
+
 export function defineTemplate(spec: TemplateSpec): NotificationTemplate {
   return {
     subject: (data) => spec.subject(data),
     html: (data) => renderHtml(spec.body(data)),
+    text: (data) => renderText(spec.body(data)),
+    push: (data) => {
+      const push = spec.push(data);
+      return { ...push, body: truncate(push.body) };
+    },
+  };
+}
+
+export function defineRideTemplate(spec: TemplateSpec): NotificationTemplate {
+  return {
+    subject: (data) => spec.subject(data),
+    html: (data) => renderRideHtml(spec.body(data)),
     text: (data) => renderText(spec.body(data)),
     push: (data) => {
       const push = spec.push(data);

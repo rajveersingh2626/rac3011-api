@@ -1,8 +1,8 @@
 import { str } from './data';
-import { defineTemplate } from './layout';
+import { defineRideTemplate } from './layout';
 import { surfaceLink } from './links';
 
-export const rideHostAssignedTemplate = defineTemplate({
+export const rideHostAssignedTemplate = defineRideTemplate({
   subject: (data) =>
     `You are hosting a RIDE delegation from ${str(data, 'visitingDistrict', 'another district')}`,
   body: (data) => ({
