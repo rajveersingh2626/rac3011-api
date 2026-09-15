@@ -6,11 +6,14 @@ import { hashPassword, verifyPassword } from './legacy-password';
 
 export type SendOtpEmail = (input: { email: string; otp: string; type: string }) => Promise<void>;
 export type SendResetPasswordEmail = (input: { email: string; name: string; url: string; token: string }) => Promise<void>;
+export type OnSessionAction = (session: { id?: string; userId?: string; ipAddress?: string | null; userAgent?: string | null }, context?: unknown) => Promise<void>;
 
 export type AuthConfigDeps = {
   database: ReturnType<typeof prismaAdapter>;
   sendOtpEmail: SendOtpEmail;
   sendResetPasswordEmail?: SendResetPasswordEmail;
+  onSessionCreated?: OnSessionAction;
+  onSessionDeleted?: OnSessionAction;
 };
 
 export function createAuthInstance(deps: AuthConfigDeps) {
@@ -66,6 +69,18 @@ export function createAuthInstance(deps: AuthConfigDeps) {
                 ? { data: { mfaPending: false } }
                 : undefined,
             ),
+          after: async (session, context) => {
+            if (deps.onSessionCreated) {
+              await deps.onSessionCreated(session as never, context);
+            }
+          },
+        },
+        delete: {
+          after: async (session, context) => {
+            if (deps.onSessionDeleted) {
+              await deps.onSessionDeleted(session as never, context);
+            }
+          },
         },
       },
     },

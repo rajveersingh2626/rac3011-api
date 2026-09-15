@@ -30,6 +30,7 @@ const FIXED_SCHEMAS: Record<string, z.ZodTypeAny> = {
     foundedYear: z.number().int().min(1900).max(2100),
     ageRange: z.string(),
   }),
+  'notifications.outgoingEmailsEnabled': z.boolean(),
   'sponsor.ratios': z.object({
     perRupee: z.number().min(0),
     mealsPerThousand: z.number().min(0),

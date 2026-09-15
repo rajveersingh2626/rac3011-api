@@ -1,6 +1,7 @@
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job, Queue } from 'bullmq';
+import { PrismaService } from '../prisma/prisma.service';
 import { EmailProviderPool } from './email/email-provider-pool.service';
 import { NotificationOutboxRepository } from './notification-outbox.repository';
 import type { TemplateKey } from './notification.port';
@@ -24,6 +25,7 @@ export class NotificationSendProcessor extends WorkerHost {
     @InjectQueue(NOTIFICATIONS_QUEUE) private readonly queue: Queue,
     private readonly outbox: NotificationOutboxRepository,
     private readonly pool: EmailProviderPool,
+    private readonly prisma: PrismaService,
   ) {
     super();
   }
@@ -34,6 +36,19 @@ export class NotificationSendProcessor extends WorkerHost {
       return;
     }
     await this.processSend(job as Job<SendJobData>);
+  }
+
+  private async isOutgoingEmailsMuted(): Promise<boolean> {
+    if (process.env.MUTE_OUTGOING_EMAILS === 'true') return true;
+    try {
+      const setting = await this.prisma.setting.findUnique({
+        where: { key: 'notifications.outgoingEmailsEnabled' },
+      });
+      if (setting && setting.value === false) return true;
+    } catch {
+      // ignore
+    }
+    return false;
   }
 
   private async processSend(job: Job<SendJobData>): Promise<void> {
@@ -47,6 +62,19 @@ export class NotificationSendProcessor extends WorkerHost {
     if (!(row.template in TEMPLATES)) {
       await this.outbox.recordFailedAttempt(row.id, `unknown template ${row.template}`, true);
       return;
+    }
+
+    // Auth critical emails (OTP, password reset) ALWAYS pass through.
+    // All other notification emails can be muted via master switch.
+    if (row.template !== 'otp' && row.template !== 'password-reset') {
+      const isMuted = await this.isOutgoingEmailsMuted();
+      if (isMuted) {
+        this.logger.log(
+          `[NOTIFICATIONS] Outgoing non-auth emails are muted; suppressing outbox row ${row.id} (${row.template} to ${row.toAddress})`,
+        );
+        await this.outbox.markSent(row.id, 'muted');
+        return;
+      }
     }
 
     try {

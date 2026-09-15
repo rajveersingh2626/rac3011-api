@@ -241,7 +241,14 @@ export class AnnouncementsRepository {
   async findUserIdsForMemberIds(memberIds: string[]): Promise<string[]> {
     if (memberIds.length === 0) return [];
     const profiles = await this.prisma.memberProfile.findMany({
-      where: { id: { in: memberIds }, status: 'approved' },
+      where: {
+        OR: [
+          { id: { in: memberIds } },
+          { rotaryId: { in: memberIds } },
+          { userId: { in: memberIds } },
+        ],
+        status: 'approved',
+      },
       select: { userId: true },
     });
     return profiles.map((p) => p.userId);
@@ -252,10 +259,22 @@ export class AnnouncementsRepository {
   async findClubIdsForMemberIds(memberIds: string[]): Promise<Map<string, string>> {
     if (memberIds.length === 0) return new Map();
     const profiles = await this.prisma.memberProfile.findMany({
-      where: { id: { in: memberIds } },
-      select: { id: true, clubId: true },
+      where: {
+        OR: [
+          { id: { in: memberIds } },
+          { rotaryId: { in: memberIds } },
+          { userId: { in: memberIds } },
+        ],
+      },
+      select: { id: true, rotaryId: true, userId: true, clubId: true },
     });
-    return new Map(profiles.map((p) => [p.id, p.clubId]));
+    const map = new Map<string, string>();
+    for (const p of profiles) {
+      map.set(p.id, p.clubId);
+      if (p.rotaryId) map.set(p.rotaryId, p.clubId);
+      if (p.userId) map.set(p.userId, p.clubId);
+    }
+    return map;
   }
 
   // No roleKeys given: clubIds/zoneIds select every approved member of those clubs/zones

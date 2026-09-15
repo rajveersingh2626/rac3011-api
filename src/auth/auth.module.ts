@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
+import { AuditService } from '../audit/audit.service';
 import { NotificationPort } from '../notifications/notification.port';
 import { PrismaAuthAdapterService } from '../prisma/prisma-auth-adapter.service';
 import { SessionContextPort } from '../common/auth/session-context.port';
@@ -17,13 +18,58 @@ import { TrustedDevicesService } from './trusted-devices.service';
   imports: [
     BetterAuthModule.forRootAsync({
       disableGlobalAuthGuard: true,
-      inject: [PrismaAuthAdapterService, NotificationPort],
-      useFactory: (adapter: PrismaAuthAdapterService, notifications: NotificationPort) => ({
+      inject: [PrismaAuthAdapterService, NotificationPort, AuditService],
+      useFactory: (adapter: PrismaAuthAdapterService, notifications: NotificationPort, audit: AuditService) => ({
         auth: createAuthInstance({
           database: adapter.create(),
-          sendOtpEmail: ({ email, otp, type }) =>
-            notifications.notify({ template: 'otp', to: [{ email }], data: { otp, type } }),
+          onSessionCreated: async (session) => {
+            try {
+              await audit.record({
+                actorId: session.userId ?? null,
+                action: 'auth.login',
+                resourceType: 'session',
+                resourceId: session.id ?? null,
+                after: {
+                  ipAddress: session.ipAddress ?? null,
+                  userAgent: session.userAgent ?? null,
+                },
+              });
+            } catch (err) {
+              console.error('[AUTH] Failed to record login audit log:', (err as Error).message);
+            }
+          },
+          onSessionDeleted: async (session) => {
+            try {
+              await audit.record({
+                actorId: session.userId ?? null,
+                action: 'auth.logout',
+                resourceType: 'session',
+                resourceId: session.id ?? null,
+              });
+            } catch (err) {
+              console.error('[AUTH] Failed to record logout audit log:', (err as Error).message);
+            }
+          },
+          sendOtpEmail: async ({ email, otp, type }) => {
+            try {
+              await audit.record({
+                actorId: null,
+                action: 'auth.otp_requested',
+                resourceType: 'auth',
+                after: { email, type },
+              });
+            } catch {}
+            return notifications.notify({ template: 'otp', to: [{ email }], data: { otp, type } });
+          },
           sendResetPasswordEmail: async ({ email, name, token, url }) => {
+            try {
+              await audit.record({
+                actorId: null,
+                action: 'auth.password_reset_requested',
+                resourceType: 'auth',
+                after: { email },
+              });
+            } catch {}
             const webOrigin = env.WEB_ORIGINS[0] || 'https://rotaract3011.org';
             let resolvedToken = token;
             if (!resolvedToken && url) {

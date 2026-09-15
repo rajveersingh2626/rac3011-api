@@ -45,6 +45,22 @@ export class DrrBookingsService {
       throw new BadRequestException('Unknown club');
 
     const row = await this.createWithReference(input);
+
+    await this.audit.record({
+      actorId: null,
+      action: 'drr_booking.submitted',
+      resourceType: 'drr_booking',
+      resourceId: row.id,
+      after: {
+        reference: row.reference,
+        requesterName: row.requesterName,
+        requesterEmail: row.requesterEmail,
+        clubId: row.clubId,
+        startsAt: row.startsAt,
+        purpose: row.purpose,
+      },
+    });
+
     // 1. Send confirmation acknowledgement email to the requester
     if (row.requesterEmail) {
       try {
