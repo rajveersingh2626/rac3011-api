@@ -45,12 +45,32 @@ export class DrrBookingsService {
       throw new BadRequestException('Unknown club');
 
     const row = await this.createWithReference(input);
-    // The booking is persisted; the visitor must still get their reference if the queue is down.
+    // 1. Send confirmation acknowledgement email to the requester
+    if (row.requesterEmail) {
+      try {
+        await this.notifications.notify({
+          template: 'booking-received',
+          to: [{ email: row.requesterEmail }],
+          data: {
+            reference: row.reference,
+            requesterName: row.requesterName,
+            purpose: row.purpose,
+            startsAt: row.startsAt.toISOString(),
+          },
+        });
+      } catch (err) {
+        this.logger.error(
+          `booking ${row.reference} saved but requester confirmation failed: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    // 2. Notify the designated DRR only
     try {
       await this.notifyOfficers(row);
     } catch (err) {
       this.logger.error(
-        `booking ${row.reference} saved but officer notification failed: ${(err as Error).message}`,
+        `booking ${row.reference} saved but DRR notification failed: ${(err as Error).message}`,
       );
     }
     return { reference: row.reference, status: row.status };

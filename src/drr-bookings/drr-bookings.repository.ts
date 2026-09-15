@@ -106,18 +106,32 @@ export class DrrBookingsRepository {
     return !!row;
   }
 
-  // Everyone who can act on a request: a district-wide holder of drr_calendar:manage through
-  // any role. A club/zone-scoped grant is refused by the service, so it is not notified either.
+  // Only notify the designated District Rotaract Representative (DRR),
+  // falling back to Super Admins if no specific DRR role is assigned.
+  // Never broadcast to all 50+ general council (DSC) members.
   async findOfficers(permissionKey: string): Promise<DrrOfficer[]> {
-    const rows = await this.prisma.userRole.findMany({
+    const drrRows = await this.prisma.userRole.findMany({
       where: {
         scopeType: 'none',
-        role: { permissions: { some: { permission: { key: permissionKey } } } },
+        role: { key: 'drr' },
+      },
+      select: { userId: true, user: { select: { email: true } } },
+    });
+    if (drrRows.length > 0) {
+      const byUser = new Map<string, DrrOfficer>();
+      for (const row of drrRows) byUser.set(row.userId, { userId: row.userId, email: row.user.email });
+      return [...byUser.values()];
+    }
+
+    const adminRows = await this.prisma.userRole.findMany({
+      where: {
+        scopeType: 'none',
+        role: { key: 'super_admin' },
       },
       select: { userId: true, user: { select: { email: true } } },
     });
     const byUser = new Map<string, DrrOfficer>();
-    for (const row of rows) byUser.set(row.userId, { userId: row.userId, email: row.user.email });
+    for (const row of adminRows) byUser.set(row.userId, { userId: row.userId, email: row.user.email });
     return [...byUser.values()];
   }
 

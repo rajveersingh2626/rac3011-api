@@ -246,17 +246,22 @@ export class ShowcaseAdminService {
     }
 
     if (input.status === 'submitted') {
-      const officerIds = await this.repo.findClubOfficerUserIds(leadClubId);
-      if (officerIds.length > 0) {
-        await this.notifications.notify({
-          template: 'showcase-submitted',
-          to: officerIds.map((userId) => ({ userId })),
-          data: {
-            projectId: existing.id,
-            title: input.title ?? existing.title,
-            submittedById: ctx.user.id,
-          },
-        });
+      const isDistrictPublisher = this.hasPublishGrant(ctx.access) || ctx.access.isSuperAdmin;
+      // If submitted by DSC / district admin / super admin on behalf of a club, do NOT notify club officers.
+      if (!isDistrictPublisher) {
+        const officerIds = await this.repo.findClubOfficerUserIds(leadClubId);
+        const targetOfficerIds = officerIds.filter((id) => id !== ctx.user.id);
+        if (targetOfficerIds.length > 0) {
+          await this.notifications.notify({
+            template: 'showcase-submitted',
+            to: targetOfficerIds.map((userId) => ({ userId })),
+            data: {
+              projectId: existing.id,
+              title: input.title ?? existing.title,
+              submittedById: ctx.user.id,
+            },
+          });
+        }
       }
     }
 

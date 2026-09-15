@@ -12,6 +12,7 @@ export type TemplateKey =
   | 'announcement'
   | 'feedback-replied'
   | 'booking-requested'
+  | 'booking-received'
   | 'booking-confirmed'
   | 'booking-declined'
   | 'booking-reminder'

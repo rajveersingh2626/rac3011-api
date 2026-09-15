@@ -6,7 +6,7 @@ const ALL_KEYS = Object.keys(TEMPLATES) as TemplateKey[];
 
 describe('notification templates', () => {
   it('covers every template key declared on the port', () => {
-    expect(ALL_KEYS).toHaveLength(28);
+    expect(ALL_KEYS).toHaveLength(29);
   });
 
   it.each(ALL_KEYS)(

@@ -4,6 +4,7 @@ import { bookingConfirmedTemplate } from './booking-confirmed.template';
 import { bookingDeclinedTemplate } from './booking-declined.template';
 import { bookingReminderTemplate } from './booking-reminder.template';
 import { bookingRequestedTemplate } from './booking-requested.template';
+import { bookingReceivedTemplate } from './booking-received.template';
 import { campApprovedTemplate } from './camp-approved.template';
 import { campSubmittedTemplate } from './camp-submitted.template';
 import { certificateIssuedTemplate } from './certificate-issued.template';
@@ -47,6 +48,7 @@ export const TEMPLATES: Record<TemplateKey, NotificationTemplate> = {
   announcement: announcementTemplate,
   'feedback-replied': feedbackRepliedTemplate,
   'booking-requested': bookingRequestedTemplate,
+  'booking-received': bookingReceivedTemplate,
   'booking-confirmed': bookingConfirmedTemplate,
   'booking-declined': bookingDeclinedTemplate,
   'booking-reminder': bookingReminderTemplate,
