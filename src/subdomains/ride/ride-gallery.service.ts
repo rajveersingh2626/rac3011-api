@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { CacheInvalidator } from '../../cache/cache-invalidator.service';
 import { ScopeService } from '../../common/scope/scope.service';
 import type { RequestContext } from '../../common/types/access';
 import type { CreateGalleryItemInput } from './dto/create-gallery-item.dto';
@@ -12,6 +13,7 @@ export class RideGalleryService {
   constructor(
     private readonly repo: RideGalleryRepository,
     private readonly scope: ScopeService,
+    private readonly cache: CacheInvalidator,
   ) {}
 
   list(
@@ -34,7 +36,7 @@ export class RideGalleryService {
 
   async create(ctx: RequestContext, input: CreateGalleryItemInput): Promise<GalleryItemRow> {
     this.assertManage(ctx);
-    return this.repo.create({
+    const created = await this.repo.create({
       year: input.year,
       url: input.url,
       kind: input.kind,
@@ -43,6 +45,8 @@ export class RideGalleryService {
       headingRight: input.headingRight ?? null,
       order: input.order,
     });
+    await this.cache.purge(['ride']);
+    return created;
   }
 
   async delete(ctx: RequestContext, id: string): Promise<void> {
@@ -50,6 +54,7 @@ export class RideGalleryService {
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundException();
     await this.repo.delete(id);
+    await this.cache.purge(['ride']);
   }
 
   private assertManage(ctx: RequestContext): void {
