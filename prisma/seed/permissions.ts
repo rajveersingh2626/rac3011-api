@@ -38,6 +38,8 @@ export const PERMISSIONS: Record<string, string> = {
   'subdomain:rcl:manage': 'Manage RCL',
   'subdomain:careerbridge:manage': 'Manage Career Bridge',
   'subdomain:ride:manage': 'Manage RIDE',
+  'ride:manage': 'Full administration of The RIDE Youth Exchange and Delhi Meri Jaan',
+  'ride:delegates:manage': 'Manage RIDE participants, delegations, homestays and host allocations',
 };
 
 export const PROJECT_KEYS = ['mission3011', 'drishti', 'rcl', 'careerbridge', 'ride'] as const;

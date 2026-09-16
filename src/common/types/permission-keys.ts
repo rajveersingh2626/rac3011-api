@@ -38,6 +38,8 @@ export const PERMISSION_KEYS = [
   'subdomain:rcl:manage',
   'subdomain:careerbridge:manage',
   'subdomain:ride:manage',
+  'ride:manage',
+  'ride:delegates:manage',
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];

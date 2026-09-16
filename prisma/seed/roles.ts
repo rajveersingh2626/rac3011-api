@@ -66,11 +66,35 @@ export const ROLES: RoleSeed[] = [
     permissions: ['content:edit', 'content:publish', 'public_content:manage'],
   },
   { key: 'super_admin', name: 'Super Admin', description: 'Every permission', scopeType: 'none', permissions: Object.keys(PERMISSIONS) },
+  {
+    key: 'ride_admin',
+    name: 'RIDE Youth Exchange Admin',
+    description: 'Full administrative access to The RIDE (Delhi Meri Jaan) participant portal, form builder, and active logins',
+    scopeType: 'none',
+    permissions: [
+      'subdomain:ride:manage',
+      'ride:manage',
+      'ride:delegates:manage',
+      'forms:manage',
+      'comms:send',
+      'resources:manage',
+      'events:checkin',
+    ],
+  },
+  {
+    key: 'participant',
+    name: 'RIDE Participant / Delegate',
+    description: 'Registered youth exchange participant with access to participant portal and forms',
+    scopeType: 'none',
+    permissions: ['profile:edit', 'directory:view', 'feedback:submit'],
+  },
   ...PROJECT_KEYS.map((key) => ({
     key: `project_admin:${key}`,
     name: `Project Admin (${key})`,
     description: `Administers the ${key} subdomain`,
     scopeType: 'project' as const,
-    permissions: [`subdomain:${key}:manage`, 'events:checkin'],
+    permissions: key === 'ride' 
+      ? ['subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage', 'forms:manage', 'comms:send', 'resources:manage', 'events:checkin']
+      : [`subdomain:${key}:manage`, 'events:checkin'],
   })),
 ];

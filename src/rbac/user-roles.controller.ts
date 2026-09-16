@@ -17,7 +17,7 @@ export class UserRolesController {
   constructor(private readonly roles: RolesService) {}
 
   @Get('directory')
-  @RequirePermission('roles:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
   directory(@Query('q') q?: string) {
     return this.roles.listUsersDirectory(q);
   }
@@ -30,13 +30,13 @@ export class UserRolesController {
   }
 
   @Post('create-user')
-  @RequirePermission('roles:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
   createUser(@CurrentUser() ctx: RequestContext, @Body() dto: CreateAdminUserDto) {
     return this.roles.createUser(ctx.user.id, dto);
   }
 
   @Patch('users/:id')
-  @RequirePermission('roles:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
   updateUser(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,

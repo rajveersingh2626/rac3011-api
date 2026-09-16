@@ -33,6 +33,14 @@ export class RideParticipantsService {
     return record;
   }
 
+  async getByUser(userId: string, email?: string): Promise<ParticipantRecord | null> {
+    let rec = await this.repo.findByUserId(userId);
+    if (!rec && email) {
+      rec = await this.repo.findByEmail(email);
+    }
+    return rec;
+  }
+
   async updateStatus(
     id: string,
     status: string,

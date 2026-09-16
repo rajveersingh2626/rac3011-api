@@ -134,6 +134,20 @@ export class RideParticipantsRepository {
     });
   }
 
+  async findByUserId(userId: string): Promise<ParticipantRecord | null> {
+    return this.prisma.rideParticipant.findFirst({
+      where: { userId },
+      select: PARTICIPANT_SELECT,
+    });
+  }
+
+  async findByEmail(email: string): Promise<ParticipantRecord | null> {
+    return this.prisma.rideParticipant.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      select: PARTICIPANT_SELECT,
+    });
+  }
+
   async updateStatus(
     id: string,
     status: string,

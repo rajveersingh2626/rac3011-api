@@ -5,6 +5,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -44,16 +45,59 @@ export class SessionsController {
   ) {}
 
   @Get()
-  @RequirePermission('roles:manage')
-  async listActiveSessions(@Req() req: Request) {
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
+  async listActiveSessions(@Req() req: Request, @Query('scope') scope?: string) {
     const currentSession = await this.sessionContext.fromRequest(req);
     const currentSessionId = currentSession?.sessionId ?? null;
 
     const now = new Date();
+
+    let rideUserIds: Set<string> | null = null;
+    if (scope === 'ride') {
+      const [rideRoleUsers, rideParticipants] = await Promise.all([
+        this.prisma.userRole.findMany({
+          where: {
+            role: {
+              key: { in: ['participant', 'ride_admin', 'project_admin:ride'] },
+            },
+          },
+          select: { userId: true },
+        }),
+        this.prisma.rideParticipant.findMany({
+          select: { userId: true, email: true },
+        }),
+      ]);
+
+      const participantEmails = new Set(
+        rideParticipants.map((p) => p.email.toLowerCase()),
+      );
+      const participantUserIds = rideParticipants
+        .map((p) => p.userId)
+        .filter((id): id is string => Boolean(id));
+
+      const emailMatchedUsers = await this.prisma.user.findMany({
+        where: {
+          email: { in: [...participantEmails] },
+        },
+        select: { id: true },
+      });
+
+      rideUserIds = new Set([
+        ...rideRoleUsers.map((r) => r.userId),
+        ...participantUserIds,
+        ...emailMatchedUsers.map((u) => u.id),
+      ]);
+    }
+
+    const whereClause: any = {
+      expiresAt: { gt: now },
+    };
+    if (rideUserIds) {
+      whereClause.userId = { in: [...rideUserIds] };
+    }
+
     const rows = await this.prisma.session.findMany({
-      where: {
-        expiresAt: { gt: now },
-      },
+      where: whereClause,
       include: {
         user: {
           select: {
@@ -97,7 +141,7 @@ export class SessionsController {
   }
 
   @Delete(':id')
-  @RequirePermission('roles:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
   async revokeSession(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,
@@ -129,7 +173,7 @@ export class SessionsController {
   }
 
   @Post('revoke-user/:userId')
-  @RequirePermission('roles:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
   async revokeUserSessions(
     @CurrentUser() ctx: RequestContext,
     @Param('userId') userId: string,
@@ -150,16 +194,41 @@ export class SessionsController {
   }
 
   @Post('revoke-all')
-  @RequirePermission('roles:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
   async revokeAllOtherSessions(
     @Req() req: Request,
     @CurrentUser() ctx: RequestContext,
+    @Query('scope') scope?: string,
   ): Promise<{ count: number }> {
     const currentSession = await this.sessionContext.fromRequest(req);
     const currentSessionId = currentSession?.sessionId;
 
+    const whereClause: any = {};
+    if (currentSessionId) {
+      whereClause.id = { not: currentSessionId };
+    }
+
+    if (scope === 'ride') {
+      const [rideRoleUsers, rideParticipants] = await Promise.all([
+        this.prisma.userRole.findMany({
+          where: {
+            role: { key: { in: ['participant', 'ride_admin', 'project_admin:ride'] } },
+          },
+          select: { userId: true },
+        }),
+        this.prisma.rideParticipant.findMany({
+          select: { userId: true },
+        }),
+      ]);
+      const targetUserIds = [
+        ...rideRoleUsers.map((r) => r.userId),
+        ...rideParticipants.map((p) => p.userId).filter(Boolean),
+      ];
+      whereClause.userId = { in: targetUserIds };
+    }
+
     const res = await this.prisma.session.deleteMany({
-      where: currentSessionId ? { id: { not: currentSessionId } } : {},
+      where: whereClause,
     });
 
     await this.audit.record({
@@ -167,7 +236,7 @@ export class SessionsController {
       action: 'auth.all_sessions_revoked',
       resourceType: 'session',
       resourceId: null,
-      after: { revokedCount: res.count, preservedSessionId: currentSessionId },
+      after: { revokedCount: res.count, preservedSessionId: currentSessionId, scope },
     });
 
     return { count: res.count };
