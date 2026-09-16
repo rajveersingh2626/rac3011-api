@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { RequirePermission } from '../../common/decorators/access.decorators';
+import { Authenticated, RequirePermission } from '../../common/decorators/access.decorators';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { RequestContext } from '../../common/types/access';
 import { paginate, parseListQuery } from '../../common/query/list-query';
@@ -15,6 +15,7 @@ export class RideParticipantsController {
   constructor(private readonly service: RideParticipantsService) {}
 
   @Get('me')
+  @Authenticated()
   async me(@CurrentUser() ctx: RequestContext) {
     if (!ctx?.user) return null;
     return this.service.getByUser(ctx.user.id, ctx.user.email);
