@@ -7,6 +7,8 @@ export const createGalleryItemSchema = z
     url: z.string().trim().url().max(1024),
     kind: z.enum(['photo', 'video']),
     caption: z.string().trim().max(300).nullable().optional(),
+    headingLeft: z.string().trim().max(100).nullable().optional(),
+    headingRight: z.string().trim().max(100).nullable().optional(),
     order: z.number().int().min(0).max(10000).default(0),
   })
   .strict();

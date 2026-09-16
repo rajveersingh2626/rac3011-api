@@ -8,7 +8,6 @@ const PARTICIPANT_SELECT = {
   ryYear: true,
   edition: true,
   participantType: true,
-  userId: true,
   fullName: true,
   email: true,
   phone: true,
@@ -33,6 +32,10 @@ const PARTICIPANT_SELECT = {
   hostFamilyPhone: true,
   hostAddress: true,
   status: true,
+  approvalStatus: true,
+  dossierStatus: true,
+  dossierData: true,
+  isActive: true,
   paymentStatus: true,
   paymentRef: true,
   createdAt: true,
@@ -51,14 +54,13 @@ export interface ParticipantListFilter {
 export class RideParticipantsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: RegisterParticipantInput, userId?: string): Promise<ParticipantRecord> {
+  async create(data: RegisterParticipantInput): Promise<ParticipantRecord> {
     const rawArrival = data.arrivalAt || (data.arrivalDateTime ? new Date(data.arrivalDateTime).toISOString() : null);
     const arrivalDate = rawArrival ? new Date(rawArrival) : null;
     const departureDate = data.departureAt ? new Date(data.departureAt) : null;
 
     return this.prisma.rideParticipant.create({
       data: {
-        userId: userId ?? null,
         fullName: data.fullName,
         email: data.email,
         phone: data.phone,
@@ -134,9 +136,23 @@ export class RideParticipantsRepository {
     });
   }
 
-  async findByUserId(userId: string): Promise<ParticipantRecord | null> {
-    return this.prisma.rideParticipant.findFirst({
-      where: { userId },
+  async deleteParticipant(id: string): Promise<void> {
+    await this.prisma.rideParticipant.delete({
+      where: { id },
+    });
+  }
+
+  async updateDossier(
+    id: string,
+    dossierData: Record<string, any>,
+    dossierStatus?: string,
+  ): Promise<ParticipantRecord> {
+    return this.prisma.rideParticipant.update({
+      where: { id },
+      data: {
+        dossierData,
+        dossierStatus: dossierStatus !== undefined ? dossierStatus : undefined,
+      },
       select: PARTICIPANT_SELECT,
     });
   }

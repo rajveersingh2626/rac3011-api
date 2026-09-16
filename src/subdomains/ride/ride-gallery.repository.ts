@@ -14,6 +14,8 @@ const GALLERY_ITEM_SELECT = {
   url: true,
   kind: true,
   caption: true,
+  headingLeft: true,
+  headingRight: true,
   order: true,
   createdAt: true,
 } satisfies Prisma.RideGalleryItemSelect;

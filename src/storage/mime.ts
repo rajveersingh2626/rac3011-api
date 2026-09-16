@@ -4,6 +4,7 @@ import type { StorageTier } from './storage.port';
 const MB = 1024 * 1024;
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'] as const;
+const VIDEO_TYPES = ['video/mp4', 'video/webm'] as const;
 const OFFICE_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -12,13 +13,13 @@ const OFFICE_TYPES = [
 
 export const ALLOWED_MIME_TYPES: Record<StorageTier, readonly string[]> = {
   permanent: [...IMAGE_TYPES, 'application/pdf'],
-  dynamic: [...IMAGE_TYPES, 'application/pdf'],
-  private: [...IMAGE_TYPES, 'application/pdf', ...OFFICE_TYPES],
+  dynamic: [...IMAGE_TYPES, ...VIDEO_TYPES, 'application/pdf'],
+  private: [...IMAGE_TYPES, ...VIDEO_TYPES, 'application/pdf', ...OFFICE_TYPES],
 };
 
 export const MAX_UPLOAD_BYTES: Record<StorageTier, number> = {
   permanent: 5 * MB,
-  dynamic: 10 * MB,
+  dynamic: 25 * MB,
   private: 25 * MB,
 };
 

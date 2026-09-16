@@ -12,9 +12,8 @@ export class RideParticipantsService {
 
   async register(
     data: RegisterParticipantInput,
-    userId?: string,
   ): Promise<ParticipantRecord> {
-    return this.repo.create(data, userId);
+    return this.repo.create(data);
   }
 
   async list(
@@ -33,12 +32,13 @@ export class RideParticipantsService {
     return record;
   }
 
-  async getByUser(userId: string, email?: string): Promise<ParticipantRecord | null> {
-    let rec = await this.repo.findByUserId(userId);
-    if (!rec && email) {
-      rec = await this.repo.findByEmail(email);
-    }
-    return rec;
+  async getByEmail(email: string): Promise<ParticipantRecord | null> {
+    return this.repo.findByEmail(email);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.getById(id);
+    return this.repo.deleteParticipant(id);
   }
 
   async updateStatus(

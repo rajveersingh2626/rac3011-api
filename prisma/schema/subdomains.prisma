@@ -283,14 +283,16 @@ model RideDelegationHost {
 }
 
 model RideGalleryItem {
-  id        String   @id @default(cuid())
-  year      Int
-  url       String
-  kind      String
-  caption   String?
-  order     Int      @default(0)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(cuid())
+  year         Int
+  url          String
+  kind         String
+  caption      String?
+  headingLeft  String?  @map("heading_left")
+  headingRight String?  @map("heading_right")
+  order        Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@index([year])
   @@map("ride_gallery_items")
@@ -301,8 +303,7 @@ model RideParticipant {
   ryYear            Int                  @default(2026) @map("ry_year")
   edition           String               @default("delhi_meri_jaan_2026")
   participantType   String               @default("external") @map("participant_type")
-  userId            String?              @map("user_id")
-  user              User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  passwordHash      String?              @map("password_hash")
 
   fullName          String               @map("full_name")
   email             String
@@ -333,6 +334,10 @@ model RideParticipant {
   hostAddress       String?              @map("host_address")
 
   status            String               @default("submitted")
+  approvalStatus    String               @default("submitted") @map("approval_status")
+  dossierStatus     String               @default("incomplete") @map("dossier_status")
+  dossierData       Json                 @default("{}") @map("dossier_data")
+  isActive          Boolean              @default(true) @map("is_active")
   paymentStatus     String               @default("pending") @map("payment_status")
   paymentRef        String?              @map("payment_ref")
 
@@ -344,7 +349,6 @@ model RideParticipant {
   @@index([ryYear, status])
   @@index([email])
   @@index([homeDistrict])
-  @@index([userId])
   @@map("ride_participants")
 }
 

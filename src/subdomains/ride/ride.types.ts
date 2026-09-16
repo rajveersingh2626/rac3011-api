@@ -93,6 +93,8 @@ export type GalleryItemRow = {
   url: string;
   kind: GalleryItemKind;
   caption: string | null;
+  headingLeft: string | null;
+  headingRight: string | null;
   order: number;
   createdAt: Date;
 };
@@ -102,6 +104,8 @@ export type GalleryItemCreate = {
   url: string;
   kind: GalleryItemKind;
   caption: string | null;
+  headingLeft: string | null;
+  headingRight: string | null;
   order: number;
 };
 

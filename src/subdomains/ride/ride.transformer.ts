@@ -63,6 +63,8 @@ export function galleryItemDto(row: GalleryItemRow) {
     url: row.url,
     kind: row.kind,
     caption: row.caption,
+    headingLeft: row.headingLeft,
+    headingRight: row.headingRight,
     order: row.order,
     createdAt: row.createdAt.toISOString(),
   };

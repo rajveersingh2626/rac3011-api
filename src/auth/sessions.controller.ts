@@ -64,16 +64,13 @@ export class SessionsController {
           select: { userId: true },
         }),
         this.prisma.rideParticipant.findMany({
-          select: { userId: true, email: true },
+          select: { email: true },
         }),
       ]);
 
       const participantEmails = new Set(
         rideParticipants.map((p) => p.email.toLowerCase()),
       );
-      const participantUserIds = rideParticipants
-        .map((p) => p.userId)
-        .filter((id): id is string => Boolean(id));
 
       const emailMatchedUsers = await this.prisma.user.findMany({
         where: {
@@ -84,7 +81,6 @@ export class SessionsController {
 
       rideUserIds = new Set([
         ...rideRoleUsers.map((r) => r.userId),
-        ...participantUserIds,
         ...emailMatchedUsers.map((u) => u.id),
       ]);
     }
@@ -217,12 +213,17 @@ export class SessionsController {
           select: { userId: true },
         }),
         this.prisma.rideParticipant.findMany({
-          select: { userId: true },
+          select: { email: true },
         }),
       ]);
+      const participantEmails = rideParticipants.map((p) => p.email.toLowerCase());
+      const emailMatchedUsers = await this.prisma.user.findMany({
+        where: { email: { in: participantEmails } },
+        select: { id: true },
+      });
       const targetUserIds = [
         ...rideRoleUsers.map((r) => r.userId),
-        ...rideParticipants.map((p) => p.userId).filter(Boolean),
+        ...emailMatchedUsers.map((u) => u.id),
       ];
       whereClause.userId = { in: targetUserIds };
     }

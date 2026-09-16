@@ -16,7 +16,6 @@ model User {
   userRoles         UserRole[]
   announcementReads AnnouncementRead[]
   pushSubscriptions PushSubscription[]
-  rideParticipants  RideParticipant[]
 
   @@map("user")
 }

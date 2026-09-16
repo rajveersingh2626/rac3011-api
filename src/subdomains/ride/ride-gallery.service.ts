@@ -39,6 +39,8 @@ export class RideGalleryService {
       url: input.url,
       kind: input.kind,
       caption: input.caption ?? null,
+      headingLeft: input.headingLeft ?? null,
+      headingRight: input.headingRight ?? null,
       order: input.order,
     });
   }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Authenticated, RequirePermission } from '../../common/decorators/access.decorators';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -17,8 +17,8 @@ export class RideParticipantsController {
   @Get('me')
   @Authenticated()
   async me(@CurrentUser() ctx: RequestContext) {
-    if (!ctx?.user) return null;
-    return this.service.getByUser(ctx.user.id, ctx.user.email);
+    if (!ctx?.user?.email) return null;
+    return this.service.getByEmail(ctx.user.email);
   }
 
   @Get()
@@ -62,5 +62,12 @@ export class RideParticipantsController {
       dto.hostFamilyName,
       dto.hostFamilyPhone,
     );
+  }
+
+  @Delete(':id')
+  @RequirePermission('subdomain:ride:manage')
+  async delete(@Param('id') id: string) {
+    await this.service.delete(id);
+    return { success: true };
   }
 }
