@@ -267,6 +267,24 @@ export class RolesService {
     return result;
   }
 
+  async deleteUser(actorId: string, targetUserId: string) {
+    const existing = await this.repo.findUser(targetUserId);
+    if (!existing) throw new NotFoundException('User not found');
+    await this.repo.deleteUser(targetUserId);
+    await this.audit.record({
+      actorId,
+      action: 'user.deleted',
+      resourceType: 'user',
+      resourceId: targetUserId,
+      before: {
+        id: existing.id,
+        email: existing.email,
+        name: existing.name,
+      },
+    });
+    return { success: true };
+  }
+
   private async notifyAccessGranted(
     actorId: string,
     targetUserId: string,

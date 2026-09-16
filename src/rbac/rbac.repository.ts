@@ -393,4 +393,27 @@ export class RbacRepository {
       return { user, profile };
     });
   }
+
+  async findUser(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true },
+    });
+  }
+
+  async deleteUser(userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      if (!user) throw new NotFoundException('User not found');
+      await tx.memberProfile.deleteMany({ where: { userId } });
+      await tx.session.deleteMany({ where: { userId } });
+      await tx.account.deleteMany({ where: { userId } });
+      await tx.userRole.deleteMany({ where: { userId } });
+      await tx.trustedDevice.deleteMany({ where: { userId } });
+      await tx.twoFactor.deleteMany({ where: { userId } });
+      await tx.announcementRead.deleteMany({ where: { userId } });
+      await tx.pushSubscription.deleteMany({ where: { userId } });
+      return tx.user.delete({ where: { id: userId } });
+    });
+  }
 }

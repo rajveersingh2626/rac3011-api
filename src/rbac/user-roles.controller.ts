@@ -45,6 +45,12 @@ export class UserRolesController {
     return this.roles.updateUser(ctx.user.id, id, dto);
   }
 
+  @Delete('users/:id')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
+  deleteUser(@CurrentUser() ctx: RequestContext, @Param('id') id: string) {
+    return this.roles.deleteUser(ctx.user.id, id);
+  }
+
   @Post()
   @RequirePermission('roles:manage')
   grant(@CurrentUser() ctx: RequestContext, @Body() dto: CreateUserRoleDto) {
