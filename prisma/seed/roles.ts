@@ -35,6 +35,8 @@ const DSC = [
   'feedback:review',
   'announcements:send_all',
   'resources:manage',
+  'forms:manage',
+  'comms:send',
   'public_content:manage',
   'audit:view',
   // The secretariat triages DRR presence requests on the DRR's behalf.

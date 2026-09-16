@@ -23,8 +23,21 @@ export const registerParticipantSchema = z
     arrivalNumber: z.string().trim().max(50).optional(),
     departureAt: z.string().datetime().nullable().optional(),
     edition: z.string().trim().default('delhi_meri_jaan_2026'),
+    // Frontend wizard field aliases
+    districtNumber: z.string().trim().optional(),
+    clubName: z.string().trim().optional(),
+    rotaryRole: z.string().trim().optional(),
+    arrivalDateTime: z.string().nullable().optional(),
+    pnrNumber: z.string().trim().optional(),
+    arrivalLocation: z.string().trim().optional(),
+    dietaryPreference: z.string().trim().optional(),
+    allergies: z.string().trim().optional(),
+    tshirtSize: z.string().trim().optional(),
+    bloodGroup: z.string().trim().optional(),
+    emergencyContactName: z.string().trim().optional(),
+    emergencyContactPhone: z.string().trim().optional(),
   })
-  .strict();
+  .passthrough();
 
 export type RegisterParticipantInput = z.infer<typeof registerParticipantSchema>;
 export class RegisterParticipantDto extends createZodDto(registerParticipantSchema) {}

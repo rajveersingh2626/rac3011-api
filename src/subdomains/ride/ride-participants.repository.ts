@@ -52,6 +52,10 @@ export class RideParticipantsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: RegisterParticipantInput, userId?: string): Promise<ParticipantRecord> {
+    const rawArrival = data.arrivalAt || (data.arrivalDateTime ? new Date(data.arrivalDateTime).toISOString() : null);
+    const arrivalDate = rawArrival ? new Date(rawArrival) : null;
+    const departureDate = data.departureAt ? new Date(data.departureAt) : null;
+
     return this.prisma.rideParticipant.create({
       data: {
         userId: userId ?? null,
@@ -60,21 +64,21 @@ export class RideParticipantsRepository {
         phone: data.phone,
         gender: data.gender,
         participantType: data.participantType,
-        homeDistrict: data.homeDistrict,
-        homeClubName: data.homeClubName,
-        cityState: data.cityState,
-        country: data.country,
-        clubDesignation: data.clubDesignation ?? null,
-        dietaryPref: data.dietaryPref,
-        allergiesNotes: data.allergiesNotes ?? null,
-        emergencyName: data.emergencyName,
-        emergencyPhone: data.emergencyPhone,
-        emergencyRelation: data.emergencyRelation,
-        arrivalAt: data.arrivalAt ? new Date(data.arrivalAt) : null,
+        homeDistrict: data.homeDistrict || data.districtNumber || '3141',
+        homeClubName: data.homeClubName || data.clubName || 'Rotaract Club',
+        cityState: data.cityState || data.arrivalLocation || 'Delhi NCR',
+        country: data.country || 'India',
+        clubDesignation: data.clubDesignation ?? data.rotaryRole ?? null,
+        dietaryPref: data.dietaryPref || data.dietaryPreference || 'veg',
+        allergiesNotes: data.allergiesNotes ?? data.allergies ?? null,
+        emergencyName: data.emergencyName || data.emergencyContactName || 'Emergency Contact',
+        emergencyPhone: data.emergencyPhone || data.emergencyContactPhone || '+91 99999 99999',
+        emergencyRelation: data.emergencyRelation || 'Guardian',
+        arrivalAt: arrivalDate && !isNaN(arrivalDate.getTime()) ? arrivalDate : null,
         arrivalMode: data.arrivalMode ?? null,
-        arrivalNumber: data.arrivalNumber ?? null,
-        departureAt: data.departureAt ? new Date(data.departureAt) : null,
-        edition: data.edition,
+        arrivalNumber: data.arrivalNumber ?? data.pnrNumber ?? null,
+        departureAt: departureDate && !isNaN(departureDate.getTime()) ? departureDate : null,
+        edition: data.edition || 'delhi_meri_jaan_2026',
         status: 'submitted',
       },
       select: PARTICIPANT_SELECT,

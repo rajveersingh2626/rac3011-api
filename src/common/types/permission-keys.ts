@@ -30,6 +30,8 @@ export const PERMISSION_KEYS = [
   'clubs:view',
   'clubs:edit',
   'resources:manage',
+  'forms:manage',
+  'comms:send',
   'public_content:manage',
   'subdomain:mission3011:manage',
   'subdomain:drishti:manage',

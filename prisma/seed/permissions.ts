@@ -30,6 +30,8 @@ export const PERMISSIONS: Record<string, string> = {
   'clubs:view': 'View clubs',
   'clubs:edit': 'Edit club details and board',
   'resources:manage': 'Manage resources',
+  'forms:manage': 'Manage dynamic registration forms',
+  'comms:send': 'Send communications and email broadcasts',
   'public_content:manage': 'Manage public content tables',
   'subdomain:mission3011:manage': 'Manage Mission 3011',
   'subdomain:drishti:manage': 'Manage Drishti',
