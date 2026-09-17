@@ -1,0 +1,63 @@
+enum FormStatus {
+  draft
+  published
+  archived
+}
+
+enum FormAccessMode {
+  all
+  specific
+  none
+}
+
+enum FormSubmissionStatus {
+  submitted
+  under_review
+  approved
+  declined
+}
+
+model CustomForm {
+  id            String                 @id @default(cuid())
+  slug          String                 @unique
+  title         String
+  description   String?
+  category      String?                @default("General")
+  status        FormStatus             @default(draft)
+  accessMode    FormAccessMode         @default(all) @map("access_mode")
+  targetSurface String                 @default("dashboard") @map("target_surface")
+  targetRoles   Json?                  @map("target_roles")
+  targetClubIds Json?                  @map("target_club_ids")
+  fields        Json
+  isPublic      Boolean                @default(false) @map("is_public")
+  createdById   String?                @map("created_by_id")
+  submissions   CustomFormSubmission[]
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  @@map("custom_forms")
+}
+
+model CustomFormSubmission {
+  id             String               @id @default(cuid())
+  formId         String               @map("form_id")
+  form           CustomForm           @relation(fields: [formId], references: [id], onDelete: Cascade)
+  userId         String?              @map("user_id")
+  applicantName  String?              @map("applicant_name")
+  applicantEmail String?              @map("applicant_email")
+  applicantPhone String?              @map("applicant_phone")
+  clubId         String?              @map("club_id")
+  clubName       String?              @map("club_name")
+  status         FormSubmissionStatus @default(submitted)
+  values         Json
+  notes          String?
+  reviewedById   String?              @map("reviewed_by_id")
+  reviewedAt     DateTime?            @map("reviewed_at")
+  submittedAt    DateTime             @default(now()) @map("submitted_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  @@index([formId])
+  @@index([userId])
+  @@index([clubId])
+  @@map("custom_form_submissions")
+}
