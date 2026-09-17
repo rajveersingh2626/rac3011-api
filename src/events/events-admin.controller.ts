@@ -21,6 +21,7 @@ import { paginate, parseListQuery } from '../common/query/list-query';
 import type { RequestContext } from '../common/types/access';
 import { PROJECT_KEYS } from '../public/project-summary.registry';
 import { CheckinDto } from './dto/checkin.dto';
+import { DispatchTicketsDto } from './dto/dispatch-tickets.dto';
 import { CreateEventDto } from './dto/create-event.dto';
 import { RsvpDto } from './dto/rsvp.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -164,5 +165,15 @@ export class EventsAdminController {
     const { row, alreadyCheckedIn } = await this.service.checkin(ctx, id, dto);
     res.status(alreadyCheckedIn ? HttpStatus.OK : HttpStatus.CREATED);
     return checkinDto(row, alreadyCheckedIn);
+  }
+
+  @Post(':id/checkin/dispatch-tickets')
+  @RequirePermission('events:checkin', 'events:manage')
+  async dispatchTickets(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+    @Body() dto: DispatchTicketsDto,
+  ) {
+    return this.service.dispatchTickets(ctx, id, dto);
   }
 }

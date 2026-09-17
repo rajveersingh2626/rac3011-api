@@ -48,6 +48,10 @@ export type EventDecorated = EventRow & {
 };
 
 import { StorageService } from '../storage/storage.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { EmailProviderPool } from '../notifications/email/email-provider-pool.service';
+import { env } from '../config/env';
+import type { DispatchTicketsInput } from './dto/dispatch-tickets.dto';
 
 @Injectable()
 export class EventsAdminService {
@@ -57,6 +61,8 @@ export class EventsAdminService {
     private readonly me: MeService,
     private readonly attendance: AttendanceRecomputeTrigger,
     private readonly storage: StorageService,
+    private readonly prisma: PrismaService,
+    @Optional() private readonly emailPool?: EmailProviderPool,
     @Optional() @Inject(CACHE_REDIS) private readonly redis?: IORedis,
   ) {}
 
@@ -446,6 +452,237 @@ export class EventsAdminService {
       }
     }
     return out;
+  }
+
+  async dispatchTickets(
+    ctx: RequestContext,
+    eventId: string,
+    dto: DispatchTicketsInput,
+  ): Promise<{ recipientCount: number; dispatchedCount: number }> {
+    const event = await this.mustFind(eventId);
+
+    interface Recipient {
+      email: string;
+      fullName: string;
+      memberId?: string;
+      clubName?: string;
+    }
+
+    const recipients: Recipient[] = [];
+    const seenEmails = new Set<string>();
+
+    const addRecipient = (r: Recipient) => {
+      const cleanEmail = r.email.toLowerCase().trim();
+      if (!cleanEmail || seenEmails.has(cleanEmail)) return;
+      seenEmails.add(cleanEmail);
+      recipients.push({ ...r, email: cleanEmail });
+    };
+
+    if (dto.audience === 'custom_emails') {
+      const emails = dto.customEmails ?? [];
+      for (const email of emails) {
+        const clean = email.toLowerCase().trim();
+        if (!clean) continue;
+        const existingProfile = await this.prisma.memberProfile.findFirst({
+          where: { email: clean },
+          include: { club: true },
+        });
+        addRecipient({
+          email: clean,
+          fullName: existingProfile?.fullName || 'Distinguished Rotaractor / Guest',
+          memberId: existingProfile?.id,
+          clubName: existingProfile?.club?.name || 'Rotaract District 3011',
+        });
+      }
+    } else if (dto.audience === 'presidents') {
+      const rows = await this.prisma.userRole.findMany({
+        where: {
+          role: { key: { in: ['president', 'club_president'] } },
+        },
+        include: {
+          user: {
+            include: { profile: { include: { club: true } } },
+          },
+        },
+      });
+      for (const r of rows) {
+        if (r.user?.email && r.user?.profile) {
+          addRecipient({
+            email: r.user.email,
+            fullName: r.user.profile.fullName,
+            memberId: r.user.profile.id,
+            clubName: r.user.profile.club?.name,
+          });
+        }
+      }
+    } else if (dto.audience === 'secretaries') {
+      const rows = await this.prisma.userRole.findMany({
+        where: {
+          role: { key: { in: ['secretary', 'club_secretary'] } },
+        },
+        include: {
+          user: {
+            include: { profile: { include: { club: true } } },
+          },
+        },
+      });
+      for (const r of rows) {
+        if (r.user?.email && r.user?.profile) {
+          addRecipient({
+            email: r.user.email,
+            fullName: r.user.profile.fullName,
+            memberId: r.user.profile.id,
+            clubName: r.user.profile.club?.name,
+          });
+        }
+      }
+    } else if (dto.audience === 'dac_members') {
+      const dacProfiles = await this.prisma.memberProfile.findMany({
+        where: { isDacMember: true, status: 'approved' },
+        include: { club: true },
+      });
+      for (const p of dacProfiles) {
+        if (p.email) {
+          addRecipient({
+            email: p.email,
+            fullName: p.fullName,
+            memberId: p.id,
+            clubName: p.club?.name,
+          });
+        }
+      }
+      const roleRows = await this.prisma.userRole.findMany({
+        where: {
+          role: {
+            key: { in: ['dsc', 'drr', 'zrr', 'super_admin'] },
+          },
+        },
+        include: {
+          user: {
+            include: { profile: { include: { club: true } } },
+          },
+        },
+      });
+      for (const r of roleRows) {
+        if (r.user?.email && r.user?.profile) {
+          addRecipient({
+            email: r.user.email,
+            fullName: r.user.profile.fullName,
+            memberId: r.user.profile.id,
+            clubName: r.user.profile.club?.name,
+          });
+        }
+      }
+    } else if (dto.audience === 'all_members') {
+      const profiles = await this.prisma.memberProfile.findMany({
+        where: {
+          status: 'approved',
+        },
+        include: { club: true },
+        take: 2000,
+      });
+      for (const p of profiles) {
+        if (p.email) {
+          addRecipient({
+            email: p.email,
+            fullName: p.fullName,
+            memberId: p.id,
+            clubName: p.club?.name,
+          });
+        }
+      }
+    }
+
+    if (recipients.length === 0) {
+      return { recipientCount: 0, dispatchedCount: 0 };
+    }
+
+    const eventDate = new Date(event.startsAt).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      dateStyle: 'full',
+      timeStyle: 'short',
+    });
+
+    const primaryOrigin = env.WEB_ORIGINS.find((o) => o.includes('testing')) || env.WEB_ORIGINS[0] || 'https://testing.rotaract3011.org';
+    const baseUrl = primaryOrigin;
+
+    // Trigger async email dispatch
+    const sendBatch = async () => {
+      for (const r of recipients) {
+        try {
+          const pseudoMid = r.memberId || `guest_${Buffer.from(r.email).toString('hex').slice(0, 16)}`;
+          const { token } = signCheckinToken(event.id, pseudoMid);
+          const ticketUrl = `${baseUrl}/portal/admin/events/${event.slug || event.id}/ticket?token=${token}`;
+
+          const subject = `Your Official Entry Ticket: ${event.title} • Rotaract District 3011`;
+          const html = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; border: 1.5px solid #F1F5F9; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.06);">
+              <div style="background: linear-gradient(135deg, #123499 0%, #0C2470 100%); padding: 32px 24px; text-align: center; color: #FFFFFF;">
+                <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.8);">ROTARACT DISTRICT 3011 • OFFICIAL EVENT PASS</p>
+                <h1 style="margin: 0; font-size: 24px; font-weight: 900; line-height: 1.25; color: #FFFFFF;">${event.title}</h1>
+              </div>
+              <div style="padding: 28px 24px;">
+                <p style="margin: 0 0 16px 0; font-size: 15px; color: #334155; line-height: 1.5;">
+                  Dear <strong>${r.fullName}</strong>${r.clubName ? ` (${r.clubName})` : ''},
+                </p>
+                <p style="margin: 0 0 20px 0; font-size: 14px; color: #475569; line-height: 1.5;">
+                  Your secure dynamic entry pass for <strong>${event.title}</strong> is ready. Please present this pass or the digital QR code at the event gate for instant check-in.
+                </p>
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; color: #1E293B;">
+                    <tr>
+                      <td style="padding: 6px 0; font-weight: 700; color: #64748B; width: 90px;">Date & Time:</td>
+                      <td style="padding: 6px 0; font-weight: 800;">${eventDate} IST</td>
+                    </tr>
+                    ${event.location ? `
+                    <tr>
+                      <td style="padding: 6px 0; font-weight: 700; color: #64748B;">Venue:</td>
+                      <td style="padding: 6px 0; font-weight: 800;">${event.location}</td>
+                    </tr>` : ''}
+                    <tr>
+                      <td style="padding: 6px 0; font-weight: 700; color: #64748B;">Attendee:</td>
+                      <td style="padding: 6px 0; font-weight: 800;">${r.fullName}</td>
+                    </tr>
+                  </table>
+                </div>
+                <div style="text-align: center; margin: 28px 0;">
+                  <a href="${ticketUrl}" style="background: #D81B60; color: #FFFFFF; font-weight: 800; font-size: 15px; padding: 14px 28px; border-radius: 12px; text-decoration: none; display: inline-block; box-shadow: 0 6px 20px rgba(216, 27, 96, 0.35);">
+                    Open Digital Entry Pass
+                  </a>
+                </div>
+                <div style="background: #FFF0F5; border-radius: 10px; padding: 12px; border: 1px dashed rgba(216, 27, 96, 0.3); font-size: 12px; color: #9F1239; line-height: 1.4; text-align: center;">
+                  <strong>Fast-Track Gate Verification:</strong> Have your pass screen brightness turned up when approaching entry scanners.
+                </div>
+              </div>
+              <div style="background: #F8FAFC; padding: 16px; text-align: center; font-size: 11px; color: #94A3B8; border-top: 1px solid #E2E8F0;">
+                Rotaract District Organization 3011 • Delhi NCR & Surrounding Areas<br/>
+                This is an automated system notification.
+              </div>
+            </div>
+          `;
+
+          const text = `Rotaract District 3011 Entry Pass\nEvent: ${event.title}\nDate: ${eventDate}\nAttendee: ${r.fullName}\nPass Link: ${ticketUrl}`;
+
+          if (this.emailPool) {
+            await this.emailPool.send({
+              to: r.email,
+              subject,
+              html,
+              text,
+            });
+          }
+        } catch {
+          // continue
+        }
+      }
+    };
+
+    void sendBatch();
+
+    return {
+      recipientCount: recipients.length,
+      dispatchedCount: recipients.length,
+    };
   }
 
   private async mustFind(id: string): Promise<EventRow> {
