@@ -37,6 +37,8 @@ const FIXED_SCHEMAS: Record<string, z.ZodTypeAny> = {
     kitsPerThousand: z.number().min(0),
     unitsPerThousand: z.number().min(0),
   }),
+  'dashboard.hostClubApp.accessMode': z.enum(['all', 'specific', 'none']),
+  'dashboard.hostClubApp.allowedClubIds': z.array(z.string()),
 };
 
 const SUBDOMAIN_ACTIVE = /^subdomain\.(.+)\.active$/;
