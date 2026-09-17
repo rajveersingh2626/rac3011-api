@@ -42,3 +42,25 @@ export function toWebHeaders(raw: Record<string, string | string[] | undefined>)
   }
   return headers;
 }
+
+export function extractClientIp(req: { headers?: Record<string, string | string[] | undefined>; ip?: string; socket?: { remoteAddress?: string } }): string | null {
+  const headers = req.headers;
+  const extractHeader = (hName: string): string | null => {
+    if (!headers) return null;
+    const val = headers[hName] || headers[hName.toLowerCase()];
+    if (Array.isArray(val)) return val[0] || null;
+    return val || null;
+  };
+
+  const rawIp =
+    extractHeader('cf-connecting-ip') ||
+    extractHeader('x-real-ip') ||
+    extractHeader('x-client-ip') ||
+    extractHeader('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.ip ||
+    req.socket?.remoteAddress ||
+    null;
+
+  if (!rawIp) return null;
+  return String(rawIp).replace(/^::ffff:/, '').trim();
+}

@@ -308,16 +308,51 @@ export class EventsAdminService {
       clubId = member.clubId;
       method = 'manual';
     } else if (input.walkInName !== undefined && input.clubId !== undefined) {
-      const clubExists = await this.repo.findClubIdById(input.clubId);
-      if (!clubExists) throw new BadRequestException('Unknown club');
-      clubId = input.clubId;
-      walkInName = input.walkInName;
+      let resolvedClubId = await this.repo.findClubIdById(input.clubId);
+      if (!resolvedClubId) {
+        // Try resolving by name, shortName, or slug (case-insensitive)
+        const byName = await this.prisma.club.findFirst({
+          where: {
+            OR: [
+              { name: { equals: input.clubId, mode: 'insensitive' } },
+              { shortName: { equals: input.clubId, mode: 'insensitive' } },
+              { slug: { equals: input.clubId, mode: 'insensitive' } },
+            ],
+          },
+          select: { id: true },
+        });
+        if (byName) resolvedClubId = byName.id;
+      }
+
+      // If still not resolved, fallback to event.clubId or default active club
+      if (!resolvedClubId) {
+        if (event.clubId) {
+          resolvedClubId = event.clubId;
+        } else {
+          const defaultClub = await this.prisma.club.findFirst({ select: { id: true } });
+          if (defaultClub) resolvedClubId = defaultClub.id;
+        }
+      }
+
+      if (!resolvedClubId) {
+        throw new BadRequestException('A valid club affiliation is required for walk-in registration');
+      }
+
+      clubId = resolvedClubId;
+      walkInName = input.walkInName.trim();
       method = 'walk_in';
     } else {
       throw new BadRequestException('Provide qrToken, memberId, or walkInName+clubId');
     }
 
-    await this.scope.assertCanAccessClub(ctx.access, CHECKIN, clubId);
+    // Verify caller has permission to perform check-in for this event
+    if (event.isDistrictEvent) {
+      if (!hasGrant(ctx.access, CHECKIN) && !hasGrant(ctx.access, MANAGE)) {
+        throw new ForbiddenException('Missing events:checkin permission for district events');
+      }
+    } else if (event.clubId) {
+      await this.scope.assertCanAccessClub(ctx.access, CHECKIN, event.clubId);
+    }
 
     if (memberId) {
       const existing = await this.repo.findCheckin(eventId, memberId);
@@ -450,8 +485,12 @@ export class EventsAdminService {
       throw new NotFoundException('Check-in record not found for this event');
     }
 
-    if (checkin.clubId) {
-      await this.scope.assertCanAccessClub(ctx.access, CHECKIN, checkin.clubId);
+    if (event.isDistrictEvent) {
+      if (!hasGrant(ctx.access, CHECKIN) && !hasGrant(ctx.access, MANAGE)) {
+        throw new ForbiddenException('Missing events:checkin permission for district events');
+      }
+    } else if (event.clubId) {
+      await this.scope.assertCanAccessClub(ctx.access, CHECKIN, event.clubId);
     }
 
     await this.repo.deleteCheckin(checkinId);

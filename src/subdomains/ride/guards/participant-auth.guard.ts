@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
-import { readCookie } from '../../../auth/cookie.util';
+import { extractClientIp, readCookie } from '../../../auth/cookie.util';
 import { RideAuthService } from '../ride-auth.service';
 
 export const PARTICIPANT_COOKIE_NAME = 'rac3011.participant_session';
@@ -25,7 +25,8 @@ export class ParticipantAuthGuard implements CanActivate {
       throw new UnauthorizedException('Authentication required: no active participant session found.');
     }
 
-    const participant = await this.authService.getParticipantFromToken(token);
+    const clientIp = extractClientIp(req);
+    const participant = await this.authService.getParticipantFromToken(token, clientIp);
     (req as any).participant = participant;
     return true;
   }

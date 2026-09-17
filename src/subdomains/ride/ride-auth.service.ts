@@ -1,10 +1,13 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { Inject, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import type IORedis from 'ioredis';
 import { PrismaService } from '../../prisma/prisma.service';
 import { env } from '../../config/env';
+import { CACHE_REDIS } from '../../cache/redis.provider';
 
 export interface ParticipantSessionPayload {
+  sid: string;
   participantId: string;
   email: string;
   fullName: string;
@@ -13,12 +16,30 @@ export interface ParticipantSessionPayload {
   exp: number;
 }
 
+export interface ParticipantSessionRecord {
+  sessionId: string;
+  participantId: string;
+  email: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: number;
+  lastActiveAt: number;
+  expiresAt: number;
+}
+
 const BCRYPT_COST = 12;
-const TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+// 2 hours rolling inactivity timeout matching main district portal
+export const PARTICIPANT_SESSION_TTL_SECONDS = 2 * 60 * 60;
+export const PARTICIPANT_SESSION_PREFIX = 'ride:session:';
 
 @Injectable()
 export class RideAuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly memorySessions = new Map<string, ParticipantSessionRecord>();
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject(CACHE_REDIS) private readonly redis?: IORedis,
+  ) {}
 
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, BCRYPT_COST);
@@ -34,7 +55,7 @@ export class RideAuthService {
     const fullPayload: ParticipantSessionPayload = {
       ...payload,
       iat: now,
-      exp: now + TOKEN_TTL_SECONDS,
+      exp: now + PARTICIPANT_SESSION_TTL_SECONDS,
     };
 
     const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
@@ -83,7 +104,131 @@ export class RideAuthService {
     return payload;
   }
 
-  async login(identifier: string, password: string) {
+  async createSession(
+    participantId: string,
+    email: string,
+    ipAddress: string | null = null,
+    userAgent: string | null = null,
+  ): Promise<ParticipantSessionRecord> {
+    const sessionId = randomUUID();
+    const now = Date.now();
+    const record: ParticipantSessionRecord = {
+      sessionId,
+      participantId,
+      email,
+      ipAddress,
+      userAgent,
+      createdAt: now,
+      lastActiveAt: now,
+      expiresAt: now + PARTICIPANT_SESSION_TTL_SECONDS * 1000,
+    };
+
+    const key = `${PARTICIPANT_SESSION_PREFIX}${sessionId}`;
+    this.memorySessions.set(sessionId, record);
+
+    if (this.redis) {
+      try {
+        await this.redis.set(
+          key,
+          JSON.stringify(record),
+          'EX',
+          PARTICIPANT_SESSION_TTL_SECONDS,
+        );
+      } catch {
+        // Ignore Redis error, memorySessions acts as durable fallback
+      }
+    }
+
+    return record;
+  }
+
+  async validateAndTouchSession(
+    sessionId: string,
+    clientIp?: string | null,
+  ): Promise<ParticipantSessionRecord> {
+    const key = `${PARTICIPANT_SESSION_PREFIX}${sessionId}`;
+    let record: ParticipantSessionRecord | undefined;
+
+    if (this.redis) {
+      try {
+        const raw = await this.redis.get(key);
+        if (raw) {
+          record = JSON.parse(raw);
+        }
+      } catch {
+        record = this.memorySessions.get(sessionId);
+      }
+    } else {
+      record = this.memorySessions.get(sessionId);
+    }
+
+    if (!record) {
+      throw new UnauthorizedException(
+        'Session has timed out due to inactivity or has been invalidated. Please log in again.',
+      );
+    }
+
+    const now = Date.now();
+    const elapsed = now - record.lastActiveAt;
+    if (elapsed > PARTICIPANT_SESSION_TTL_SECONDS * 1000) {
+      await this.invalidateSession(sessionId);
+      throw new UnauthorizedException(
+        'Session has timed out due to inactivity. Please log in again.',
+      );
+    }
+
+    // Sliding rolling window: Touch session activity if at least 30s elapsed or IP updated
+    if (elapsed > 30 * 1000 || (clientIp && clientIp !== record.ipAddress)) {
+      record.lastActiveAt = now;
+      record.expiresAt = now + PARTICIPANT_SESSION_TTL_SECONDS * 1000;
+      if (clientIp) record.ipAddress = clientIp;
+
+      this.memorySessions.set(sessionId, record);
+      if (this.redis) {
+        try {
+          await this.redis.set(
+            key,
+            JSON.stringify(record),
+            'EX',
+            PARTICIPANT_SESSION_TTL_SECONDS,
+          );
+        } catch {
+          // Ignore Redis write errors
+        }
+      }
+    }
+
+    return record;
+  }
+
+  async invalidateSession(tokenOrSid: string): Promise<void> {
+    let sid = tokenOrSid;
+    if (tokenOrSid.includes('.')) {
+      try {
+        const payload = this.verifyToken(tokenOrSid);
+        sid = payload.sid;
+      } catch {
+        return;
+      }
+    }
+
+    if (!sid) return;
+    this.memorySessions.delete(sid);
+    if (this.redis) {
+      try {
+        await this.redis.del(`${PARTICIPANT_SESSION_PREFIX}${sid}`);
+      } catch {
+        // Ignore
+      }
+    }
+  }
+
+  async login(
+    identifier: string,
+    password: string,
+    ipAddress: string | null = null,
+    userAgent: string | null = null,
+  ) {
     const cleanId = identifier.trim().toLowerCase();
 
     // STRICT ISOLATION: Strictly and exclusively query ride_participants
@@ -117,7 +262,16 @@ export class RideAuthService {
       throw new UnauthorizedException('Invalid credentials for this participant account.');
     }
 
+    // Create tracked session with IP, userAgent, and rolling 2-hour inactivity timeout
+    const session = await this.createSession(
+      participant.id,
+      participant.email,
+      ipAddress,
+      userAgent,
+    );
+
     const token = this.signToken({
+      sid: session.sessionId,
       participantId: participant.id,
       email: participant.email,
       fullName: participant.fullName,
@@ -127,11 +281,22 @@ export class RideAuthService {
     return {
       participant: this.sanitizeParticipant(participant),
       token,
+      session: {
+        sessionId: session.sessionId,
+        ipAddress: session.ipAddress,
+        expiresAt: new Date(session.expiresAt).toISOString(),
+      },
     };
   }
 
-  async getParticipantFromToken(token: string) {
+  async getParticipantFromToken(token: string, clientIp?: string | null) {
     const payload = this.verifyToken(token);
+
+    // Validate active session and enforce rolling timeout
+    if (payload.sid) {
+      await this.validateAndTouchSession(payload.sid, clientIp);
+    }
+
     const participant = await this.prisma.rideParticipant.findUnique({
       where: { id: payload.participantId },
       include: {

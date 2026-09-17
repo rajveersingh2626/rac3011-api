@@ -34,6 +34,6 @@ const cloudflareConfigured =
     },
     { provide: APP_INTERCEPTOR, useClass: CacheInterceptor },
   ],
-  exports: [CacheService, CacheInvalidator, CloudflarePurgeClient],
+  exports: [CACHE_REDIS, CacheService, CacheInvalidator, CloudflarePurgeClient],
 })
 export class CacheModule {}
