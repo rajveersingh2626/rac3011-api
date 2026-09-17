@@ -157,6 +157,26 @@ export class EventsAdminRepository {
     });
   }
 
+  async findCheckinById(id: string): Promise<CheckinRow | null> {
+    return this.prisma.eventCheckin.findUnique({
+      where: { id },
+      include: {
+        member: { select: { id: true, fullName: true, email: true, photoUrl: true } },
+        club: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async deleteCheckin(id: string): Promise<CheckinRow> {
+    return this.prisma.eventCheckin.delete({
+      where: { id },
+      include: {
+        member: { select: { id: true, fullName: true, email: true, photoUrl: true } },
+        club: { select: { id: true, name: true } },
+      },
+    });
+  }
+
   async countCheckins(eventId: string): Promise<number> {
     return this.prisma.eventCheckin.count({ where: { eventId } });
   }

@@ -375,6 +375,94 @@ export class EventsAdminService {
     };
   }
 
+  async getPublicPass(token: string) {
+    const payload = verifyCheckinToken(token);
+    if (!payload) {
+      throw new BadRequestException('Invalid or expired event ticket pass');
+    }
+
+    const event = await this.repo.findById(payload.eid);
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    let attendeeName = 'Guest Attendee';
+    let clubName = 'Rotary International District 3011';
+    let district = '3011';
+
+    if (!payload.mid.startsWith('guest_')) {
+      const member = await this.prisma.memberProfile.findUnique({
+        where: { id: payload.mid },
+        include: { club: true },
+      });
+      if (member) {
+        attendeeName = member.fullName;
+        clubName = member.club?.name ?? 'District 3011';
+      } else {
+        const participant = await this.prisma.rideParticipant.findUnique({
+          where: { id: payload.mid },
+          include: { hostClub: true },
+        });
+        if (participant) {
+          attendeeName = participant.fullName;
+          district = participant.homeDistrict || '3011';
+          clubName = participant.hostClub?.name ?? (participant.homeClubName || 'Delegate');
+        }
+      }
+    }
+
+    const existingCheckin = await this.repo.findCheckin(payload.eid, payload.mid);
+
+    const wallet = buildGoogleWalletPass(
+      event,
+      { id: payload.mid, fullName: attendeeName, clubName },
+      token,
+    );
+
+    return {
+      token,
+      isValid: true,
+      isCheckedIn: Boolean(existingCheckin),
+      checkedInAt: existingCheckin?.checkedInAt?.toISOString() ?? null,
+      event: {
+        id: event.id,
+        title: event.title,
+        slug: event.slug,
+        startsAt: event.startsAt.toISOString(),
+        endsAt: event.endsAt?.toISOString() ?? null,
+        location: event.location,
+        coverUrl: event.coverUrl,
+      },
+      attendee: {
+        id: payload.mid,
+        fullName: attendeeName,
+        clubName,
+        district,
+      },
+      googleWalletUrl: wallet.saveUrl,
+    };
+  }
+
+  async removeCheckin(ctx: RequestContext, eventId: string, checkinId: string) {
+    const event = await this.mustFind(eventId);
+    const checkin = await this.repo.findCheckinById(checkinId);
+    if (!checkin || checkin.eventId !== eventId) {
+      throw new NotFoundException('Check-in record not found for this event');
+    }
+
+    if (checkin.clubId) {
+      await this.scope.assertCanAccessClub(ctx.access, CHECKIN, checkin.clubId);
+    }
+
+    await this.repo.deleteCheckin(checkinId);
+
+    if (event.isDistrictEvent && checkin.clubId) {
+      await this.attendance.schedule(eventId, checkin.clubId);
+    }
+
+    return { success: true, removedCheckinId: checkinId };
+  }
+
   async exportCheckinsCsv(
     ctx: RequestContext,
     eventId: string,
@@ -612,7 +700,7 @@ export class EventsAdminService {
         try {
           const pseudoMid = r.memberId || `guest_${Buffer.from(r.email).toString('hex').slice(0, 16)}`;
           const { token } = signCheckinToken(event.id, pseudoMid);
-          const ticketUrl = `${baseUrl}/portal/admin/events/${event.slug || event.id}/ticket?token=${token}`;
+          const ticketUrl = `${baseUrl}/pass/${token}`;
 
           const subject = `Your Official Entry Ticket: ${event.title} • Rotaract District 3011`;
           const html = `

@@ -38,6 +38,7 @@ export const PERMISSIONS: Record<string, string> = {
   'subdomain:rcl:manage': 'Manage RCL',
   'subdomain:careerbridge:manage': 'Manage Career Bridge',
   'subdomain:ride:manage': 'Manage RIDE',
+  'subdomain:ride:host_club_apply': 'Apply for RIDE Host Club',
   'ride:manage': 'Full administration of The RIDE Youth Exchange and Delhi Meri Jaan',
   'ride:delegates:manage': 'Manage RIDE participants, delegations, homestays and host allocations',
 };

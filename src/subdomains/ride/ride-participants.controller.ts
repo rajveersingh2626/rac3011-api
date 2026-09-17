@@ -6,6 +6,7 @@ import type { RequestContext } from '../../common/types/access';
 import { paginate, parseListQuery } from '../../common/query/list-query';
 import { RideParticipantsService } from './ride-participants.service';
 import { UpdateParticipantStatusDto } from './dto/register-participant.dto';
+import { DispatchRideBroadcastDto } from './dto/dispatch-ride-broadcast.dto';
 import { ParticipantAuthGuard } from './guards/participant-auth.guard';
 import { CurrentParticipant } from './decorators/current-participant.decorator';
 
@@ -15,6 +16,12 @@ const FILTERS = ['status', 'homeDistrict'] as const;
 @Controller('ride/participants')
 export class RideParticipantsController {
   constructor(private readonly service: RideParticipantsService) {}
+
+  @Post('broadcast')
+  @RequirePermission('comms:send', 'subdomain:ride:manage', 'ride:manage')
+  async dispatchBroadcast(@Body() dto: DispatchRideBroadcastDto) {
+    return this.service.dispatchBroadcast(dto);
+  }
 
   @Get('me')
   @Public()

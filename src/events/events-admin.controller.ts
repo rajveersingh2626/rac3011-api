@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
-import { Authenticated, RequirePermission } from '../common/decorators/access.decorators';
+import { Authenticated, Public, RequirePermission } from '../common/decorators/access.decorators';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { paginate, parseListQuery } from '../common/query/list-query';
 import type { RequestContext } from '../common/types/access';
@@ -85,6 +85,12 @@ export class EventsAdminController {
   @RequirePermission('events:manage', 'club_events:log')
   async create(@CurrentUser() ctx: RequestContext, @Body() dto: CreateEventDto) {
     return eventAdminDto(await this.service.create(ctx, dto));
+  }
+
+  @Get('pass/:token')
+  @Public()
+  async getPublicPass(@Param('token') token: string) {
+    return this.service.getPublicPass(token);
   }
 
   @Get(':id')
@@ -165,6 +171,16 @@ export class EventsAdminController {
     const { row, alreadyCheckedIn } = await this.service.checkin(ctx, id, dto);
     res.status(alreadyCheckedIn ? HttpStatus.OK : HttpStatus.CREATED);
     return checkinDto(row, alreadyCheckedIn);
+  }
+
+  @Delete(':id/checkins/:checkinId')
+  @RequirePermission('events:checkin')
+  async removeCheckin(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+    @Param('checkinId') checkinId: string,
+  ) {
+    return this.service.removeCheckin(ctx, id, checkinId);
   }
 
   @Post(':id/checkin/dispatch-tickets')

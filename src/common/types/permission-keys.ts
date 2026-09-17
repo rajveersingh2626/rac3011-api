@@ -38,6 +38,7 @@ export const PERMISSION_KEYS = [
   'subdomain:rcl:manage',
   'subdomain:careerbridge:manage',
   'subdomain:ride:manage',
+  'subdomain:ride:host_club_apply',
   'ride:manage',
   'ride:delegates:manage',
 ] as const;

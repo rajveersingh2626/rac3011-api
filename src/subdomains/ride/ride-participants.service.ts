@@ -1,14 +1,108 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EmailProviderPool } from '../../notifications/email/email-provider-pool.service';
 import {
   RideParticipantsRepository,
   type ParticipantListFilter,
   type ParticipantRecord,
 } from './ride-participants.repository';
 import type { RegisterParticipantInput } from './dto/register-participant.dto';
+import type { DispatchRideBroadcastDto } from './dto/dispatch-ride-broadcast.dto';
+
+function generateBespokeRideEmailHtml(title: string, rawBody: string): string {
+  const paragraphs = rawBody
+    .split('\n\n')
+    .filter((p) => p.trim());
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .email-container { width: 100% !important; padding: 12px !important; }
+      .email-card { border-width: 2px !important; }
+      .email-hero-title { font-size: 24px !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #FDFBF7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #171515;">
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color: #FBC02D; border-bottom: 3px solid #171515;">
+    <tr>
+      <td style="padding: 10px 16px; text-align: center;">
+        <span style="font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; color: #171515;">
+          DELHI MERI JAAN 2026 &bull; ROTARY INTERNATIONAL DISTRICT 3011 &bull; THE RIDE
+        </span>
+      </td>
+    </tr>
+  </table>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color: #FDFBF7; padding: 32px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 580px; margin: 0 auto; background-color: #FFFFFF; border: 3px solid #171515; border-radius: 20px; box-shadow: 6px 6px 0px #171515; overflow: hidden;">
+          <tr>
+            <td style="padding: 24px 24px 18px; text-align: center; background-color: #FDFBF7; border-bottom: 2px solid #171515;">
+              <span style="display: inline-block; padding: 4px 14px; background-color: #19539D; border: 2px solid #171515; border-radius: 999px; color: #FFFFFF; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;">
+                Official RIDE Communication &bull; RID 3011
+              </span>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 28px 28px 24px;">
+              <h1 class="email-hero-title" style="margin: 0 0 16px; font-size: 24px; font-weight: 900; line-height: 1.25; text-transform: uppercase; color: #171515; letter-spacing: -0.5px;">
+                ${title}
+              </h1>
+
+              ${paragraphs.map((p) => `<p style="margin: 0 0 14px; font-size: 14px; line-height: 1.6; color: #374151;">${p.replace(/\n/g, '<br/>')}</p>`).join('')}
+
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 24px; padding-top: 16px; border-top: 2px dashed #E5E7EB; text-align: center;">
+                <tr>
+                  <td style="font-size: 11px; color: #6B7280; line-height: 1.5;">
+                    Rotary International District 3011 &bull; Delhi Meri Jaan 2026<br/>
+                    Delivered securely via the RIDE Operations Console.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function interpolateTokens(
+  template: string,
+  data: {
+    fullName?: string;
+    districtNumber?: string;
+    passReference?: string;
+    hostClub?: string;
+  },
+): string {
+  let result = template
+    .replace(/\{\{\s*(?:name|full_name)\s*\}\}/gi, data.fullName || 'Delegate')
+    .replace(/\{\{\s*district_number\s*\}\}/gi, data.districtNumber || '3011')
+    .replace(/\{\{\s*pass_reference\s*\}\}/gi, data.passReference || 'DMJ-2026-PASS')
+    .replace(/\{\{\s*host_club\s*\}\}/gi, data.hostClub || 'Designated Host Club');
+
+  // Sanitize any remaining unparsed {{...}} placeholders so raw brackets never appear
+  return result.replace(/\{\{[^}]+\}\}/g, '').trim();
+}
 
 @Injectable()
 export class RideParticipantsService {
-  constructor(private readonly repo: RideParticipantsRepository) {}
+  constructor(
+    private readonly repo: RideParticipantsRepository,
+    private readonly prisma: PrismaService,
+    @Optional() private readonly emailPool?: EmailProviderPool,
+  ) {}
 
   async register(
     data: RegisterParticipantInput,
@@ -84,5 +178,100 @@ export class RideParticipantsService {
 
   async getStats() {
     return this.repo.countStats();
+  }
+
+  async dispatchBroadcast(dto: DispatchRideBroadcastDto): Promise<{
+    recipientCount: number;
+    dispatchedCount: number;
+  }> {
+    type Recipient = {
+      email: string;
+      fullName: string;
+      districtNumber: string;
+      passReference: string;
+      hostClub: string;
+    };
+
+    const recipientMap = new Map<string, Recipient>();
+
+    // 1. Process custom emails
+    if (dto.customEmails && dto.customEmails.length > 0) {
+      for (const rawEmail of dto.customEmails) {
+        const cleanEmail = rawEmail.trim().toLowerCase();
+        if (cleanEmail && cleanEmail.includes('@')) {
+          const pseudoPass = `GUEST-${Buffer.from(cleanEmail).toString('hex').slice(0, 8).toUpperCase()}`;
+          recipientMap.set(cleanEmail, {
+            email: cleanEmail,
+            fullName: cleanEmail.split('@')[0],
+            districtNumber: '3011',
+            passReference: pseudoPass,
+            hostClub: 'Designated Host Club',
+          });
+        }
+      }
+    }
+
+    // 2. Query participants
+    const where: any = { isActive: true };
+    if (dto.districtNumbers && dto.districtNumbers.length > 0) {
+      where.homeDistrict = { in: dto.districtNumbers };
+    }
+    if (dto.hostClubsOnly) {
+      where.hostClubId = { not: null };
+    }
+
+    if (dto.all || (dto.districtNumbers && dto.districtNumbers.length > 0) || dto.hostClubsOnly) {
+      const participants = await this.prisma.rideParticipant.findMany({
+        where,
+        include: { hostClub: true },
+      });
+
+      for (const p of participants) {
+        if (p.email && p.email.includes('@')) {
+          const cleanEmail = p.email.trim().toLowerCase();
+          recipientMap.set(cleanEmail, {
+            email: cleanEmail,
+            fullName: p.fullName,
+            districtNumber: p.homeDistrict || '3011',
+            passReference: p.id,
+            hostClub: p.hostClub?.name || 'Designated Host Club',
+          });
+        }
+      }
+    }
+
+    const recipients = Array.from(recipientMap.values());
+    if (recipients.length === 0) {
+      return { recipientCount: 0, dispatchedCount: 0 };
+    }
+
+    // Trigger async email dispatch
+    const sendBatch = async () => {
+      for (const r of recipients) {
+        try {
+          const interpolatedSubject = interpolateTokens(dto.subject, r);
+          const interpolatedBody = interpolateTokens(dto.body, r);
+          const html = generateBespokeRideEmailHtml(interpolatedSubject, interpolatedBody);
+
+          if (this.emailPool) {
+            await this.emailPool.send({
+              to: r.email,
+              subject: interpolatedSubject,
+              html,
+              text: interpolatedBody,
+            });
+          }
+        } catch {
+          // continue
+        }
+      }
+    };
+
+    void sendBatch();
+
+    return {
+      recipientCount: recipients.length,
+      dispatchedCount: recipients.length,
+    };
   }
 }

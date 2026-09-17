@@ -19,6 +19,7 @@ const PRESIDENT = [
   'club_events:log',
   'announcements:send',
   'clubs:edit',
+  'subdomain:ride:host_club_apply',
 ];
 const ZRR = [...MEMBER, 'reports:review', 'members:view', 'clubs:view', 'showcase:publish', 'announcements:send'];
 const DSC = [
