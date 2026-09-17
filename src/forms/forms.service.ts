@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, type OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { RequestContext } from '../common/types/access';
 import type { CreateFormInput } from './dto/create-form.dto';
@@ -18,20 +18,24 @@ const DEFAULT_HOST_CLUB_FIELDS = [
   { id: 'hf7', name: 'zone', label: 'Zone', type: 'select', required: true, options: ['Zone Prithvi', 'Zone Agni', 'Zone Vayu', 'Zone Akash'] },
   { id: 'hf8', name: 'motivation', label: 'Why your club should be selected as a Host Club?', type: 'textarea', required: true, placeholder: 'Describe your club motivation and hosting strengths...' },
   { id: 'hf9', name: 'pastHostingExperience', label: 'Has your club hosted inter-district/international Rotaractors before? If yes, share brief details.', type: 'textarea', required: true, placeholder: 'Share any previous hosting experience or NA...' },
-  { 
-    id: 'hf10', 
-    name: 'proposalDriveUrl', 
-    label: "Upload Your Club's Proposal (Google Drive Link)", 
-    type: 'link', 
-    required: true, 
-    placeholder: 'https://drive.google.com/...',
-    helperText: "Paste the Google Drive link to your club proposal document or presentation. Please ensure the link sharing permission is set to 'Anyone with the link can view'." 
-  },
+  { id: 'hf10', name: 'expectedDelegatesCount', label: 'How many delegates can your club comfortably host?', type: 'number', required: true, placeholder: 'e.g. 5' },
+  { id: 'hf11', name: 'proposalDriveUrl', label: 'Google Drive Proposal / Presentation Link', type: 'url', required: true, placeholder: 'https://drive.google.com/...' },
 ];
 
 @Injectable()
-export class FormsService {
+export class FormsService implements OnModuleInit {
+  private seeded = false;
+
   constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit(): Promise<void> {
+    try {
+      await this.ensureSeedForms();
+      this.seeded = true;
+    } catch {
+      // Ignore during early bootstrap
+    }
+  }
 
   private get customForm(): any {
     return (this.prisma as any).customForm;
@@ -332,6 +336,10 @@ export class FormsService {
     formIdOrSlug: string,
     options?: { status?: string; search?: string },
   ) {
+    if (!this.seeded) {
+      await this.ensureSeedForms().catch(() => {});
+      this.seeded = true;
+    }
     const form = await this.customForm.findFirst({
       where: {
         OR: [{ id: formIdOrSlug }, { slug: formIdOrSlug }],
