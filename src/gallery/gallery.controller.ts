@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ReorderDto } from '../common/dto/reorder.dto';
 import { RequirePermission } from '../common/decorators/access.decorators';
@@ -15,9 +15,9 @@ export class GalleryController {
 
   @Get()
   @RequirePermission('public_content:manage')
-  async list() {
+  async list(@Query('galleryType') galleryType?: string) {
     try {
-      const items = await this.gallery.list();
+      const items = await this.gallery.list(galleryType);
       return { items: (items || []).map(galleryItemAdminDto) };
     } catch {
       return { items: [] };

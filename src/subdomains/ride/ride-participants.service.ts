@@ -52,6 +52,36 @@ export class RideParticipantsService {
     return this.repo.updateStatus(id, status, hostClubId, hostFamilyName, hostFamilyPhone);
   }
 
+  async adminCreateParticipant(data: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    homeDistrict?: string;
+    homeClubName?: string;
+    password: string;
+    rotaryId?: string;
+    participantType?: string;
+  }): Promise<ParticipantRecord> {
+    const bcrypt = await import('bcryptjs');
+    const passwordHash = await bcrypt.default.hash(data.password, 12);
+    return this.repo.createWithPassword({
+      ...data,
+      passwordHash,
+    });
+  }
+
+  async adminResetPassword(id: string, password: string): Promise<ParticipantRecord> {
+    await this.getById(id);
+    const bcrypt = await import('bcryptjs');
+    const passwordHash = await bcrypt.default.hash(password, 12);
+    return this.repo.updatePassword(id, passwordHash);
+  }
+
+  async adminToggleActive(id: string, isActive: boolean): Promise<ParticipantRecord> {
+    await this.getById(id);
+    return this.repo.toggleActive(id, isActive);
+  }
+
   async getStats() {
     return this.repo.countStats();
   }

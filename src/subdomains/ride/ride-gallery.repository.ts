@@ -64,7 +64,23 @@ export class RideGalleryRepository {
       orderBy: [{ year: 'desc' }, { order: 'asc' }, { createdAt: 'asc' }],
       take: 500,
     });
-    return rows.map(toRow);
+    const rideContentItems = await this.prisma.galleryItem.findMany({
+      where: { galleryType: 'ride' },
+      orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+      take: 500,
+    });
+    const extraRows: GalleryItemRow[] = rideContentItems.map((item) => ({
+      id: item.id,
+      year: item.date ? item.date.getFullYear() : 2026,
+      url: item.imageUrl,
+      kind: 'photo',
+      caption: item.caption,
+      headingLeft: item.title,
+      headingRight: item.eventName,
+      order: item.order,
+      createdAt: item.createdAt,
+    }));
+    return [...rows.map(toRow), ...extraRows];
   }
 
   async distinctYears(): Promise<number[]> {

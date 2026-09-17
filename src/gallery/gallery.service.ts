@@ -15,12 +15,12 @@ export class GalleryService {
     private readonly cache: CacheInvalidator,
   ) {}
 
-  list(): Promise<GalleryItemRow[]> {
-    return this.repo.findAll();
+  list(galleryType?: string): Promise<GalleryItemRow[]> {
+    return this.repo.findAll(galleryType);
   }
 
-  listPublic(): Promise<GalleryItemRow[]> {
-    return this.repo.findPublic();
+  listPublic(galleryType = 'district'): Promise<GalleryItemRow[]> {
+    return this.repo.findPublic(galleryType);
   }
 
   async get(id: string): Promise<GalleryItemRow> {

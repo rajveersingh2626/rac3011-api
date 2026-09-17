@@ -8,6 +8,7 @@ export const createGalleryItemSchema = z.object({
   title: z.string().trim().min(1).max(300),
   eventName: z.preprocess(emptyToNull, z.string().trim().max(300).nullable().optional()),
   category: z.string().trim().default('District Events'),
+  galleryType: z.enum(['district', 'ride']).default('district'),
   imageUrl: z.string().trim().min(1).max(2048),
   caption: z.preprocess(emptyToNull, z.string().trim().max(2000).nullable().optional()),
   date: z.preprocess(

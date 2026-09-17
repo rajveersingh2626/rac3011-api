@@ -183,6 +183,56 @@ export class RideParticipantsRepository {
     });
   }
 
+  async createWithPassword(data: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    homeDistrict?: string;
+    homeClubName?: string;
+    passwordHash: string;
+    rotaryId?: string;
+    participantType?: string;
+  }): Promise<ParticipantRecord> {
+    return this.prisma.rideParticipant.create({
+      data: {
+        fullName: data.fullName,
+        email: data.email.trim().toLowerCase(),
+        phone: data.phone || '+91 00000 00000',
+        gender: 'Not specified',
+        participantType: data.participantType || 'external',
+        homeDistrict: data.homeDistrict || 'Outside 3011',
+        homeClubName: data.homeClubName || 'Rotaract Club',
+        cityState: 'External',
+        country: 'India',
+        emergencyName: 'Emergency Contact',
+        emergencyPhone: '+91 00000 00000',
+        emergencyRelation: 'Other',
+        passwordHash: data.passwordHash,
+        rotaryId: data.rotaryId,
+        isActive: true,
+        status: 'approved',
+        approvalStatus: 'approved',
+      },
+      select: PARTICIPANT_SELECT,
+    });
+  }
+
+  async updatePassword(id: string, passwordHash: string): Promise<ParticipantRecord> {
+    return this.prisma.rideParticipant.update({
+      where: { id },
+      data: { passwordHash },
+      select: PARTICIPANT_SELECT,
+    });
+  }
+
+  async toggleActive(id: string, isActive: boolean): Promise<ParticipantRecord> {
+    return this.prisma.rideParticipant.update({
+      where: { id },
+      data: { isActive },
+      select: PARTICIPANT_SELECT,
+    });
+  }
+
   async countStats() {
     const [total, submitted, approved, confirmed, waitlist] = await Promise.all([
       this.prisma.rideParticipant.count(),

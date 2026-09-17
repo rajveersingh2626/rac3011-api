@@ -246,6 +246,7 @@ model GalleryItem {
   title       String
   eventName   String?  @map("event_name")
   category    String   @default("general")
+  galleryType String   @default("district") @map("gallery_type")
   imageUrl    String   @map("image_url")
   caption     String?
   date        DateTime @default(now()) @db.Date
@@ -254,6 +255,7 @@ model GalleryItem {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@index([category])
+  @@index([galleryType])
   @@map("gallery_items")
 }
 

@@ -7,14 +7,16 @@ import type { CreateGalleryItemInput, UpdateGalleryItemInput } from './dto/galle
 export class GalleryRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(): Promise<GalleryItemRow[]> {
+  findAll(galleryType?: string): Promise<GalleryItemRow[]> {
     return this.prisma.galleryItem.findMany({
+      where: galleryType ? { galleryType } : undefined,
       orderBy: [{ order: 'asc' }, { date: 'desc' }],
     });
   }
 
-  findPublic(): Promise<GalleryItemRow[]> {
+  findPublic(galleryType = 'district'): Promise<GalleryItemRow[]> {
     return this.prisma.galleryItem.findMany({
+      where: { galleryType },
       orderBy: [{ order: 'asc' }, { date: 'desc' }],
     });
   }
@@ -33,6 +35,7 @@ export class GalleryRepository {
         title: input.title,
         eventName: input.eventName ?? null,
         category: input.category ?? 'general',
+        galleryType: input.galleryType ?? 'district',
         imageUrl: input.imageUrl,
         caption: input.caption ?? null,
         date,
@@ -48,6 +51,7 @@ export class GalleryRepository {
         title: input.title,
         eventName: input.eventName,
         category: input.category,
+        galleryType: input.galleryType,
         imageUrl: input.imageUrl,
         caption: input.caption,
         date: input.date ? new Date(input.date) : undefined,

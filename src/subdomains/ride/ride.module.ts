@@ -18,9 +18,13 @@ import { RideSupportClubsController } from './ride-support-clubs.controller';
 import { RideSupportClubsRepository } from './ride-support-clubs.repository';
 import { RideSupportClubsService } from './ride-support-clubs.service';
 
+import { RideAuthController } from './ride-auth.controller';
+import { RideAuthService } from './ride-auth.service';
+
 @Module({
   imports: [MeModule, PublicModule, PointsModule],
   controllers: [
+    RideAuthController,
     RideSupportClubsController,
     RideDelegationsController,
     RideGalleryController,
@@ -28,6 +32,7 @@ import { RideSupportClubsService } from './ride-support-clubs.service';
     RideParticipantsController,
   ],
   providers: [
+    RideAuthService,
     RideSupportClubsRepository,
     RideSupportClubsService,
     RideDelegationsRepository,
