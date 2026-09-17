@@ -69,6 +69,17 @@ export type CheckinRow = {
   method: CheckinMethod;
   checkedInAt: Date;
   checkedInById: string;
+  member?: {
+    id: string;
+    fullName: string;
+    email: string;
+    photoUrl: string | null;
+  } | null;
+  club?: {
+    id: string;
+    name: string;
+  } | null;
 };
 
 export type ClubAttendanceCount = { clubId: string; clubName: string; count: number };
+

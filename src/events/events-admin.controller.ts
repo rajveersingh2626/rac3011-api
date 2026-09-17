@@ -124,6 +124,12 @@ export class EventsAdminController {
     return this.service.rsvp(ctx, id, dto.status);
   }
 
+  @Get(':id/ticket')
+  @Authenticated()
+  async getTicket(@CurrentUser() ctx: RequestContext, @Param('id') id: string) {
+    return this.service.getTicket(ctx, id);
+  }
+
   @Get(':id/checkins')
   @RequirePermission('events:checkin')
   async listCheckins(@CurrentUser() ctx: RequestContext, @Param('id') id: string) {
@@ -132,6 +138,19 @@ export class EventsAdminController {
       items: items.map((row) => checkinDto(row, false)),
       byClub: byClub.map(clubAttendanceDto),
     };
+  }
+
+  @Get(':id/checkins/export-csv')
+  @RequirePermission('events:checkin')
+  async exportCsv(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const { filename, csv } = await this.service.exportCheckinsCsv(ctx, id);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
   }
 
   @Post(':id/checkins')

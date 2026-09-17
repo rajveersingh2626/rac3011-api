@@ -36,6 +36,16 @@ export function checkinDto(row: CheckinRow, alreadyCheckedIn: boolean) {
     method: row.method,
     checkedInAt: row.checkedInAt.toISOString(),
     alreadyCheckedIn,
+    attendeeName: row.member?.fullName ?? row.walkInName ?? 'Attendee',
+    clubName: row.club?.name ?? null,
+    member: row.member
+      ? {
+          id: row.member.id,
+          fullName: row.member.fullName,
+          email: row.member.email,
+          photoUrl: row.member.photoUrl,
+        }
+      : null,
   };
 }
 

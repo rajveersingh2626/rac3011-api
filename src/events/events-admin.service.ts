@@ -1,9 +1,13 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import type IORedis from 'ioredis';
+import { CACHE_REDIS } from '../cache/redis.provider';
 import { CodedConflictException } from '../common/errors/conflict.error';
 import { ScopeService } from '../common/scope/scope.service';
 import type { RequestContext, ResolvedAccess } from '../common/types/access';
@@ -15,6 +19,11 @@ import type { CreateEventInput } from './dto/create-event.dto';
 import type { UpdateEventInput } from './dto/update-event.dto';
 import type { CheckinInput } from './dto/checkin.dto';
 import { EventsAdminRepository } from './events-admin.repository';
+import {
+  buildGoogleWalletPass,
+  signCheckinToken,
+  verifyCheckinToken,
+} from './event-checkin-token.util';
 import type {
   CheckinMethod,
   CheckinRow,
@@ -48,6 +57,7 @@ export class EventsAdminService {
     private readonly me: MeService,
     private readonly attendance: AttendanceRecomputeTrigger,
     private readonly storage: StorageService,
+    @Optional() @Inject(CACHE_REDIS) private readonly redis?: IORedis,
   ) {}
 
   async list(
@@ -251,11 +261,40 @@ export class EventsAdminService {
     let method: CheckinMethod;
 
     if (input.qrToken !== undefined) {
-      const member = await this.repo.findMemberIdByQrToken(input.qrToken);
-      if (!member) throw new NotFoundException('Unknown QR code');
-      memberId = member.id;
-      clubId = member.clubId;
-      method = 'qr';
+      // 1. First check if it's a signed burner JWT check-in token
+      const burnerPayload = verifyCheckinToken(input.qrToken);
+      if (burnerPayload) {
+        if (burnerPayload.eid !== eventId) {
+          throw new BadRequestException('This QR pass is for a different event');
+        }
+
+        // Anti-replay check via Redis if available
+        if (this.redis) {
+          const replayKey = `checkin:jti:${burnerPayload.jti}`;
+          const setOk = await this.redis.set(replayKey, '1', 'EX', 86400 * 7, 'NX');
+          if (!setOk) {
+            const existing = await this.repo.findCheckin(eventId, burnerPayload.mid);
+            if (existing) return { row: existing, alreadyCheckedIn: true };
+            throw new CodedConflictException(
+              'TOKEN_REPLAYED',
+              'This single-use QR pass has already been scanned',
+            );
+          }
+        }
+
+        const member = await this.repo.findMemberById(burnerPayload.mid);
+        if (!member) throw new NotFoundException('Member profile for this pass not found');
+        memberId = member.id;
+        clubId = member.clubId;
+        method = 'qr';
+      } else {
+        // 2. Fallback to static member QR token
+        const member = await this.repo.findMemberIdByQrToken(input.qrToken);
+        if (!member) throw new NotFoundException('Unknown QR code');
+        memberId = member.id;
+        clubId = member.clubId;
+        method = 'qr';
+      }
     } else if (input.memberId !== undefined) {
       const member = await this.repo.findMemberById(input.memberId);
       if (!member) throw new NotFoundException('Unknown member');
@@ -298,6 +337,80 @@ export class EventsAdminService {
     if (event.isDistrictEvent) await this.attendance.schedule(eventId, clubId);
 
     return { row, alreadyCheckedIn: false };
+  }
+
+  async getTicket(ctx: RequestContext, eventId: string) {
+    const event = await this.mustFind(eventId);
+    const member = await this.repo.findMemberByUserId(ctx.user.id);
+    if (!member) {
+      throw new ForbiddenException('A verified member profile is required to generate an event pass');
+    }
+
+    const { token, expiresAt } = signCheckinToken(event.id, member.id);
+    const wallet = buildGoogleWalletPass(event, member, token);
+
+    return {
+      token,
+      expiresAt: expiresAt.toISOString(),
+      event: {
+        id: event.id,
+        title: event.title,
+        startsAt: event.startsAt.toISOString(),
+        location: event.location,
+      },
+      member: {
+        id: member.id,
+        fullName: member.fullName,
+        clubId: member.clubId,
+        clubName: member.club?.name ?? 'Rotaract Club',
+      },
+      googleWalletUrl: wallet.saveUrl,
+      passObject: wallet.passObject,
+    };
+  }
+
+  async exportCheckinsCsv(
+    ctx: RequestContext,
+    eventId: string,
+  ): Promise<{ filename: string; csv: string }> {
+    const event = await this.mustFind(eventId);
+    const clubScope = await this.scope.clubFilter(ctx.access, CHECKIN);
+    const items = await this.repo.findCheckins(eventId, clubScope);
+
+    const escapeCsv = (val: string | null | undefined) => {
+      if (val === null || val === undefined) return '""';
+      const s = String(val).replace(/"/g, '""');
+      return `"${s}"`;
+    };
+
+    const header = [
+      'Attendee Name',
+      'Club Name',
+      'Check-in Method',
+      'Checked In At (IST)',
+      'Checked In By ID',
+    ];
+    const rows = items.map((item) => {
+      const name = item.member?.fullName ?? item.walkInName ?? 'Attendee';
+      const club = item.club?.name ?? 'District 3011';
+      const method = item.method.toUpperCase();
+      const timeIST = new Date(item.checkedInAt).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        dateStyle: 'medium',
+        timeStyle: 'medium',
+      });
+      return [
+        escapeCsv(name),
+        escapeCsv(club),
+        escapeCsv(method),
+        escapeCsv(timeIST),
+        escapeCsv(item.checkedInById),
+      ].join(',');
+    });
+
+    const csv = [header.join(','), ...rows].join('\r\n');
+    const filename = `checkins-${event.slug || event.id}.csv`;
+    return { filename, csv };
   }
 
   private async assertCanRead(access: ResolvedAccess, row: EventRow): Promise<void> {

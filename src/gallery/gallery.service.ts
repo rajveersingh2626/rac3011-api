@@ -31,7 +31,7 @@ export class GalleryService {
 
   async create(actorId: string, input: CreateGalleryItemInput): Promise<GalleryItemRow> {
     const row = await this.repo.create(input);
-    await this.cache.purge(['gallery']);
+    await this.cache.purge(['gallery', 'ride']);
     await this.audit.record({
       actorId,
       action: 'gallery.created',
@@ -50,7 +50,7 @@ export class GalleryService {
         await this.storage.purgeAssetByUrl(before.imageUrl);
       } catch {}
     }
-    await this.cache.purge(['gallery']);
+    await this.cache.purge(['gallery', 'ride']);
     await this.audit.record({
       actorId,
       action: 'gallery.updated',
@@ -72,7 +72,7 @@ export class GalleryService {
       } catch {}
     }
 
-    await this.cache.purge(['gallery']);
+    await this.cache.purge(['gallery', 'ride']);
     await this.audit.record({
       actorId,
       action: 'gallery.deleted',
@@ -84,7 +84,7 @@ export class GalleryService {
 
   async reorder(actorId: string, ids: string[]): Promise<GalleryItemRow[]> {
     await this.repo.reorder(ids);
-    await this.cache.purge(['gallery']);
+    await this.cache.purge(['gallery', 'ride']);
     const items = await this.list();
     await this.audit.record({
       actorId,

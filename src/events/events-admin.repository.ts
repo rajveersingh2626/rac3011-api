@@ -140,9 +140,20 @@ export class EventsAdminRepository {
     });
   }
 
+  async findMemberByUserId(userId: string) {
+    return this.prisma.memberProfile.findUnique({
+      where: { userId },
+      include: { club: { select: { id: true, name: true } } },
+    });
+  }
+
   async findCheckin(eventId: string, memberId: string): Promise<CheckinRow | null> {
     return this.prisma.eventCheckin.findUnique({
       where: { eventId_memberId: { eventId, memberId } },
+      include: {
+        member: { select: { id: true, fullName: true, email: true, photoUrl: true } },
+        club: { select: { id: true, name: true } },
+      },
     });
   }
 
@@ -158,12 +169,22 @@ export class EventsAdminRepository {
     method: CheckinMethod;
     checkedInById: string;
   }): Promise<CheckinRow> {
-    return this.prisma.eventCheckin.create({ data: input });
+    return this.prisma.eventCheckin.create({
+      data: input,
+      include: {
+        member: { select: { id: true, fullName: true, email: true, photoUrl: true } },
+        club: { select: { id: true, name: true } },
+      },
+    });
   }
 
   async findCheckins(eventId: string, scope: ClubScopeFilter): Promise<CheckinRow[]> {
     return this.prisma.eventCheckin.findMany({
       where: { eventId, ...('all' in scope ? {} : { clubId: { in: scope.clubIds } }) },
+      include: {
+        member: { select: { id: true, fullName: true, email: true, photoUrl: true } },
+        club: { select: { id: true, name: true } },
+      },
       orderBy: { checkedInAt: 'desc' },
     });
   }
