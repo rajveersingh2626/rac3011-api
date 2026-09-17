@@ -59,12 +59,78 @@ export class FormsService {
           status: 'published',
           accessMode: 'all',
           targetSurface: 'dashboard',
-          targetRoles: ['club_president', 'club_secretary'],
+          targetRoles: ['president', 'secretary', 'member'],
           targetClubIds: [],
           fields: DEFAULT_HOST_CLUB_FIELDS,
           isPublic: false,
         },
       });
+    }
+
+    const hostClubForm = existing ?? (await this.customForm.findUnique({
+      where: { slug: CANONICAL_HOST_CLUB_SLUG },
+    }));
+
+    // Auto-migrate any existing applications from ride_support_clubs into custom_form_submissions
+    if (hostClubForm) {
+      try {
+        const supportClubs: any[] = await (this.prisma as any).rideSupportClub.findMany({
+          include: { club: true },
+        });
+
+        for (const sc of supportClubs) {
+          const notesText = sc.notes || '';
+          const driveMatch = notesText.match(/Google Drive Proposal:\s*([^\s|]+)/i);
+          const proposalUrl = driveMatch ? driveMatch[1].trim() : '';
+          const motivationMatch = notesText.match(/Motivation:\s*([^|]+)/i);
+          const motivation = motivationMatch ? motivationMatch[1].trim() : notesText;
+          const positionMatch = notesText.match(/Position:\s*([^|]+)/i);
+          const position = positionMatch ? positionMatch[1].trim() : 'Club President';
+          const zoneMatch = notesText.match(/Zone:\s*([^|]+)/i);
+          const zone = zoneMatch ? zoneMatch[1].trim() : '';
+
+          const alreadyExists = await this.customFormSubmission.findFirst({
+            where: {
+              formId: hostClubForm.id,
+              OR: [
+                { id: sc.id },
+                { userId: sc.createdById },
+                ...(sc.clubId ? [{ clubId: sc.clubId }] : []),
+              ],
+            },
+          });
+
+          if (!alreadyExists) {
+            await this.customFormSubmission.create({
+              data: {
+                id: sc.id,
+                formId: hostClubForm.id,
+                userId: sc.createdById || null,
+                clubId: sc.clubId || null,
+                applicantName: sc.club?.name ? `Host Club (${sc.club.name})` : 'Host Club Applicant',
+                applicantEmail: 'hostclub@district3011.org',
+                applicantPhone: sc.contactPhone || '',
+                clubName: sc.club?.name || 'District 3011',
+                status: 'under_review',
+                values: {
+                  clubName: sc.club?.name || 'District 3011',
+                  proposalDriveUrl: proposalUrl,
+                  motivation,
+                  position,
+                  zone,
+                  phone: sc.contactPhone || '',
+                  capacityDelegates: sc.capacityDelegates || 10,
+                  homestayAvailable: sc.homestayAvailable ?? true,
+                },
+                notes: sc.notes,
+                submittedAt: sc.createdAt || new Date(),
+              },
+            });
+          }
+        }
+      } catch {
+        // Silently skip if table or relations are unavailable
+      }
     }
   }
 
@@ -192,19 +258,32 @@ export class FormsService {
 
     // Filter by targeting
     const eligibleForms = forms.filter((form: any) => {
+      // 1. If form accessMode is 'none', it is disabled for EVERYONE (including superadmin) on active dashboard
+      if (form.accessMode === 'none') return false;
+
       if (isSuperAdmin) return true;
 
-      // Access Mode check
-      if (form.accessMode === 'none') return false;
+      // 2. Specific clubs check
       if (form.accessMode === 'specific') {
         const allowedClubs = Array.isArray(form.targetClubIds) ? (form.targetClubIds as string[]) : [];
         if (!userClubId || !allowedClubs.includes(userClubId)) return false;
       }
 
-      // Role check
+      // 3. Role check with normalized keys
       const targetRoles = Array.isArray(form.targetRoles) ? (form.targetRoles as string[]) : [];
       if (targetRoles.length > 0) {
-        const hasRole = targetRoles.some((r: string) => userRoleKeys.has(r));
+        const hasRole = targetRoles.some((r: string) => {
+          const lowerR = r.toLowerCase();
+          return (
+            userRoleKeys.has(r) ||
+            userRoleKeys.has(lowerR) ||
+            (lowerR === 'club_president' && userRoleKeys.has('president')) ||
+            (lowerR === 'club_secretary' && userRoleKeys.has('secretary')) ||
+            (lowerR === 'president' && userRoleKeys.has('club_president')) ||
+            (lowerR === 'secretary' && userRoleKeys.has('club_secretary')) ||
+            (lowerR === 'all_members' && (userRoleKeys.has('member') || userRoleKeys.has('president') || userRoleKeys.has('secretary')))
+          );
+        });
         if (!hasRole) return false;
       }
 
@@ -250,19 +329,35 @@ export class FormsService {
   }
 
   async listSubmissions(
-    formId: string,
+    formIdOrSlug: string,
     options?: { status?: string; search?: string },
   ) {
-    const where: Record<string, any> = { formId };
+    const form = await this.customForm.findFirst({
+      where: {
+        OR: [{ id: formIdOrSlug }, { slug: formIdOrSlug }],
+      },
+    });
+
+    const formId = form?.id ?? formIdOrSlug;
+    const formSlug = form?.slug ?? formIdOrSlug;
+
+    const where: Record<string, any> = {
+      OR: [{ formId }, { formId: formSlug }],
+    };
+
     if (options?.status && options.status !== 'all') {
       where.status = options.status;
     }
     if (options?.search) {
       const q = options.search.trim();
-      where.OR = [
-        { applicantName: { contains: q, mode: 'insensitive' } },
-        { applicantEmail: { contains: q, mode: 'insensitive' } },
-        { clubName: { contains: q, mode: 'insensitive' } },
+      where.AND = [
+        {
+          OR: [
+            { applicantName: { contains: q, mode: 'insensitive' } },
+            { applicantEmail: { contains: q, mode: 'insensitive' } },
+            { clubName: { contains: q, mode: 'insensitive' } },
+          ],
+        },
       ];
     }
 
@@ -274,12 +369,23 @@ export class FormsService {
 
   async updateSubmissionStatus(
     ctx: RequestContext,
-    formId: string,
+    formIdOrSlug: string,
     submissionId: string,
     dto: UpdateSubmissionStatusInput,
   ) {
+    const form = await this.customForm.findFirst({
+      where: {
+        OR: [{ id: formIdOrSlug }, { slug: formIdOrSlug }],
+      },
+    });
+    const formId = form?.id ?? formIdOrSlug;
+    const formSlug = form?.slug ?? formIdOrSlug;
+
     const submission = await this.customFormSubmission.findFirst({
-      where: { id: submissionId, formId },
+      where: {
+        id: submissionId,
+        OR: [{ formId }, { formId: formSlug }],
+      },
     });
     if (!submission) throw new NotFoundException('Submission not found');
 
