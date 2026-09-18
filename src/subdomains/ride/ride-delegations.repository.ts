@@ -158,12 +158,13 @@ export class RideDelegationsRepository {
   }
 
   async countDistinctHostClubsThisRy(ryYear: number): Promise<number> {
-    const rows = await this.prisma.rideDelegationHost.findMany({
-      where: { delegation: { ryYear } },
-      select: { clubId: true },
-      distinct: ['clubId'],
-    });
-    return rows.length;
+    const result = await this.prisma.$queryRaw<Array<{ count: bigint | number }>>`
+      SELECT COUNT(DISTINCT h.club_id) as count
+      FROM ride_delegation_hosts h
+      JOIN ride_delegations d ON d.id = h.delegation_id
+      WHERE d.ry_year = ${ryYear}
+    `;
+    return Number(result[0]?.count ?? 0);
   }
 
   private async mustFind(id: string): Promise<DelegationRow> {

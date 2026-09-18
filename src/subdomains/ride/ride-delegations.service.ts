@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -14,19 +13,22 @@ import type { UpdateDelegationInput } from './dto/update-delegation.dto';
 import type { AssignHostsInput } from './dto/assign-hosts.dto';
 import { RideDelegationsRepository } from './ride-delegations.repository';
 import type { DelegationListFilter, DelegationRow } from './ride.types';
+import { RideBaseManagerService, RIDE_MANAGE_PERMISSION } from './ride-base.service';
 
-export const MANAGE_PERMISSION = 'subdomain:ride:manage' as const;
+export const MANAGE_PERMISSION = RIDE_MANAGE_PERMISSION;
 export const RIDE_HOST_ASSIGNED_TRIGGER = 'ride.host_assigned' as const;
 
 @Injectable()
-export class RideDelegationsService {
+export class RideDelegationsService extends RideBaseManagerService {
   constructor(
     private readonly repo: RideDelegationsRepository,
-    private readonly scope: ScopeService,
+    scope: ScopeService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationPort,
     private readonly pointsEngine: PointsEngineService,
-  ) {}
+  ) {
+    super(scope);
+  }
 
   list(
     filter: DelegationListFilter,
@@ -143,14 +145,5 @@ export class RideDelegationsService {
     }
 
     return this.get(id);
-  }
-
-  private assertManage(ctx: RequestContext): void {
-    if (!this.hasManageGrant(ctx)) throw new ForbiddenException();
-    this.scope.assertCanAccessProject(ctx.access, MANAGE_PERMISSION, 'ride');
-  }
-
-  private hasManageGrant(ctx: RequestContext): boolean {
-    return ctx.access.isSuperAdmin || (ctx.access.grants[MANAGE_PERMISSION] ?? []).length > 0;
   }
 }

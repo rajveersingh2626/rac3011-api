@@ -31,6 +31,7 @@ export const envSchema = z.object({
   SHADOW_DATABASE_URL: optionalString,
   REDIS_URL: z.string().default('redis://localhost:6379'),
   AUTH_SECRET: z.string().min(32).default('dev-only-secret-change-me-please-32-bytes-min'),
+  RIDE_JWT_SECRET: optionalString,
   AUTH_URL: z.string().url().default('http://localhost:3000'),
   COOKIE_DOMAIN: z.string().default('localhost'),
   WEB_ORIGINS: csv,

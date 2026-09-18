@@ -215,6 +215,7 @@ model CbListing {
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
   @@index([status])
+  @@index([expiresAt])
   @@map("cb_listings")
 }
 
@@ -349,6 +350,8 @@ model RideParticipant {
   @@index([ryYear, status])
   @@index([email])
   @@index([homeDistrict])
+  @@index([isActive])
+  @@index([approvalStatus])
   @@map("ride_participants")
 }
 

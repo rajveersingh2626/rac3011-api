@@ -7,6 +7,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-rac3011}
       POSTGRES_USER: ${POSTGRES_USER:-rac3011}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeThisStrongPassword123!}
+    command: postgres -c shared_buffers=512MB -c max_connections=100
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,6 +20,7 @@ services:
     image: redis:7-alpine
     container_name: rac3011-redis
     restart: always
+    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     healthcheck:
@@ -43,7 +45,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-ChangeThisStrongPassword123!}@postgres:5432/${POSTGRES_DB:-rac3011}
+      NODE_OPTIONS: '--max-old-space-size=3072'
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-ChangeThisStrongPassword123!}@postgres:5432/${POSTGRES_DB:-rac3011}?connection_limit=20&pool_timeout=10
       REDIS_URL: redis://redis:6379
     ports:
       - '3000:3000'
@@ -64,7 +67,8 @@ services:
     environment:
       NODE_ENV: production
       WORKER: 1
-      DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-ChangeThisStrongPassword123!}@postgres:5432/${POSTGRES_DB:-rac3011}
+      NODE_OPTIONS: '--max-old-space-size=2048'
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-ChangeThisStrongPassword123!}@postgres:5432/${POSTGRES_DB:-rac3011}?connection_limit=10&pool_timeout=10
       REDIS_URL: redis://redis:6379
     command: ["node", "dist/src/main.js"]
 

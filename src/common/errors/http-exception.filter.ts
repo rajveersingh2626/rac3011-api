@@ -1,4 +1,4 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { ZodValidationException } from 'nestjs-zod';
 import { ZodError } from 'zod';
@@ -22,9 +22,19 @@ const NAMES: Record<number, string> = {
 
 @Catch()
 export class HttpErrorFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpErrorFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const res = host.switchToHttp().getResponse<Response>();
     const body = this.toBody(exception);
+
+    if (body.statusCode >= 500) {
+      this.logger.error(
+        `Unhandled Exception: ${exception instanceof Error ? exception.message : String(exception)}`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+    }
+
     res.status(body.statusCode).json(body);
   }
 

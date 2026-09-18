@@ -1,20 +1,21 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CacheInvalidator } from '../../cache/cache-invalidator.service';
 import { ScopeService } from '../../common/scope/scope.service';
 import type { RequestContext } from '../../common/types/access';
 import type { CreateGalleryItemInput } from './dto/create-gallery-item.dto';
 import { RideGalleryRepository } from './ride-gallery.repository';
 import type { GalleryItemListFilter, GalleryItemRow } from './ride.types';
-
-const MANAGE_PERMISSION = 'subdomain:ride:manage' as const;
+import { RideBaseManagerService } from './ride-base.service';
 
 @Injectable()
-export class RideGalleryService {
+export class RideGalleryService extends RideBaseManagerService {
   constructor(
     private readonly repo: RideGalleryRepository,
-    private readonly scope: ScopeService,
+    scope: ScopeService,
     private readonly cache: CacheInvalidator,
-  ) {}
+  ) {
+    super(scope);
+  }
 
   list(
     filter: GalleryItemListFilter,
@@ -55,14 +56,5 @@ export class RideGalleryService {
     if (!existing) throw new NotFoundException();
     await this.repo.delete(id);
     await this.cache.purge(['ride']);
-  }
-
-  private assertManage(ctx: RequestContext): void {
-    if (!this.hasManageGrant(ctx)) throw new ForbiddenException();
-    this.scope.assertCanAccessProject(ctx.access, MANAGE_PERMISSION, 'ride');
-  }
-
-  private hasManageGrant(ctx: RequestContext): boolean {
-    return ctx.access.isSuperAdmin || (ctx.access.grants[MANAGE_PERMISSION] ?? []).length > 0;
   }
 }

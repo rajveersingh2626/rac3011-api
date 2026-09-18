@@ -71,7 +71,7 @@ model Club {
 model ClubBoardMember {
   id         String   @id @default(cuid())
   clubId     String   @map("club_id")
-  club       Club     @relation(fields: [clubId], references: [id])
+  club       Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
   memberId   String?  @map("member_id")
   name       String
   position   String
@@ -90,7 +90,7 @@ model ClubBoardMember {
 model ClubFacts {
   id                   String    @id @default(cuid())
   clubId               String    @map("club_id")
-  club                 Club      @relation(fields: [clubId], references: [id])
+  club                 Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
   ryYear               Int       @map("ry_year")
   duesPaidOn           DateTime? @map("dues_paid_on") @db.Date
   riCitationCompleted  Boolean   @default(false) @map("ri_citation_completed")

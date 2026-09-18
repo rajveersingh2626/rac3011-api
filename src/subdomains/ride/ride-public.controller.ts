@@ -9,6 +9,8 @@ import { RideGalleryService } from './ride-gallery.service';
 import { RideParticipantsService } from './ride-participants.service';
 import { RegisterParticipantDto } from './dto/register-participant.dto';
 import { delegationPublicDto, galleryItemDto } from './ride.transformer';
+import { ParticipantAuthGuard } from './guards/participant-auth.guard';
+import { CurrentParticipant } from './decorators/current-participant.decorator';
 
 import { RideResourcesService } from './ride-resources.service';
 
@@ -58,22 +60,24 @@ export class RidePublicController {
 
   @Get('resources')
   @Public()
-  async getResources(
-    @Query('email') email?: string,
-    @Query('clubName') clubName?: string,
-    @Query('district') district?: string,
-  ) {
-    const items = await this.resources.listForParticipant(email, clubName, district);
+  @UseGuards(ParticipantAuthGuard)
+  async getResources(@CurrentParticipant() participant: any) {
+    const items = await this.resources.listForParticipant(
+      participant?.email,
+      participant?.homeClubName,
+      participant?.homeDistrict,
+    );
     return { items };
   }
 
   @Get('announcements')
   @Public()
-  async getAnnouncements(
-    @Query('district') district?: string,
-    @Query('email') email?: string,
-  ) {
-    const items = await this.participants.listAnnouncementsForParticipant(district, email);
+  @UseGuards(ParticipantAuthGuard)
+  async getAnnouncements(@CurrentParticipant() participant: any) {
+    const items = await this.participants.listAnnouncementsForParticipant(
+      participant?.homeDistrict,
+      participant?.email,
+    );
     return { items };
   }
 

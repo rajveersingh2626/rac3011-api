@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit, Optional, UnauthorizedException } from '@nestjs/common';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import type IORedis from 'ioredis';
@@ -33,13 +33,51 @@ export const PARTICIPANT_SESSION_TTL_SECONDS = 2 * 60 * 60;
 export const PARTICIPANT_SESSION_PREFIX = 'ride:session:';
 
 @Injectable()
-export class RideAuthService {
+export class RideAuthService implements OnModuleInit, OnModuleDestroy {
+  private static readonly MAX_MEMORY_SESSIONS = 5000;
   private readonly memorySessions = new Map<string, ParticipantSessionRecord>();
+  private readonly evictionTimer?: NodeJS.Timeout;
 
   constructor(
     private readonly prisma: PrismaService,
     @Optional() @Inject(CACHE_REDIS) private readonly redis?: IORedis,
-  ) {}
+  ) {
+    this.evictionTimer = setInterval(() => this.evictExpiredMemorySessions(), 60 * 1000);
+    this.evictionTimer.unref();
+  }
+
+  onModuleInit(): void {
+    if (env.NODE_ENV === 'production' && !this.redis) {
+      throw new Error('FATAL: Redis is mandatory for RideAuthService session management in production');
+    }
+  }
+
+  onModuleDestroy(): void {
+    if (this.evictionTimer) {
+      clearInterval(this.evictionTimer);
+    }
+  }
+
+  private getJwtSecret(): string {
+    return env.RIDE_JWT_SECRET || env.AUTH_SECRET;
+  }
+
+  private evictExpiredMemorySessions(): void {
+    const now = Date.now();
+    for (const [sid, rec] of this.memorySessions.entries()) {
+      if (rec.expiresAt < now) {
+        this.memorySessions.delete(sid);
+      }
+    }
+    if (this.memorySessions.size >= RideAuthService.MAX_MEMORY_SESSIONS) {
+      const toDelete = Math.floor(RideAuthService.MAX_MEMORY_SESSIONS * 0.1);
+      let count = 0;
+      for (const sid of this.memorySessions.keys()) {
+        this.memorySessions.delete(sid);
+        if (++count >= toDelete) break;
+      }
+    }
+  }
 
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, BCRYPT_COST);
@@ -60,7 +98,7 @@ export class RideAuthService {
 
     const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
     const body = Buffer.from(JSON.stringify(fullPayload)).toString('base64url');
-    const signature = createHmac('sha256', env.AUTH_SECRET)
+    const signature = createHmac('sha256', this.getJwtSecret())
       .update(`${header}.${body}`)
       .digest('base64url');
 
@@ -78,7 +116,7 @@ export class RideAuthService {
     }
 
     const [header, body, signature] = parts;
-    const expectedSignature = createHmac('sha256', env.AUTH_SECRET)
+    const expectedSignature = createHmac('sha256', this.getJwtSecret())
       .update(`${header}.${body}`)
       .digest('base64url');
 
@@ -110,6 +148,10 @@ export class RideAuthService {
     ipAddress: string | null = null,
     userAgent: string | null = null,
   ): Promise<ParticipantSessionRecord> {
+    if (env.NODE_ENV === 'production' && !this.redis) {
+      throw new UnauthorizedException('Redis session storage is mandatory in production');
+    }
+
     const sessionId = randomUUID();
     const now = Date.now();
     const record: ParticipantSessionRecord = {
@@ -124,6 +166,11 @@ export class RideAuthService {
     };
 
     const key = `${PARTICIPANT_SESSION_PREFIX}${sessionId}`;
+    
+    // Evict if at capacity before setting
+    if (this.memorySessions.size >= RideAuthService.MAX_MEMORY_SESSIONS) {
+      this.evictExpiredMemorySessions();
+    }
     this.memorySessions.set(sessionId, record);
 
     if (this.redis) {
@@ -134,8 +181,10 @@ export class RideAuthService {
           'EX',
           PARTICIPANT_SESSION_TTL_SECONDS,
         );
-      } catch {
-        // Ignore Redis error, memorySessions acts as durable fallback
+      } catch (err) {
+        if (env.NODE_ENV === 'production') {
+          throw new UnauthorizedException('Failed to persist participant session to Redis');
+        }
       }
     }
 

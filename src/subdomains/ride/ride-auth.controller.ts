@@ -8,12 +8,21 @@ import { extractClientIp, readCookie, serializeCookie } from '../../auth/cookie.
 import { PARTICIPANT_SESSION_TTL_SECONDS, RideAuthService } from './ride-auth.service';
 import { ParticipantAuthGuard, PARTICIPANT_COOKIE_NAME } from './guards/participant-auth.guard';
 import { CurrentParticipant } from './decorators/current-participant.decorator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-interface LoginDto {
-  email?: string;
-  identifier?: string;
-  password: string;
-}
+export const loginSchema = z
+  .object({
+    email: z.string().trim().email().optional(),
+    identifier: z.string().trim().min(1).optional(),
+    password: z.string().min(1, 'Password is required'),
+  })
+  .refine((data) => Boolean(data.email || data.identifier), {
+    message: 'Either email or identifier must be provided',
+    path: ['identifier'],
+  });
+
+export class LoginDto extends createZodDto(loginSchema) {}
 
 @ApiTags('ride')
 @Controller('ride/auth')

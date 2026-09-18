@@ -34,7 +34,6 @@ export function createAuthInstance(deps: AuthConfigDeps) {
         'http://localhost:4173',
         'http://127.0.0.1:5173',
         'http://127.0.0.1:3000',
-        'http://140.245.6.54',
       ]),
     ),
     emailAndPassword: {

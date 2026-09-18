@@ -234,13 +234,26 @@ export class RideParticipantsRepository {
   }
 
   async countStats() {
-    const [total, submitted, approved, confirmed, waitlist] = await Promise.all([
-      this.prisma.rideParticipant.count(),
-      this.prisma.rideParticipant.count({ where: { status: 'submitted' } }),
-      this.prisma.rideParticipant.count({ where: { status: 'approved' } }),
-      this.prisma.rideParticipant.count({ where: { status: 'confirmed' } }),
-      this.prisma.rideParticipant.count({ where: { status: 'waitlist' } }),
-    ]);
+    const groups = await this.prisma.rideParticipant.groupBy({
+      by: ['status'],
+      where: { isActive: true },
+      _count: { _all: true },
+    });
+
+    let total = 0;
+    let submitted = 0;
+    let approved = 0;
+    let confirmed = 0;
+    let waitlist = 0;
+
+    for (const g of groups) {
+      const c = g._count._all;
+      total += c;
+      if (g.status === 'submitted') submitted += c;
+      else if (g.status === 'approved') approved += c;
+      else if (g.status === 'confirmed') confirmed += c;
+      else if (g.status === 'waitlist') waitlist += c;
+    }
 
     return { total, submitted, approved, confirmed, waitlist };
   }
