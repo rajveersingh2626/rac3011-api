@@ -17,6 +17,8 @@ import { SessionContextPort } from '../common/auth/session-context.port';
 import type { RequestContext } from '../common/types/access';
 import { PrismaService } from '../prisma/prisma.service';
 
+import { RideAuthService } from '../subdomains/ride/ride-auth.service';
+
 function parseDeviceSummary(ua?: string | null): string {
   if (!ua) return 'Unknown Device';
   let browser = 'Browser';
@@ -42,6 +44,7 @@ export class SessionsController {
     private readonly prisma: PrismaService,
     private readonly sessionContext: SessionContextPort,
     private readonly audit: AuditService,
+    private readonly rideAuth?: RideAuthService,
   ) {}
 
   @Get()
@@ -119,7 +122,7 @@ export class SessionsController {
       orderBy: { createdAt: 'desc' },
     });
 
-    return rows.map((s) => ({
+    const districtSessions = rows.map((s) => ({
       id: s.id,
       userId: s.userId,
       name: s.user.profile?.fullName || s.user.name,
@@ -133,7 +136,60 @@ export class SessionsController {
       createdAt: s.createdAt.toISOString(),
       expiresAt: s.expiresAt.toISOString(),
       isCurrent: s.id === currentSessionId,
+      portal: 'district',
     }));
+
+    // Fetch participant sessions from RideAuthService
+    let participantSessionsFormatted: any[] = [];
+    if (this.rideAuth) {
+      try {
+        const pSessions = await this.rideAuth.listActiveSessions();
+        if (pSessions.length > 0) {
+          const pIds = pSessions.map((ps) => ps.participantId);
+          const pRecords = await this.prisma.rideParticipant.findMany({
+            where: { id: { in: pIds } },
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              homeDistrict: true,
+              homeClubName: true,
+              rotaryId: true,
+            },
+          });
+          const pMap = new Map(pRecords.map((p) => [p.id, p]));
+
+          participantSessionsFormatted = pSessions.map((ps) => {
+            const p = pMap.get(ps.participantId);
+            return {
+              id: ps.sessionId,
+              userId: ps.participantId,
+              name: p?.fullName || ps.email,
+              email: ps.email,
+              rotaryId: p?.rotaryId || null,
+              clubName: p?.homeClubName || (p?.homeDistrict ? `RID ${p.homeDistrict}` : null),
+              roles: ['RIDE Delegate'],
+              ipAddress: ps.ipAddress || null,
+              userAgent: ps.userAgent || null,
+              device: parseDeviceSummary(ps.userAgent),
+              createdAt: new Date(ps.createdAt).toISOString(),
+              expiresAt: new Date(ps.expiresAt).toISOString(),
+              isCurrent: false,
+              portal: 'ride',
+            };
+          });
+        }
+      } catch (err) {
+        console.error('[SESSIONS] Failed to load RIDE participant sessions:', err);
+      }
+    }
+
+    if (scope === 'ride') {
+      return [...districtSessions, ...participantSessionsFormatted];
+    }
+
+    // Site-wide active logins across both platforms
+    return [...districtSessions, ...participantSessionsFormatted];
   }
 
   @Delete(':id')
@@ -147,25 +203,31 @@ export class SessionsController {
       select: { id: true, userId: true, ipAddress: true, userAgent: true },
     });
 
-    if (!existing) {
-      throw new NotFoundException('Session not found or already terminated');
+    if (existing) {
+      await this.prisma.session.delete({ where: { id } });
+
+      await this.audit.record({
+        actorId: ctx.user.id,
+        action: 'auth.session_revoked',
+        resourceType: 'session',
+        resourceId: id,
+        after: {
+          targetUserId: existing.userId,
+          ipAddress: existing.ipAddress,
+          userAgent: existing.userAgent,
+        },
+      });
+
+      return { success: true };
     }
 
-    await this.prisma.session.delete({ where: { id } });
+    // Check RIDE participant sessions
+    if (this.rideAuth) {
+      await this.rideAuth.invalidateSession(id);
+      return { success: true };
+    }
 
-    await this.audit.record({
-      actorId: ctx.user.id,
-      action: 'auth.session_revoked',
-      resourceType: 'session',
-      resourceId: id,
-      after: {
-        targetUserId: existing.userId,
-        ipAddress: existing.ipAddress,
-        userAgent: existing.userAgent,
-      },
-    });
-
-    return { success: true };
+    throw new NotFoundException('Session not found or already terminated');
   }
 
   @Post('revoke-user/:userId')
@@ -178,15 +240,22 @@ export class SessionsController {
       where: { userId },
     });
 
+    let pCount = 0;
+    if (this.rideAuth) {
+      pCount = await this.rideAuth.revokeUserSessions(userId);
+    }
+
+    const totalCount = res.count + pCount;
+
     await this.audit.record({
       actorId: ctx.user.id,
       action: 'auth.user_sessions_revoked',
       resourceType: 'user',
       resourceId: userId,
-      after: { revokedCount: res.count },
+      after: { revokedCount: totalCount },
     });
 
-    return { count: res.count };
+    return { count: totalCount };
   }
 
   @Post('revoke-all')
@@ -232,14 +301,21 @@ export class SessionsController {
       where: whereClause,
     });
 
+    let pCount = 0;
+    if (this.rideAuth) {
+      pCount = await this.rideAuth.revokeAllSessions();
+    }
+
+    const totalCount = res.count + pCount;
+
     await this.audit.record({
       actorId: ctx.user.id,
       action: 'auth.all_sessions_revoked',
       resourceType: 'session',
       resourceId: null,
-      after: { revokedCount: res.count, preservedSessionId: currentSessionId, scope },
+      after: { revokedCount: totalCount, preservedSessionId: currentSessionId, scope },
     });
 
-    return { count: res.count };
+    return { count: totalCount };
   }
 }

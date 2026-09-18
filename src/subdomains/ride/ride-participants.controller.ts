@@ -23,6 +23,19 @@ export class RideParticipantsController {
     return this.service.dispatchBroadcast(dto);
   }
 
+  @Get('districts')
+  @Public()
+  async getDistricts() {
+    const districts = await this.service.getDistricts();
+    return { districts };
+  }
+
+  @Post('admin/reset')
+  @RequirePermission('subdomain:ride:manage')
+  async resetRegistrations() {
+    return this.service.resetRegistrations();
+  }
+
   @Get('me')
   @Public()
   @UseGuards(ParticipantAuthGuard)

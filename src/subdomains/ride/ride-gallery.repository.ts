@@ -44,7 +44,7 @@ export class RideGalleryRepository {
     pageSize: number,
   ): Promise<{ items: GalleryItemRow[]; total: number }> {
     const where = whereFor(filter);
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total, rideContentItems] = await this.prisma.$transaction([
       this.prisma.rideGalleryItem.findMany({
         where,
         select: GALLERY_ITEM_SELECT,
@@ -53,8 +53,23 @@ export class RideGalleryRepository {
         take: pageSize,
       }),
       this.prisma.rideGalleryItem.count({ where }),
+      this.prisma.galleryItem.findMany({
+        where: { galleryType: 'ride' },
+        orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+      }),
     ]);
-    return { items: items.map(toRow), total };
+    const extraRows: GalleryItemRow[] = rideContentItems.map((item) => ({
+      id: item.id,
+      year: item.date ? item.date.getFullYear() : 2026,
+      url: item.imageUrl,
+      kind: 'photo',
+      caption: item.caption,
+      headingLeft: item.title,
+      headingRight: item.eventName,
+      order: item.order,
+      createdAt: item.createdAt,
+    }));
+    return { items: [...items.map(toRow), ...extraRows], total: total + extraRows.length };
   }
 
   async findAllPublic(filter: GalleryItemListFilter): Promise<GalleryItemRow[]> {
@@ -97,7 +112,25 @@ export class RideGalleryRepository {
       where: { id },
       select: GALLERY_ITEM_SELECT,
     });
-    return row ? toRow(row) : null;
+    if (row) return toRow(row);
+
+    const galleryRow = await this.prisma.galleryItem.findUnique({
+      where: { id },
+    });
+    if (galleryRow && galleryRow.galleryType === 'ride') {
+      return {
+        id: galleryRow.id,
+        year: galleryRow.date ? galleryRow.date.getFullYear() : 2026,
+        url: galleryRow.imageUrl,
+        kind: 'photo',
+        caption: galleryRow.caption,
+        headingLeft: galleryRow.title,
+        headingRight: galleryRow.eventName,
+        order: galleryRow.order,
+        createdAt: galleryRow.createdAt,
+      };
+    }
+    return null;
   }
 
   async create(data: GalleryItemCreate): Promise<GalleryItemRow> {
@@ -109,7 +142,16 @@ export class RideGalleryRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.rideGalleryItem.delete({ where: { id } });
+    const rideItem = await this.prisma.rideGalleryItem.findUnique({ where: { id } });
+    if (rideItem) {
+      await this.prisma.rideGalleryItem.delete({ where: { id } });
+      return;
+    }
+    const galleryItem = await this.prisma.galleryItem.findUnique({ where: { id } });
+    if (galleryItem) {
+      await this.prisma.galleryItem.delete({ where: { id } });
+      return;
+    }
   }
 
   private async mustFind(id: string): Promise<GalleryItemRow> {

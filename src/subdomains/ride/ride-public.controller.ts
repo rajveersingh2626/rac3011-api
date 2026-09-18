@@ -9,6 +9,8 @@ import { RideParticipantsService } from './ride-participants.service';
 import { RegisterParticipantDto } from './dto/register-participant.dto';
 import { delegationPublicDto, galleryItemDto } from './ride.transformer';
 
+import { RideResourcesService } from './ride-resources.service';
+
 @ApiTags('public')
 @Controller('public/ride')
 export class RidePublicController {
@@ -17,6 +19,7 @@ export class RidePublicController {
     private readonly gallery: RideGalleryService,
     private readonly dashboard: RideDashboardService,
     private readonly participants: RideParticipantsService,
+    private readonly resources: RideResourcesService,
   ) {}
 
   @Post('participants')
@@ -48,6 +51,27 @@ export class RidePublicController {
     const parsedYear = year ? Number(year) : undefined;
     const { items, years } = await this.gallery.publicList({ year: parsedYear });
     return { items: items.map(galleryItemDto), years };
+  }
+
+  @Get('resources')
+  @Public()
+  async getResources(
+    @Query('email') email?: string,
+    @Query('clubName') clubName?: string,
+    @Query('district') district?: string,
+  ) {
+    const items = await this.resources.listForParticipant(email, clubName, district);
+    return { items };
+  }
+
+  @Get('announcements')
+  @Public()
+  async getAnnouncements(
+    @Query('district') district?: string,
+    @Query('email') email?: string,
+  ) {
+    const items = await this.participants.listAnnouncementsForParticipant(district, email);
+    return { items };
   }
 
   @Get('dashboard')

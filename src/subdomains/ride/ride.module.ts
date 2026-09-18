@@ -21,6 +21,10 @@ import { RideSupportClubsService } from './ride-support-clubs.service';
 import { RideAuthController } from './ride-auth.controller';
 import { RideAuthService } from './ride-auth.service';
 
+import { RideResourcesController } from './ride-resources.controller';
+import { RideResourcesRepository } from './ride-resources.repository';
+import { RideResourcesService } from './ride-resources.service';
+
 @Module({
   imports: [MeModule, PublicModule, PointsModule],
   controllers: [
@@ -30,6 +34,7 @@ import { RideAuthService } from './ride-auth.service';
     RideGalleryController,
     RidePublicController,
     RideParticipantsController,
+    RideResourcesController,
   ],
   providers: [
     RideAuthService,
@@ -41,8 +46,11 @@ import { RideAuthService } from './ride-auth.service';
     RideGalleryService,
     RideParticipantsRepository,
     RideParticipantsService,
+    RideResourcesRepository,
+    RideResourcesService,
     RideDashboardService,
   ],
+  exports: [RideAuthService],
 })
 export class RideModule implements OnModuleInit {
   constructor(

@@ -14,9 +14,11 @@ import { SessionContextAdapter } from './session-context.adapter';
 import { TrustedDevicesController } from './trusted-devices.controller';
 import { TrustedDevicesService } from './trusted-devices.service';
 import { SessionsController } from './sessions.controller';
+import { RideModule } from '../subdomains/ride/ride.module';
 
 @Module({
   imports: [
+    RideModule,
     BetterAuthModule.forRootAsync({
       disableGlobalAuthGuard: true,
       inject: [PrismaAuthAdapterService, NotificationPort, AuditService],

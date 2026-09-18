@@ -1,0 +1,55 @@
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { Public, RequirePermission } from '../../common/decorators/access.decorators';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { paginate, parseListQuery } from '../../common/query/list-query';
+import type { RequestContext } from '../../common/types/access';
+import { CreateRideResourceDto } from './dto/ride-resource.dto';
+import { RideResourcesService } from './ride-resources.service';
+
+const FILTERS = ['category', 'scope'] as const;
+
+@ApiTags('ride')
+@Controller('ride/resources')
+export class RideResourcesController {
+  constructor(private readonly service: RideResourcesService) {}
+
+  @Get()
+  @RequirePermission('subdomain:ride:manage')
+  async list(@Query() raw: Record<string, unknown>) {
+    const q = parseListQuery(raw, { filters: FILTERS });
+    const { items, total } = await this.service.list(
+      {
+        category: q.filter.category,
+        scope: q.filter.scope,
+      },
+      q.page,
+      q.pageSize,
+    );
+    return paginate(items, total, q);
+  }
+
+  @Post()
+  @RequirePermission('subdomain:ride:manage')
+  async create(@CurrentUser() ctx: RequestContext, @Body() dto: CreateRideResourceDto) {
+    return this.service.create(ctx, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @RequirePermission('subdomain:ride:manage')
+  async delete(@CurrentUser() ctx: RequestContext, @Param('id') id: string): Promise<void> {
+    await this.service.delete(ctx, id);
+  }
+
+  @Get('public')
+  @Public()
+  async listPublic(
+    @Query('email') email?: string,
+    @Query('clubName') clubName?: string,
+    @Query('district') district?: string,
+  ) {
+    const items = await this.service.listForParticipant(email, clubName, district);
+    return { items };
+  }
+}

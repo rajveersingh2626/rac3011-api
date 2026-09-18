@@ -223,6 +223,57 @@ export class RideAuthService {
     }
   }
 
+  async listActiveSessions(): Promise<ParticipantSessionRecord[]> {
+    const map = new Map<string, ParticipantSessionRecord>();
+    const now = Date.now();
+
+    for (const [sid, rec] of this.memorySessions.entries()) {
+      if (rec.expiresAt > now) {
+        map.set(sid, rec);
+      } else {
+        this.memorySessions.delete(sid);
+      }
+    }
+
+    if (this.redis) {
+      try {
+        const keys = await this.redis.keys(`${PARTICIPANT_SESSION_PREFIX}*`);
+        if (keys.length > 0) {
+          const values = await this.redis.mget(keys);
+          for (const raw of values) {
+            if (raw) {
+              const rec: ParticipantSessionRecord = JSON.parse(raw);
+              if (rec.expiresAt > now) {
+                map.set(rec.sessionId, rec);
+              }
+            }
+          }
+        }
+      } catch {
+        // Fallback to memorySessions
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.lastActiveAt - a.lastActiveAt);
+  }
+
+  async revokeUserSessions(participantId: string): Promise<number> {
+    const sessions = await this.listActiveSessions();
+    const userSessions = sessions.filter((s) => s.participantId === participantId);
+    for (const s of userSessions) {
+      await this.invalidateSession(s.sessionId);
+    }
+    return userSessions.length;
+  }
+
+  async revokeAllSessions(): Promise<number> {
+    const sessions = await this.listActiveSessions();
+    for (const s of sessions) {
+      await this.invalidateSession(s.sessionId);
+    }
+    return sessions.length;
+  }
+
   async login(
     identifier: string,
     password: string,

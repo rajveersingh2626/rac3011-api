@@ -212,35 +212,68 @@ export class RideParticipantsService {
     }
 
     // 2. Query participants
-    const where: any = { isActive: true };
-    if (dto.districtNumbers && dto.districtNumbers.length > 0) {
-      where.homeDistrict = { in: dto.districtNumbers };
-    }
-    if (dto.hostClubsOnly) {
-      where.hostClubId = { not: null };
-    }
+    const participants = await this.prisma.rideParticipant.findMany({
+      where: { isActive: true },
+      include: { hostClub: true },
+    });
 
-    if (dto.all || (dto.districtNumbers && dto.districtNumbers.length > 0) || dto.hostClubsOnly) {
-      const participants = await this.prisma.rideParticipant.findMany({
-        where,
-        include: { hostClub: true },
-      });
+    const targetDistrictsNormalized = (dto.districtNumbers || []).map((d) =>
+      d.replace(/\D/g, ''),
+    ).filter(Boolean);
 
-      for (const p of participants) {
-        if (p.email && p.email.includes('@')) {
-          const cleanEmail = p.email.trim().toLowerCase();
-          recipientMap.set(cleanEmail, {
-            email: cleanEmail,
-            fullName: p.fullName,
-            districtNumber: p.homeDistrict || '3011',
-            passReference: p.id,
-            hostClub: p.hostClub?.name || 'Designated Host Club',
-          });
+    for (const p of participants) {
+      if (!p.email || !p.email.includes('@')) continue;
+
+      let isMatch = false;
+      if (dto.all) {
+        isMatch = true;
+      } else if (dto.hostClubsOnly && p.hostClubId) {
+        isMatch = true;
+      } else if (targetDistrictsNormalized.length > 0) {
+        const pDistDigits = (p.homeDistrict || '').replace(/\D/g, '');
+        if (
+          targetDistrictsNormalized.includes(pDistDigits) ||
+          targetDistrictsNormalized.some((td) => p.homeDistrict?.toLowerCase().includes(td))
+        ) {
+          isMatch = true;
         }
+      }
+
+      if (isMatch) {
+        const cleanEmail = p.email.trim().toLowerCase();
+        recipientMap.set(cleanEmail, {
+          email: cleanEmail,
+          fullName: p.fullName,
+          districtNumber: p.homeDistrict || '3011',
+          passReference: p.id,
+          hostClub: p.hostClub?.name || 'Designated Host Club',
+        });
       }
     }
 
     const recipients = Array.from(recipientMap.values());
+
+    // 3. If enabled (or by default), persist announcement into database
+    if (dto.publishAsAnnouncement !== false) {
+      try {
+        await this.prisma.rideAnnouncement.create({
+          data: {
+            subject: dto.subject,
+            body: dto.body,
+            sender: 'RIDE Organizing Committee (RID 3011)',
+            audienceScope: dto.all ? 'all' : (dto.districtNumbers?.length ? 'district' : 'individual'),
+            targetDistricts: dto.districtNumbers || [],
+            targetEmails: dto.customEmails || [],
+            hostClubsOnly: !!dto.hostClubsOnly,
+            recipientCount: recipients.length,
+          },
+        });
+      } catch (err) {
+        // Log error without breaking broadcast flow
+        console.error('Failed to persist ride announcement to database:', err);
+      }
+    }
+
     if (recipients.length === 0) {
       return { recipientCount: 0, dispatchedCount: 0 };
     }
@@ -273,5 +306,60 @@ export class RideParticipantsService {
       recipientCount: recipients.length,
       dispatchedCount: recipients.length,
     };
+  }
+
+  async listAnnouncementsForParticipant(district?: string, email?: string) {
+    const cleanEmail = email ? email.trim().toLowerCase() : '';
+    const cleanDistrict = district ? district.replace(/\D/g, '') : '';
+
+    const allAnnouncements = await this.prisma.rideAnnouncement.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    return allAnnouncements.filter((ann) => {
+      if (ann.audienceScope === 'all') return true;
+
+      if (cleanDistrict && ann.targetDistricts && ann.targetDistricts.length > 0) {
+        const matchesDistrict = ann.targetDistricts.some((d) => {
+          const digits = d.replace(/\D/g, '');
+          return digits === cleanDistrict || d.toLowerCase().includes(cleanDistrict);
+        });
+        if (matchesDistrict) return true;
+      }
+
+      if (cleanEmail && ann.targetEmails && ann.targetEmails.length > 0) {
+        const matchesEmail = ann.targetEmails.some((e) => e.toLowerCase() === cleanEmail);
+        if (matchesEmail) return true;
+      }
+
+      return false;
+    });
+  }
+
+  async getDistricts(): Promise<string[]> {
+    const participants = await this.prisma.rideParticipant.findMany({
+      select: { homeDistrict: true },
+      distinct: ['homeDistrict'],
+    });
+
+    const set = new Set<string>();
+    for (const p of participants) {
+      if (!p.homeDistrict) continue;
+      const clean = p.homeDistrict.trim();
+      if (clean) set.add(clean);
+    }
+
+    // Include fallback standard RID districts if empty
+    if (set.size === 0) {
+      ['3011', '3040', '3054', '3070', '3080', '3110', '3120', '3131', '3141', '3142', '3190'].forEach((d) => set.add(d));
+    }
+
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }
+
+  async resetRegistrations(): Promise<{ count: number }> {
+    const result = await this.prisma.rideParticipant.deleteMany({});
+    return { count: result.count };
   }
 }

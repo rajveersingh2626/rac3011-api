@@ -400,3 +400,37 @@ model RideEmailTemplate {
 
   @@map("ride_email_templates")
 }
+
+model RideResource {
+  id                String   @id @default(cuid())
+  title             String
+  category          String   @default("guidelines")
+  scope             String   @default("all")
+  targetClubName    String?  @map("target_club_name")
+  targetMemberEmail String?  @map("target_member_email")
+  targetDistrict    String?  @map("target_district")
+  driveUrl          String   @map("drive_url")
+  description       String?
+  order             Int      @default(0)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("ride_resources")
+}
+
+model RideAnnouncement {
+  id              String   @id @default(cuid())
+  subject         String
+  body            String
+  sender          String   @default("RIDE Organizing Committee (RID 3011)")
+  audienceScope   String   @default("all") @map("audience_scope")
+  targetDistricts String[] @default([]) @map("target_districts")
+  targetEmails    String[] @default([]) @map("target_emails")
+  hostClubsOnly   Boolean  @default(false) @map("host_clubs_only")
+  recipientCount  Int      @default(0) @map("recipient_count")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("ride_announcements")
+}
+
