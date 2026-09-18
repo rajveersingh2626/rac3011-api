@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { Public } from '../../common/decorators/access.decorators';
 import { env } from '../../config/env';
@@ -21,6 +22,8 @@ export class RideAuthController {
 
   @Post('login')
   @Public()
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ ride_auth: { limit: 5, ttl: 60000 } })
   @HttpCode(200)
   async login(
     @Body() body: LoginDto,

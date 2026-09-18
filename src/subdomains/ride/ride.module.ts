@@ -1,4 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AuditModule } from '../../audit/audit.module';
 import { MeModule } from '../../me/me.module';
 import { PointsModule } from '../../points/points.module';
 import { PublicModule } from '../../public/public.module';
@@ -26,7 +28,13 @@ import { RideResourcesRepository } from './ride-resources.repository';
 import { RideResourcesService } from './ride-resources.service';
 
 @Module({
-  imports: [MeModule, PublicModule, PointsModule],
+  imports: [
+    MeModule,
+    PublicModule,
+    PointsModule,
+    AuditModule,
+    ThrottlerModule.forRoot([{ name: 'ride_auth', ttl: 60000, limit: 10 }]),
+  ],
   controllers: [
     RideAuthController,
     RideSupportClubsController,

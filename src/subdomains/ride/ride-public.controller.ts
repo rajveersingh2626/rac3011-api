@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { CacheTags } from '../../cache/cache-tags.decorator';
 import { Public } from '../../common/decorators/access.decorators';
 import { RideDashboardService } from './ride-dashboard.service';
@@ -24,6 +25,8 @@ export class RidePublicController {
 
   @Post('participants')
   @Public()
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ ride_auth: { limit: 10, ttl: 60000 } })
   async registerParticipant(@Body() dto: RegisterParticipantDto) {
     const created = await this.participants.register(dto);
     return {

@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../../audit/audit.service';
 import { EmailProviderPool } from '../../notifications/email/email-provider-pool.service';
 import {
   RideParticipantsRepository,
@@ -101,6 +102,7 @@ export class RideParticipantsService {
   constructor(
     private readonly repo: RideParticipantsRepository,
     private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
     @Optional() private readonly emailPool?: EmailProviderPool,
   ) {}
 
@@ -358,8 +360,39 @@ export class RideParticipantsService {
     return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   }
 
-  async resetRegistrations(): Promise<{ count: number }> {
-    const result = await this.prisma.rideParticipant.deleteMany({});
-    return { count: result.count };
+  async resetRegistrations(
+    actorId?: string | null,
+    confirmation?: string,
+    mode: 'soft' | 'hard' = 'soft',
+  ): Promise<{ count: number; mode: 'soft' | 'hard' }> {
+    if (confirmation !== 'RESET') {
+      throw new BadRequestException('Confirmation token "RESET" is required to execute bulk reset');
+    }
+
+    const countBefore = await this.prisma.rideParticipant.count({
+      where: mode === 'soft' ? { isActive: true } : undefined,
+    });
+
+    let affectedCount = 0;
+    if (mode === 'hard') {
+      const result = await this.prisma.rideParticipant.deleteMany({});
+      affectedCount = result.count;
+    } else {
+      const result = await this.prisma.rideParticipant.updateMany({
+        where: { isActive: true },
+        data: { isActive: false },
+      });
+      affectedCount = result.count;
+    }
+
+    await this.audit.record({
+      actorId: actorId ?? null,
+      action: 'ride.participants.reset',
+      resourceType: 'ride_participant',
+      before: { activeCount: countBefore },
+      after: { affectedCount, mode },
+    });
+
+    return { count: affectedCount, mode };
   }
 }
