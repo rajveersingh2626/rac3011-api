@@ -297,8 +297,11 @@ export class RideParticipantsService {
 
     let affectedCount = 0;
     if (mode === 'hard') {
-      const result = await this.prisma.rideParticipant.deleteMany({});
-      affectedCount = result.count;
+      affectedCount = await this.prisma.$transaction(async (tx) => {
+        await tx.rideFormSubmission.deleteMany({});
+        const result = await tx.rideParticipant.deleteMany({});
+        return result.count;
+      });
     } else {
       const result = await this.prisma.rideParticipant.updateMany({
         where: { isActive: true },

@@ -95,6 +95,10 @@ export class ReportsService {
       existing.status !== 'draft' &&
       existing.status !== 'queried'
     ) {
+      // Idempotency: if already submitted, return successfully without re-emitting or erroring
+      if (existing.status === 'submitted') {
+        return existing;
+      }
       throw new ConflictException({
         code: 'INVALID_TRANSITION',
         message: `Cannot submit a ${existing.status} report`,
@@ -102,6 +106,10 @@ export class ReportsService {
     }
     const isEditable = existing.status === 'draft' || existing.status === 'queried';
     if ((input.values !== undefined || input.notes !== undefined) && !isEditable) {
+      // Graceful tolerance for concurrent/in-flight auto-save draft requests
+      if (existing.status === 'submitted' || existing.status === 'scored') {
+        return existing;
+      }
       throw new ConflictException({
         code: 'INVALID_TRANSITION',
         message: `Cannot edit a ${existing.status} report`,

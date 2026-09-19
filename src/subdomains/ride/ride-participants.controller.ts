@@ -34,9 +34,17 @@ export class RideParticipantsController {
   @RequirePermission('subdomain:ride:manage')
   async resetRegistrations(
     @CurrentUser() ctx: RequestContext,
-    @Body() body?: { confirmation?: string; mode?: 'soft' | 'hard' },
+    @Body() body?: any,
   ) {
-    return this.service.resetRegistrations(ctx?.user?.id ?? null, body?.confirmation, body?.mode);
+    let parsed = body;
+    if (typeof body === 'string') {
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        // keep as is
+      }
+    }
+    return this.service.resetRegistrations(ctx?.user?.id ?? null, parsed?.confirmation, parsed?.mode);
   }
 
   @Get('me')
