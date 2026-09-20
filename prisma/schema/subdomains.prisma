@@ -258,6 +258,7 @@ model RideDelegation {
   contactEmail     String?              @map("contact_email")
   status           DelegationStatus     @default(planned)
   hosts            RideDelegationHost[]
+  participants     RideParticipant[]
   createdAt        DateTime             @default(now()) @map("created_at")
   updatedAt        DateTime             @updatedAt @map("updated_at")
 
@@ -334,6 +335,9 @@ model RideParticipant {
   hostFamilyPhone   String?              @map("host_family_phone")
   hostAddress       String?              @map("host_address")
 
+  delegationId      String?              @map("delegation_id")
+  delegation        RideDelegation?      @relation(fields: [delegationId], references: [id], onDelete: SetNull)
+
   status            String               @default("submitted")
   approvalStatus    String               @default("submitted") @map("approval_status")
   dossierStatus     String               @default("incomplete") @map("dossier_status")
@@ -352,6 +356,7 @@ model RideParticipant {
   @@index([homeDistrict])
   @@index([isActive])
   @@index([approvalStatus])
+  @@index([delegationId])
   @@map("ride_participants")
 }
 

@@ -11,20 +11,31 @@ import { RideDelegationsService } from './ride-delegations.service';
 import { delegationDto } from './ride.transformer';
 import type { DelegationStatusKind } from './ride.types';
 
-const FILTERS = ['status', 'ryYear'] as const;
+const FILTERS = ['status', 'ryYear', 'approvedOnly'] as const;
 
 @ApiTags('ride')
 @Controller('ride/delegations')
 export class RideDelegationsController {
   constructor(private readonly service: RideDelegationsService) {}
 
+  @Get('approved-hosts')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
+  async listApprovedHosts(@CurrentUser() ctx: RequestContext) {
+    return this.service.getApprovedHostClubs(ctx);
+  }
+
   @Get()
   @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async list(@Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     const ryYear = q.filter.ryYear ? Number(q.filter.ryYear) : undefined;
+    const approvedOnly = q.filter.approvedOnly === 'true';
     const { items, total } = await this.service.list(
-      { status: q.filter.status as DelegationStatusKind | undefined, ryYear },
+      {
+        status: q.filter.status as DelegationStatusKind | undefined,
+        ryYear,
+        approvedOnly,
+      },
       q.page,
       q.pageSize,
     );

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
+  ApprovedHostClubRow,
   DelegationCreate,
   DelegationListFilter,
   DelegationRow,
@@ -19,6 +20,21 @@ const HOST_SELECT = {
   membersSent: true,
   assignedById: true,
 } satisfies Prisma.RideDelegationHostSelect;
+
+const PARTICIPANT_SELECT = {
+  id: true,
+  fullName: true,
+  email: true,
+  rotaryId: true,
+  delegationId: true,
+  homeDistrict: true,
+  status: true,
+  approvalStatus: true,
+  hostClubId: true,
+  hostFamilyName: true,
+  hostFamilyPhone: true,
+  hostAddress: true,
+} satisfies Prisma.RideParticipantSelect;
 
 const DELEGATION_SELECT = {
   id: true,
@@ -53,7 +69,7 @@ export class RideDelegationsRepository {
     pageSize: number,
   ): Promise<{ items: DelegationRow[]; total: number }> {
     const where = whereFor(filter);
-    const [items, total] = await this.prisma.$transaction([
+    const [rawItems, total] = await this.prisma.$transaction([
       this.prisma.rideDelegation.findMany({
         where,
         select: DELEGATION_SELECT,
@@ -63,11 +79,65 @@ export class RideDelegationsRepository {
       }),
       this.prisma.rideDelegation.count({ where }),
     ]);
-    return { items, total };
+
+    const delegationIds = rawItems.map((i) => i.id);
+    const districts = rawItems.map((i) => i.visitingDistrict);
+
+    const districtParticipants = await this.prisma.rideParticipant.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { delegationId: { in: delegationIds } },
+          { homeDistrict: { in: districts } },
+        ],
+      },
+      select: PARTICIPANT_SELECT,
+      orderBy: { fullName: 'asc' },
+    });
+
+    const enrichedItems: DelegationRow[] = rawItems.map((item) => {
+      const parts = districtParticipants.filter(
+        (p) => p.delegationId === item.id || (!p.delegationId && p.homeDistrict === item.visitingDistrict),
+      );
+      const approvedParts = parts.filter(
+        (p) => p.status === 'approved' || p.approvalStatus === 'approved' || p.approvalStatus === 'confirmed',
+      );
+      return {
+        ...item,
+        participants: parts,
+        approvedParticipantsCount: approvedParts.length,
+      };
+    });
+
+    if (filter.approvedOnly) {
+      const filtered = enrichedItems.filter(
+        (item) => item.status === 'confirmed' || (item.approvedParticipantsCount ?? 0) > 0,
+      );
+      return { items: filtered, total: filtered.length };
+    }
+
+    return { items: enrichedItems, total };
   }
 
-  findById(id: string): Promise<DelegationRow | null> {
-    return this.prisma.rideDelegation.findUnique({ where: { id }, select: DELEGATION_SELECT });
+  async findById(id: string): Promise<DelegationRow | null> {
+    const row = await this.prisma.rideDelegation.findUnique({ where: { id }, select: DELEGATION_SELECT });
+    if (!row) return null;
+    const parts = await this.prisma.rideParticipant.findMany({
+      where: {
+        isActive: true,
+        OR: [{ delegationId: row.id }, { homeDistrict: row.visitingDistrict }],
+      },
+      select: PARTICIPANT_SELECT,
+      orderBy: { fullName: 'asc' },
+    });
+    const approvedParts = parts.filter(
+      (p) => p.status === 'approved' || p.approvalStatus === 'approved' || p.approvalStatus === 'confirmed',
+    );
+    return {
+      ...row,
+      participants: parts,
+      approvedParticipantsCount: approvedParts.length,
+    };
   }
 
   // Public "incoming" list: everything not cancelled, soonest first.
@@ -104,28 +174,87 @@ export class RideDelegationsRepository {
   }
 
   /** Replaces the full host set for a delegation; returns the union of previously- and
-   * newly-assigned club ids so the caller can recompute points for everyone affected. */
+   * newly-assigned club ids so the caller can recompute points for everyone affected.
+   * Also propagates the host club assignment to participants belonging to this delegation. */
   async replaceHosts(
     delegationId: string,
     hosts: HostAssignmentInput[],
     assignedById: string,
+    participantIds?: string[],
+    visitingDistrict?: string,
   ): Promise<{ affectedClubIds: string[] }> {
     const previous = await this.prisma.rideDelegationHost.findMany({
       where: { delegationId },
       select: { clubId: true },
     });
-    await this.prisma.$transaction([
-      this.prisma.rideDelegationHost.deleteMany({ where: { delegationId } }),
-      this.prisma.rideDelegationHost.createMany({
-        data: hosts.map((h) => ({
-          delegationId,
-          clubId: h.clubId,
-          daysHosted: h.daysHosted,
-          membersSent: h.membersSent,
-          assignedById,
-        })),
-      }),
-    ]);
+
+    const primaryHost = hosts[0];
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Delete previous delegation hosts and insert new ones
+      await tx.rideDelegationHost.deleteMany({ where: { delegationId } });
+      if (hosts.length > 0) {
+        await tx.rideDelegationHost.createMany({
+          data: hosts.map((h) => ({
+            delegationId,
+            clubId: h.clubId,
+            daysHosted: h.daysHosted,
+            membersSent: h.membersSent ?? 0,
+            assignedById,
+          })),
+        });
+      }
+
+      // 2. Propagate host assignment to participants
+      if (hosts.length > 0 && primaryHost) {
+        if (participantIds && participantIds.length > 0) {
+          await tx.rideParticipant.updateMany({
+            where: { id: { in: participantIds } },
+            data: {
+              hostClubId: primaryHost.clubId,
+              delegationId,
+              hostFamilyName: primaryHost.hostFamilyName || undefined,
+              hostFamilyPhone: primaryHost.hostFamilyPhone || undefined,
+              hostAddress: primaryHost.hostAddress || undefined,
+            },
+          });
+        } else {
+          // Entire delegation
+          await tx.rideParticipant.updateMany({
+            where: {
+              OR: [
+                { delegationId },
+                ...(visitingDistrict ? [{ homeDistrict: visitingDistrict, isActive: true }] : []),
+              ],
+            },
+            data: {
+              hostClubId: primaryHost.clubId,
+              delegationId,
+              hostFamilyName: primaryHost.hostFamilyName || undefined,
+              hostFamilyPhone: primaryHost.hostFamilyPhone || undefined,
+              hostAddress: primaryHost.hostAddress || undefined,
+            },
+          });
+        }
+      } else {
+        // Reset host allocation
+        await tx.rideParticipant.updateMany({
+          where: {
+            OR: [
+              { delegationId },
+              ...(visitingDistrict ? [{ homeDistrict: visitingDistrict, isActive: true }] : []),
+            ],
+          },
+          data: {
+            hostClubId: null,
+            hostFamilyName: null,
+            hostFamilyPhone: null,
+            hostAddress: null,
+          },
+        });
+      }
+    });
+
     const affectedClubIds = new Set<string>();
     for (const p of previous) affectedClubIds.add(p.clubId);
     for (const h of hosts) affectedClubIds.add(h.clubId);
@@ -153,6 +282,98 @@ export class RideDelegationsRepository {
     return [...new Set(rows.map((r) => r.userId))];
   }
 
+  /**
+   * Retrieves verified Approved Host Clubs that submitted a Host Club Application
+   * through Form Builder (`custom_form_submissions` marked as 'approved').
+   */
+  async findApprovedHostClubs(): Promise<ApprovedHostClubRow[]> {
+    const submissions = await this.prisma.customFormSubmission.findMany({
+      where: {
+        status: 'approved',
+        OR: [
+          { form: { slug: 'delhi-meri-jaan-host-club-application-2026' } },
+          { form: { title: { contains: 'Host Club Application', mode: 'insensitive' } } },
+        ],
+      },
+      include: {
+        form: true,
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    const clubIds = new Set<string>();
+    for (const s of submissions) {
+      if (s.clubId) clubIds.add(s.clubId);
+    }
+
+    const supportClubs = await this.prisma.rideSupportClub.findMany({
+      include: { club: { select: CLUB_REF_SELECT } },
+    });
+    const supportClubMap = new Map<string, (typeof supportClubs)[0]>();
+    for (const sc of supportClubs) {
+      supportClubMap.set(sc.clubId, sc);
+      clubIds.add(sc.clubId);
+    }
+
+    const clubs = await this.prisma.club.findMany({
+      where: { id: { in: Array.from(clubIds) } },
+      select: CLUB_REF_SELECT,
+    });
+    const clubMap = new Map<string, (typeof clubs)[0]>();
+    for (const c of clubs) clubMap.set(c.id, c);
+
+    const approvedHosts: ApprovedHostClubRow[] = [];
+    const seenClubIds = new Set<string>();
+
+    for (const s of submissions) {
+      if (!s.clubId || seenClubIds.has(s.clubId)) continue;
+      seenClubIds.add(s.clubId);
+
+      const club = clubMap.get(s.clubId) || { id: s.clubId, name: s.clubName || 'Unknown Club', shortName: null };
+      const sc = supportClubMap.get(s.clubId);
+      const vals = (s.values as Record<string, any>) || {};
+
+      approvedHosts.push({
+        id: s.id,
+        clubId: s.clubId,
+        club,
+        applicantName: s.applicantName || String(vals.name || 'Applicant'),
+        applicantEmail: s.applicantEmail || String(vals.email || ''),
+        applicantPhone: s.applicantPhone || String(vals.phone || ''),
+        zone: String(vals.zone || ''),
+        capacityDelegates: sc?.capacityDelegates ?? (Number(vals.capacity) || 10),
+        homestayAvailable: sc?.homestayAvailable ?? Boolean(vals.homestayAvailable ?? true),
+        proposalDriveUrl: vals.proposalDriveUrl ? String(vals.proposalDriveUrl) : null,
+        notes: s.notes || (vals.motivation ? String(vals.motivation) : null),
+        status: 'approved',
+        submittedAt: s.submittedAt,
+      });
+    }
+
+    // Fallback support clubs if none in submissions
+    for (const sc of supportClubs) {
+      if (seenClubIds.has(sc.clubId)) continue;
+      seenClubIds.add(sc.clubId);
+      approvedHosts.push({
+        id: sc.id,
+        clubId: sc.clubId,
+        club: sc.club,
+        applicantName: 'Support Club Coordinator',
+        applicantEmail: '',
+        applicantPhone: sc.contactPhone,
+        zone: '',
+        capacityDelegates: sc.capacityDelegates,
+        homestayAvailable: sc.homestayAvailable,
+        proposalDriveUrl: null,
+        notes: sc.notes,
+        status: 'approved',
+        submittedAt: sc.createdAt,
+      });
+    }
+
+    return approvedHosts;
+  }
+
   countThisRy(ryYear: number): Promise<number> {
     return this.prisma.rideDelegation.count({ where: { ryYear } });
   }
@@ -173,3 +394,4 @@ export class RideDelegationsRepository {
     return row;
   }
 }
+

@@ -33,6 +33,45 @@ export type SupportClubUpsert = {
   createdById: string;
 };
 
+export type DelegationParticipantRow = {
+  id: string;
+  fullName: string;
+  email: string;
+  rotaryId: string | null;
+  homeDistrict: string;
+  status: string;
+  approvalStatus: string;
+  hostClubId: string | null;
+  hostFamilyName: string | null;
+  hostFamilyPhone: string | null;
+  hostAddress: string | null;
+};
+
+export type HostAssignmentInput = {
+  clubId: string;
+  daysHosted: number;
+  membersSent?: number;
+  hostFamilyName?: string;
+  hostFamilyPhone?: string;
+  hostAddress?: string;
+};
+
+export type ApprovedHostClubRow = {
+  id: string;
+  clubId: string;
+  club: RideClubRef;
+  applicantName: string;
+  applicantEmail: string;
+  applicantPhone: string;
+  zone?: string;
+  capacityDelegates: number;
+  homestayAvailable: boolean;
+  proposalDriveUrl?: string | null;
+  notes?: string | null;
+  status: 'approved';
+  submittedAt: Date;
+};
+
 export type DelegationHostRow = {
   id: string;
   clubId: string;
@@ -54,11 +93,17 @@ export type DelegationRow = {
   contactEmail: string | null;
   status: DelegationStatusKind;
   hosts: DelegationHostRow[];
+  participants?: DelegationParticipantRow[];
+  approvedParticipantsCount?: number;
   createdAt: Date;
   updatedAt: Date;
 };
 
-export type DelegationListFilter = { status?: DelegationStatusKind; ryYear?: number };
+export type DelegationListFilter = {
+  status?: DelegationStatusKind;
+  ryYear?: number;
+  approvedOnly?: boolean;
+};
 
 export type DelegationCreate = {
   ryYear: number;
@@ -82,8 +127,6 @@ export type DelegationUpdate = Partial<{
   contactEmail: string | null;
   status: DelegationStatusKind;
 }>;
-
-export type HostAssignmentInput = { clubId: string; daysHosted: number; membersSent: number };
 
 export type GalleryItemListFilter = { year?: number };
 

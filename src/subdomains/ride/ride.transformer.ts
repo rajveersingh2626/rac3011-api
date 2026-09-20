@@ -36,6 +36,8 @@ export function delegationDto(row: DelegationRow) {
       daysHosted: h.daysHosted,
       membersSent: h.membersSent,
     })),
+    participants: row.participants ?? [],
+    approvedParticipantsCount: row.approvedParticipantsCount ?? (row.participants?.filter((p) => p.status === 'approved' || p.approvalStatus === 'approved' || p.approvalStatus === 'confirmed').length ?? 0),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

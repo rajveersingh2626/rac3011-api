@@ -104,7 +104,13 @@ export class RideDelegationsService extends RideBaseManagerService {
       membersSent: h.membersSent,
     }));
 
-    const { affectedClubIds } = await this.repo.replaceHosts(id, input.hosts, ctx.user.id);
+    const { affectedClubIds } = await this.repo.replaceHosts(
+      id,
+      input.hosts,
+      ctx.user.id,
+      input.participantIds,
+      existing.visitingDistrict,
+    );
 
     await this.audit.record({
       actorId: ctx.user.id,
@@ -112,7 +118,7 @@ export class RideDelegationsService extends RideBaseManagerService {
       resourceType: 'ride_delegation',
       resourceId: id,
       before: { hosts: before },
-      after: { hosts: input.hosts },
+      after: { hosts: input.hosts, participantIds: input.participantIds },
     });
 
     for (const clubId of affectedClubIds) {
@@ -145,5 +151,10 @@ export class RideDelegationsService extends RideBaseManagerService {
     }
 
     return this.get(id);
+  }
+
+  async getApprovedHostClubs(ctx: RequestContext) {
+    this.assertManage(ctx);
+    return this.repo.findApprovedHostClubs();
   }
 }
