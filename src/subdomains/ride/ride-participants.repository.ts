@@ -175,6 +175,7 @@ export class RideParticipantsRepository {
       where: { id },
       data: {
         status,
+        approvalStatus: status,
         hostClubId: hostClubId !== undefined ? hostClubId : undefined,
         hostFamilyName: hostFamilyName !== undefined ? hostFamilyName : undefined,
         hostFamilyPhone: hostFamilyPhone !== undefined ? hostFamilyPhone : undefined,

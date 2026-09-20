@@ -15,7 +15,7 @@ export class RideResourcesController {
   constructor(private readonly service: RideResourcesService) {}
 
   @Get()
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage', 'resources:manage')
   async list(@Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     const { items, total } = await this.service.list(
@@ -30,14 +30,14 @@ export class RideResourcesController {
   }
 
   @Post()
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage', 'resources:manage')
   async create(@CurrentUser() ctx: RequestContext, @Body() dto: CreateRideResourceDto) {
     return this.service.create(ctx, dto);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage', 'resources:manage')
   async delete(@CurrentUser() ctx: RequestContext, @Param('id') id: string): Promise<void> {
     await this.service.delete(ctx, id);
   }

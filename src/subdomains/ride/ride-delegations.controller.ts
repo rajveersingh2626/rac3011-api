@@ -19,7 +19,7 @@ export class RideDelegationsController {
   constructor(private readonly service: RideDelegationsService) {}
 
   @Get()
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async list(@Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     const ryYear = q.filter.ryYear ? Number(q.filter.ryYear) : undefined;
@@ -32,19 +32,19 @@ export class RideDelegationsController {
   }
 
   @Post()
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async create(@CurrentUser() ctx: RequestContext, @Body() dto: CreateDelegationDto) {
     return delegationDto(await this.service.create(ctx, dto));
   }
 
   @Get(':id')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async get(@Param('id') id: string) {
     return delegationDto(await this.service.get(id));
   }
 
   @Patch(':id')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async update(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,
@@ -54,7 +54,7 @@ export class RideDelegationsController {
   }
 
   @Put(':id/hosts')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async assignHosts(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,

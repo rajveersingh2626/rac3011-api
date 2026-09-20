@@ -16,7 +16,7 @@ export class RideGalleryController {
   constructor(private readonly service: RideGalleryService) {}
 
   @Get()
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async list(@Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     const year = q.filter.year ? Number(q.filter.year) : undefined;
@@ -25,14 +25,14 @@ export class RideGalleryController {
   }
 
   @Post()
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async create(@CurrentUser() ctx: RequestContext, @Body() dto: CreateGalleryItemDto) {
     return galleryItemDto(await this.service.create(ctx, dto));
   }
 
   @Delete(':id')
   @HttpCode(204)
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async delete(@CurrentUser() ctx: RequestContext, @Param('id') id: string): Promise<void> {
     await this.service.delete(ctx, id);
   }

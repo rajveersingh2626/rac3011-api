@@ -23,7 +23,7 @@ export class UserRolesController {
   }
 
   @Get()
-  @RequirePermission('roles:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
   list(@Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     return this.roles.listUserRoles(q.filter.userId);
@@ -52,13 +52,13 @@ export class UserRolesController {
   }
 
   @Post()
-  @RequirePermission('roles:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
   grant(@CurrentUser() ctx: RequestContext, @Body() dto: CreateUserRoleDto) {
     return this.roles.grantUserRole(ctx.user.id, dto);
   }
 
   @Delete(':id')
-  @RequirePermission('roles:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
   async revoke(@CurrentUser() ctx: RequestContext, @Param('id') id: string): Promise<void> {
     await this.roles.revokeUserRole(ctx.user.id, id);
   }

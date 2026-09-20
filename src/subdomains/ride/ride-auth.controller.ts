@@ -24,6 +24,18 @@ export const loginSchema = z
 
 export class LoginDto extends createZodDto(loginSchema) {}
 
+export const forgotPasswordSchema = z.object({
+  identifier: z.string().trim().min(1, 'Email or Rotary ID is required'),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().trim().min(1, 'Reset token is required'),
+  password: z.string().min(6, 'Password must be at least 6 characters long'),
+});
+
+export class ForgotPasswordDto extends createZodDto(forgotPasswordSchema) {}
+export class ResetPasswordDto extends createZodDto(resetPasswordSchema) {}
+
 @ApiTags('ride')
 @Controller('ride/auth')
 export class RideAuthController {
@@ -94,5 +106,23 @@ export class RideAuthController {
     });
     res.setHeader('Set-Cookie', cookieHeader);
     return { success: true };
+  }
+
+  @Post('forgot-password')
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ ride_auth: { limit: 5, ttl: 60000 } })
+  @HttpCode(200)
+  async forgotPassword(@Body() body: ForgotPasswordDto) {
+    return this.authService.requestPasswordReset(body.identifier);
+  }
+
+  @Post('reset-password')
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ ride_auth: { limit: 5, ttl: 60000 } })
+  @HttpCode(200)
+  async resetPassword(@Body() body: ResetPasswordDto) {
+    return this.authService.resetPassword(body.token, body.password);
   }
 }

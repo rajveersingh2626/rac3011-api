@@ -10,6 +10,7 @@ import { HttpErrorFilter } from './common/errors/http-exception.filter';
 import { env } from './config/env';
 import { corsOrigin } from './config/cors-origin';
 import { configWarnings } from './config/config-report';
+import { requestOriginStore } from './common/context/request-origin.store';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
@@ -46,7 +47,30 @@ async function bootstrap() {
         }
       }
     }
-    next();
+    const refererOrigin = req.headers.referer
+      ? (() => {
+          try {
+            return new URL(req.headers.referer).origin;
+          } catch {
+            return null;
+          }
+        })()
+      : null;
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const hostHeader = (typeof forwardedHost === 'string' ? forwardedHost.split(',')[0].trim() : null) || req.headers.host;
+    const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    const computedHostOrigin = hostHeader ? `${proto}://${hostHeader}` : null;
+
+    const detectedOrigin =
+      (typeof req.headers.origin === 'string' ? req.headers.origin : null) ||
+      refererOrigin ||
+      computedHostOrigin;
+
+    const cleanOrigin = detectedOrigin ? detectedOrigin.trim().replace(/\/+$/, '') : null;
+
+    requestOriginStore.run({ origin: cleanOrigin || '' }, () => {
+      next();
+    });
   });
   app.enableCors({ origin: corsOrigin, credentials: true });
   app.useGlobalPipes(new ZodValidationPipe());

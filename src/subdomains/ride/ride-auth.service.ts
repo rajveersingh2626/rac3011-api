@@ -1,10 +1,12 @@
-import { Inject, Injectable, OnModuleDestroy, OnModuleInit, Optional, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, OnModuleDestroy, OnModuleInit, Optional, UnauthorizedException } from '@nestjs/common';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import type IORedis from 'ioredis';
 import { PrismaService } from '../../prisma/prisma.service';
 import { env } from '../../config/env';
 import { CACHE_REDIS } from '../../cache/redis.provider';
+import { NotificationPort } from '../../notifications/notification.port';
+import { getRequestOrigin } from '../../common/context/request-origin.store';
 
 export interface ParticipantSessionPayload {
   sid: string;
@@ -40,6 +42,7 @@ export class RideAuthService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly prisma: PrismaService,
+    @Optional() private readonly notifications?: NotificationPort,
     @Optional() @Inject(CACHE_REDIS) private readonly redis?: IORedis,
   ) {
     this.evictionTimer = setInterval(() => this.evictExpiredMemorySessions(), 60 * 1000);
@@ -416,5 +419,139 @@ export class RideAuthService implements OnModuleInit, OnModuleDestroy {
   sanitizeParticipant(participant: any) {
     const { passwordHash, ...safe } = participant;
     return safe;
+  }
+
+  signPasswordResetToken(participantId: string, email: string): string {
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      participantId,
+      email,
+      type: 'participant_password_reset',
+      iat: now,
+      exp: now + 3600, // 1 hour
+    };
+
+    const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+    const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const signature = createHmac('sha256', this.getJwtSecret())
+      .update(`${header}.${body}`)
+      .digest('base64url');
+
+    return `${header}.${body}.${signature}`;
+  }
+
+  verifyPasswordResetToken(token: string): { participantId: string; email: string } {
+    if (!token || typeof token !== 'string') {
+      throw new BadRequestException('Missing or invalid reset token');
+    }
+
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new BadRequestException('Malformed password reset token');
+    }
+
+    const [header, body, signature] = parts;
+    const expectedSignature = createHmac('sha256', this.getJwtSecret())
+      .update(`${header}.${body}`)
+      .digest('base64url');
+
+    const sigA = Buffer.from(signature);
+    const sigB = Buffer.from(expectedSignature);
+
+    if (sigA.length !== sigB.length || !timingSafeEqual(sigA, sigB)) {
+      throw new BadRequestException('Invalid or tampered password reset token');
+    }
+
+    let payload: any;
+    try {
+      payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    } catch {
+      throw new BadRequestException('Corrupted password reset token payload');
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) {
+      throw new BadRequestException('Password reset link has expired. Please request a new one.');
+    }
+
+    if (payload.type !== 'participant_password_reset' || !payload.participantId) {
+      throw new BadRequestException('Invalid token type');
+    }
+
+    return { participantId: payload.participantId, email: payload.email };
+  }
+
+  async requestPasswordReset(identifier: string): Promise<{ success: boolean; message: string }> {
+    const cleanId = identifier.trim().toLowerCase();
+    const participant = await this.prisma.rideParticipant.findFirst({
+      where: {
+        OR: [
+          { email: { equals: cleanId, mode: 'insensitive' } },
+          { rotaryId: { equals: identifier.trim() } },
+        ],
+      },
+    });
+
+    if (!participant || !participant.isActive) {
+      return {
+        success: true,
+        message: 'If an active delegate account exists with this identifier, a password reset link has been dispatched to the registered email.',
+      };
+    }
+
+    const token = this.signPasswordResetToken(participant.id, participant.email);
+    const defaultOrigin = env.WEB_ORIGINS[0] || 'https://delhimerijan.rotaract3011.org';
+    const origin = getRequestOrigin(defaultOrigin);
+    const resetUrl = `${origin}/reset-password?token=${encodeURIComponent(token)}`;
+
+    if (this.notifications) {
+      try {
+        await this.notifications.notify({
+          template: 'password-reset',
+          to: [{ email: participant.email }],
+          data: {
+            name: participant.fullName,
+            url: resetUrl,
+          },
+        });
+      } catch (err) {
+        console.error('[RIDE AUTH] Failed to send participant password reset email:', err);
+      }
+    }
+
+    return {
+      success: true,
+      message: 'If an active delegate account exists with this identifier, a password reset link has been dispatched to the registered email.',
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    if (!newPassword || newPassword.length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters long.');
+    }
+
+    const { participantId } = this.verifyPasswordResetToken(token);
+
+    const participant = await this.prisma.rideParticipant.findUnique({
+      where: { id: participantId },
+    });
+
+    if (!participant || !participant.isActive) {
+      throw new BadRequestException('Participant account no longer exists or is inactive.');
+    }
+
+    const passwordHash = await this.hashPassword(newPassword);
+
+    await this.prisma.rideParticipant.update({
+      where: { id: participantId },
+      data: { passwordHash },
+    });
+
+    await this.revokeUserSessions(participantId);
+
+    return {
+      success: true,
+      message: 'Your password has been successfully updated. You may now log in.',
+    };
   }
 }

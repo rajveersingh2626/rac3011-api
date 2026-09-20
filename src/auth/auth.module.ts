@@ -15,6 +15,7 @@ import { TrustedDevicesController } from './trusted-devices.controller';
 import { TrustedDevicesService } from './trusted-devices.service';
 import { SessionsController } from './sessions.controller';
 import { RideModule } from '../subdomains/ride/ride.module';
+import { getRequestOrigin } from '../common/context/request-origin.store';
 
 @Module({
   imports: [
@@ -73,7 +74,8 @@ import { RideModule } from '../subdomains/ride/ride.module';
                 after: { email },
               });
             } catch {}
-            const webOrigin = env.WEB_ORIGINS[0] || 'https://rotaract3011.org';
+            const defaultOrigin = env.WEB_ORIGINS[0] || 'https://rotaract3011.org';
+            const webOrigin = getRequestOrigin(defaultOrigin);
             let resolvedToken = token;
             if (!resolvedToken && url) {
               try {
@@ -83,7 +85,9 @@ import { RideModule } from '../subdomains/ride/ride.module';
                 resolvedToken = '';
               }
             }
-            const resetUrl = `${webOrigin}/portal/reset-password?token=${encodeURIComponent(resolvedToken)}`;
+            const isRideDomain = webOrigin.includes('ride.') || webOrigin.includes('delhimerijan.');
+            const resetPath = isRideDomain ? '/reset-password' : '/portal/reset-password';
+            const resetUrl = `${webOrigin}${resetPath}?token=${encodeURIComponent(resolvedToken)}`;
             console.log(`[AUTH] Dispatching password reset email to: ${email}, URL: ${resetUrl}`);
             try {
               await notifications.notify({

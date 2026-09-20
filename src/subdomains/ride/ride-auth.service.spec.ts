@@ -117,4 +117,20 @@ describe('RideAuthService', () => {
       service.login('suspended@rotaract.org', password),
     ).rejects.toThrow('Participant account is inactive');
   });
+
+  it('signs and verifies participant password reset token', () => {
+    const token = service.signPasswordResetToken('part-001', 'delegate@rotaract.org');
+    expect(typeof token).toBe('string');
+    expect(token.split('.').length).toBe(3);
+
+    const verified = service.verifyPasswordResetToken(token);
+    expect(verified.participantId).toBe('part-001');
+    expect(verified.email).toBe('delegate@rotaract.org');
+  });
+
+  it('rejects tampered or invalid password reset tokens', () => {
+    const token = service.signPasswordResetToken('part-001', 'delegate@rotaract.org');
+    const tampered = token.slice(0, -5) + 'xxxxx';
+    expect(() => service.verifyPasswordResetToken(tampered)).toThrow();
+  });
 });
