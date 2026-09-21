@@ -48,7 +48,7 @@ export class SessionsController {
   ) {}
 
   @Get()
-  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async listActiveSessions(@Req() req: Request, @Query('scope') scope?: string) {
     const currentSession = await this.sessionContext.fromRequest(req);
     const currentSessionId = currentSession?.sessionId ?? null;
@@ -193,7 +193,7 @@ export class SessionsController {
   }
 
   @Delete(':id')
-  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async revokeSession(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,
@@ -231,7 +231,7 @@ export class SessionsController {
   }
 
   @Post('revoke-user/:userId')
-  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async revokeUserSessions(
     @CurrentUser() ctx: RequestContext,
     @Param('userId') userId: string,
@@ -259,7 +259,7 @@ export class SessionsController {
   }
 
   @Post('revoke-all')
-  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage')
+  @RequirePermission('roles:manage', 'subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async revokeAllOtherSessions(
     @Req() req: Request,
     @CurrentUser() ctx: RequestContext,

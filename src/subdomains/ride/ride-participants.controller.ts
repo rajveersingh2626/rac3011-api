@@ -9,6 +9,7 @@ import { UpdateParticipantStatusDto } from './dto/register-participant.dto';
 import { DispatchRideBroadcastDto } from './dto/dispatch-ride-broadcast.dto';
 import { ParticipantAuthGuard } from './guards/participant-auth.guard';
 import { CurrentParticipant } from './decorators/current-participant.decorator';
+import { RIDE_MANAGE_PERMISSIONS } from './ride-base.service';
 
 const FILTERS = ['status', 'homeDistrict'] as const;
 
@@ -18,7 +19,7 @@ export class RideParticipantsController {
   constructor(private readonly service: RideParticipantsService) {}
 
   @Post('broadcast')
-  @RequirePermission('comms:send', 'subdomain:ride:manage', 'ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async dispatchBroadcast(@Body() dto: DispatchRideBroadcastDto) {
     return this.service.dispatchBroadcast(dto);
   }
@@ -31,7 +32,7 @@ export class RideParticipantsController {
   }
 
   @Post('admin/reset')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async resetRegistrations(
     @CurrentUser() ctx: RequestContext,
     @Body() body?: { confirmation?: string; mode?: 'soft' | 'hard' },
@@ -47,7 +48,7 @@ export class RideParticipantsController {
   }
 
   @Post('admin/create')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async adminCreate(
     @Body()
     body: {
@@ -68,7 +69,7 @@ export class RideParticipantsController {
   }
 
   @Post('admin/:id/reset-password')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async adminResetPassword(
     @Param('id') id: string,
     @Body() body: { password: string },
@@ -80,7 +81,7 @@ export class RideParticipantsController {
   }
 
   @Post('admin/:id/toggle-active')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async adminToggleActive(
     @Param('id') id: string,
     @Body() body: { isActive: boolean },
@@ -89,7 +90,7 @@ export class RideParticipantsController {
   }
 
   @Get()
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async list(@Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     const { items, total } = await this.service.list(
@@ -105,19 +106,19 @@ export class RideParticipantsController {
   }
 
   @Get('stats')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async stats() {
     return this.service.getStats();
   }
 
   @Get(':id')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async get(@Param('id') id: string) {
     return this.service.getById(id);
   }
 
   @Patch(':id/status')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateParticipantStatusDto,
@@ -132,7 +133,7 @@ export class RideParticipantsController {
   }
 
   @Delete(':id')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async delete(@Param('id') id: string) {
     await this.service.delete(id);
     return { success: true };

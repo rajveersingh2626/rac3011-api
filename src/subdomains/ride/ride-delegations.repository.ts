@@ -38,7 +38,12 @@ const DELEGATION_SELECT = {
 
 function whereFor(filter: DelegationListFilter): Prisma.RideDelegationWhereInput {
   const clauses: Prisma.RideDelegationWhereInput[] = [];
-  if (filter.status) clauses.push({ status: filter.status });
+  if (filter.status) {
+    clauses.push({ status: filter.status });
+  } else {
+    // Exclude cancelled delegations by default so they do not ghost in the admin view
+    clauses.push({ status: { notIn: ['cancelled'] } });
+  }
   if (filter.ryYear !== undefined) clauses.push({ ryYear: filter.ryYear });
   return clauses.length > 0 ? { AND: clauses } : {};
 }
@@ -165,6 +170,11 @@ export class RideDelegationsRepository {
       WHERE d.ry_year = ${ryYear}
     `;
     return Number(result[0]?.count ?? 0);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.rideDelegationHost.deleteMany({ where: { delegationId: id } });
+    await this.prisma.rideDelegation.delete({ where: { id } });
   }
 
   private async mustFind(id: string): Promise<DelegationRow> {

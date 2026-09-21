@@ -146,4 +146,21 @@ export class RideDelegationsService extends RideBaseManagerService {
 
     return this.get(id);
   }
+
+  async delete(ctx: RequestContext, id: string): Promise<void> {
+    this.assertManage(ctx);
+    const existing = await this.get(id);
+    await this.repo.delete(id);
+    await this.audit.record({
+      actorId: ctx.user.id,
+      action: 'ride.delegation.deleted',
+      resourceType: 'ride_delegation',
+      resourceId: id,
+      before: {
+        visitingDistrict: existing.visitingDistrict,
+        country: existing.country,
+        status: existing.status,
+      },
+    });
+  }
 }

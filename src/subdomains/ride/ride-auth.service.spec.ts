@@ -30,6 +30,7 @@ describe('RideAuthService', () => {
 
   it('signs and verifies participant JWT session token', () => {
     const payload = {
+      sid: 'sess-test-1',
       participantId: 'part-12345',
       email: 'delegate@rotaract3141.org',
       fullName: 'Rtr. Delegate Name',
@@ -41,6 +42,7 @@ describe('RideAuthService', () => {
     expect(token.split('.').length).toBe(3);
 
     const verified = service.verifyToken(token);
+    expect(verified.sid).toBe(payload.sid);
     expect(verified.participantId).toBe(payload.participantId);
     expect(verified.email).toBe(payload.email);
     expect(verified.homeDistrict).toBe(payload.homeDistrict);
@@ -48,6 +50,7 @@ describe('RideAuthService', () => {
 
   it('rejects tampered participant tokens', () => {
     const payload = {
+      sid: 'sess-test-2',
       participantId: 'part-12345',
       email: 'delegate@rotaract3141.org',
       fullName: 'Rtr. Delegate Name',

@@ -6,8 +6,20 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-rac3011}
       POSTGRES_USER: ${POSTGRES_USER:-rac3011}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeThisStrongPassword123!}
-    command: postgres -c shared_buffers=512MB -c max_connections=100
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Mt33@raman33}
+    command: >
+      postgres
+      -c shared_buffers=6GB
+      -c effective_cache_size=18GB
+      -c maintenance_work_mem=1GB
+      -c work_mem=32MB
+      -c max_connections=250
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -45,8 +57,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      NODE_OPTIONS: '--max-old-space-size=3072'
-      DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-ChangeThisStrongPassword123!}@postgres:5432/${POSTGRES_DB:-rac3011}?connection_limit=20&pool_timeout=10
+      NODE_OPTIONS: '--max-old-space-size=4096'
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-Mt33%40raman33}@postgres:5432/${POSTGRES_DB:-rac3011}?connection_limit=30&pool_timeout=10
       REDIS_URL: redis://redis:6379
     ports:
       - '3000:3000'
@@ -68,7 +80,7 @@ services:
       NODE_ENV: production
       WORKER: 1
       NODE_OPTIONS: '--max-old-space-size=2048'
-      DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-ChangeThisStrongPassword123!}@postgres:5432/${POSTGRES_DB:-rac3011}?connection_limit=10&pool_timeout=10
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-Mt33%40raman33}@postgres:5432/${POSTGRES_DB:-rac3011}?connection_limit=15&pool_timeout=10
       REDIS_URL: redis://redis:6379
     command: ["node", "dist/src/main.js"]
 
@@ -84,7 +96,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-ChangeThisStrongPassword123!}@postgres:5432/${POSTGRES_DB:-rac3011}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-Mt33%40raman33}@postgres:5432/${POSTGRES_DB:-rac3011}
     ports:
       - '127.0.0.1:5555:5555'
     command: ["npx", "prisma", "studio", "--port", "5555", "--hostname", "0.0.0.0"]

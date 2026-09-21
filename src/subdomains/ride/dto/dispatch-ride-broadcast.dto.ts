@@ -9,6 +9,8 @@ export const dispatchRideBroadcastSchema = z.object({
   all: z.boolean().optional(),
   customEmails: z.array(z.string().trim().email()).optional(),
   publishAsAnnouncement: z.boolean().optional(),
+  ctaLabel: z.string().trim().optional(),
+  ctaUrl: z.string().trim().optional(),
 });
 
 export type DispatchRideBroadcastInput = z.infer<typeof dispatchRideBroadcastSchema>;

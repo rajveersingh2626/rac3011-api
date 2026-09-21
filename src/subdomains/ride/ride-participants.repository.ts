@@ -210,8 +210,9 @@ export class RideParticipantsRepository {
         passwordHash: data.passwordHash,
         rotaryId: data.rotaryId,
         isActive: true,
-        status: 'approved',
-        approvalStatus: 'approved',
+        status: 'in_progress',
+        approvalStatus: 'pending',
+        dossierStatus: 'incomplete',
       },
       select: PARTICIPANT_SELECT,
     });

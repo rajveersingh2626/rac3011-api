@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequirePermission } from '../../common/decorators/access.decorators';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -10,6 +10,7 @@ import { UpdateDelegationDto } from './dto/update-delegation.dto';
 import { RideDelegationsService } from './ride-delegations.service';
 import { delegationDto } from './ride.transformer';
 import type { DelegationStatusKind } from './ride.types';
+import { RIDE_MANAGE_PERMISSIONS } from './ride-base.service';
 
 const FILTERS = ['status', 'ryYear'] as const;
 
@@ -19,7 +20,7 @@ export class RideDelegationsController {
   constructor(private readonly service: RideDelegationsService) {}
 
   @Get()
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async list(@Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     const ryYear = q.filter.ryYear ? Number(q.filter.ryYear) : undefined;
@@ -32,19 +33,19 @@ export class RideDelegationsController {
   }
 
   @Post()
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async create(@CurrentUser() ctx: RequestContext, @Body() dto: CreateDelegationDto) {
     return delegationDto(await this.service.create(ctx, dto));
   }
 
   @Get(':id')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async get(@Param('id') id: string) {
     return delegationDto(await this.service.get(id));
   }
 
   @Patch(':id')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async update(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,
@@ -54,12 +55,19 @@ export class RideDelegationsController {
   }
 
   @Put(':id/hosts')
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async assignHosts(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,
     @Body() dto: AssignHostsDto,
   ) {
     return delegationDto(await this.service.assignHosts(ctx, id, dto));
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
+  async delete(@CurrentUser() ctx: RequestContext, @Param('id') id: string): Promise<void> {
+    await this.service.delete(ctx, id);
   }
 }

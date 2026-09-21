@@ -169,6 +169,28 @@ export class RideParticipantsService {
 
     const recipients = Array.from(recipientMap.values());
 
+    const isExplicitAll =
+      dto.all === true &&
+      (!dto.districtNumbers || dto.districtNumbers.length === 0) &&
+      (!dto.customEmails || dto.customEmails.length === 0) &&
+      !dto.hostClubsOnly;
+
+    // Collect all recipient emails so targeted announcements isolate cleanly
+    const targetEmailsList = Array.from(
+      new Set([
+        ...(dto.customEmails || []).map((e) => e.trim().toLowerCase()),
+        ...recipients.map((r) => r.email.trim().toLowerCase()),
+      ]),
+    );
+
+    const audienceScope = isExplicitAll
+      ? 'all'
+      : (dto.districtNumbers && dto.districtNumbers.length > 0)
+        ? 'district'
+        : dto.hostClubsOnly
+          ? 'host_clubs'
+          : 'individual';
+
     // 3. If enabled (or by default), persist announcement into database
     if (dto.publishAsAnnouncement !== false) {
       try {
@@ -177,9 +199,9 @@ export class RideParticipantsService {
             subject: dto.subject,
             body: dto.body,
             sender: 'RIDE Organizing Committee (RID 3011)',
-            audienceScope: dto.all ? 'all' : (dto.districtNumbers?.length ? 'district' : 'individual'),
+            audienceScope,
             targetDistricts: dto.districtNumbers || [],
-            targetEmails: dto.customEmails || [],
+            targetEmails: isExplicitAll ? [] : targetEmailsList,
             hostClubsOnly: !!dto.hostClubsOnly,
             recipientCount: recipients.length,
           },
@@ -200,7 +222,13 @@ export class RideParticipantsService {
         try {
           const interpolatedSubject = interpolateTokens(dto.subject, r);
           const interpolatedBody = interpolateTokens(dto.body, r);
-          const html = generateBespokeRideEmailHtml(interpolatedSubject, interpolatedBody);
+          const html = generateBespokeRideEmailHtml(
+            interpolatedSubject,
+            interpolatedBody,
+            dto.ctaLabel || dto.ctaUrl
+              ? { label: dto.ctaLabel, url: dto.ctaUrl }
+              : { label: 'Join the RIDE', url: 'https://ride.rotar3011.org' },
+          );
 
           if (this.emailPool) {
             await this.emailPool.send({
@@ -263,6 +291,7 @@ export class RideParticipantsService {
 
   async getDistricts(): Promise<string[]> {
     const participants = await this.prisma.rideParticipant.findMany({
+      where: { isActive: true },
       select: { homeDistrict: true },
       distinct: ['homeDistrict'],
     });
@@ -274,11 +303,7 @@ export class RideParticipantsService {
       if (clean) set.add(clean);
     }
 
-    // Include fallback standard RID districts if empty
-    if (set.size === 0) {
-      ['3011', '3040', '3054', '3070', '3080', '3110', '3120', '3131', '3141', '3142', '3190'].forEach((d) => set.add(d));
-    }
-
+    // Dynamic list pulled strictly from actual registered users in database
     return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   }
 

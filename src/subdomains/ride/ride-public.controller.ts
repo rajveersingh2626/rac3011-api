@@ -73,10 +73,16 @@ export class RidePublicController {
   @Get('announcements')
   @Public()
   @UseGuards(ParticipantAuthGuard)
-  async getAnnouncements(@CurrentParticipant() participant: any) {
+  async getAnnouncements(
+    @CurrentParticipant() participant: any,
+    @Query('district') qDistrict?: string,
+    @Query('email') qEmail?: string,
+  ) {
+    const district = participant?.homeDistrict || qDistrict;
+    const email = participant?.email || qEmail;
     const items = await this.participants.listAnnouncementsForParticipant(
-      participant?.homeDistrict,
-      participant?.email,
+      district,
+      email,
     );
     return { items };
   }

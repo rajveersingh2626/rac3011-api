@@ -7,6 +7,7 @@ import type { RequestContext } from '../../common/types/access';
 import { CreateGalleryItemDto } from './dto/create-gallery-item.dto';
 import { RideGalleryService } from './ride-gallery.service';
 import { galleryItemDto } from './ride.transformer';
+import { RIDE_MANAGE_PERMISSIONS } from './ride-base.service';
 
 const FILTERS = ['year'] as const;
 
@@ -16,7 +17,7 @@ export class RideGalleryController {
   constructor(private readonly service: RideGalleryService) {}
 
   @Get()
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async list(@Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     const year = q.filter.year ? Number(q.filter.year) : undefined;
@@ -25,14 +26,14 @@ export class RideGalleryController {
   }
 
   @Post()
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async create(@CurrentUser() ctx: RequestContext, @Body() dto: CreateGalleryItemDto) {
     return galleryItemDto(await this.service.create(ctx, dto));
   }
 
   @Delete(':id')
   @HttpCode(204)
-  @RequirePermission('subdomain:ride:manage')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async delete(@CurrentUser() ctx: RequestContext, @Param('id') id: string): Promise<void> {
     await this.service.delete(ctx, id);
   }

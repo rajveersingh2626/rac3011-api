@@ -16,7 +16,7 @@ export class RideSupportClubsController {
   constructor(private readonly service: RideSupportClubsService) {}
 
   @Get()
-  @RequirePermission('subdomain:ride:host_club_apply', 'club_events:log', 'subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:host_club_apply', 'club_events:log', 'subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async list(@CurrentUser() ctx: RequestContext, @Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     const ryYear = q.filter.ryYear ? Number(q.filter.ryYear) : undefined;
@@ -30,7 +30,7 @@ export class RideSupportClubsController {
   }
 
   @Post()
-  @RequirePermission('subdomain:ride:host_club_apply', 'club_events:log', 'subdomain:ride:manage')
+  @RequirePermission('subdomain:ride:host_club_apply', 'club_events:log', 'subdomain:ride:manage', 'ride:manage', 'ride:delegates:manage')
   async upsert(@CurrentUser() ctx: RequestContext, @Body() dto: UpsertSupportClubDto) {
     return supportClubDto(await this.service.upsert(ctx, dto));
   }

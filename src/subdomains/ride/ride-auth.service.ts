@@ -339,6 +339,14 @@ export class RideAuthService implements OnModuleInit, OnModuleDestroy {
           { rotaryId: { equals: identifier.trim() } },
         ],
       },
+      include: {
+        hostClub: {
+          select: { id: true, name: true, zone: true },
+        },
+        formSubmissions: {
+          select: { id: true, formId: true, createdAt: true },
+        },
+      },
     });
 
     if (!participant) {
@@ -402,6 +410,9 @@ export class RideAuthService implements OnModuleInit, OnModuleDestroy {
       include: {
         hostClub: {
           select: { id: true, name: true, zone: true },
+        },
+        formSubmissions: {
+          select: { id: true, formId: true, createdAt: true },
         },
       },
     });

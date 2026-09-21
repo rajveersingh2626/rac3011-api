@@ -1,7 +1,28 @@
-export function generateBespokeRideEmailHtml(title: string, rawBody: string): string {
+export function generateBespokeRideEmailHtml(
+  title: string,
+  rawBody: string,
+  cta?: { label?: string; url?: string } | null,
+): string {
   const paragraphs = rawBody
     .split('\n\n')
     .filter((p) => p.trim());
+
+  const ctaLabel = cta?.label?.trim() || 'Join the RIDE';
+  const ctaUrl = cta?.url?.trim() || 'https://ride.rotar3011.org';
+  const ctaBlock =
+    cta !== null
+      ? `
+              <!-- Integrated Editable CTA Button -->
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin: 28px 0 16px; text-align: center;">
+                <tr>
+                  <td align="center">
+                    <a href="${ctaUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 34px; background: linear-gradient(135deg, #19539D 0%, #0D2C54 100%); background-color: #19539D; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; text-decoration: none; border: 2px solid #171515; border-radius: 12px; box-shadow: 4px 4px 0px #171515;">
+                      ${ctaLabel} &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>`
+      : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -47,6 +68,8 @@ export function generateBespokeRideEmailHtml(title: string, rawBody: string): st
               </h1>
 
               ${paragraphs.map((p) => `<p style="margin: 0 0 14px; font-size: 14px; line-height: 1.6; color: #374151;">${p.replace(/\n/g, '<br/>')}</p>`).join('')}
+
+              ${ctaBlock}
 
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 24px; padding-top: 16px; border-top: 2px dashed #E5E7EB; text-align: center;">
                 <tr>
