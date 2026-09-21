@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { RequirePermission } from '../common/decorators/access.decorators';
@@ -7,8 +7,11 @@ import { paginate, parseListQuery } from '../common/query/list-query';
 import type { RequestContext } from '../common/types/access';
 import {
   CreateReportDto,
+  CreateReportFlagsDto,
   CreateReportQueryDto,
   ReplyReportQueryDto,
+  ResetReportDto,
+  ResolveReportFlagDto,
   UpdateReportDto,
 } from './dto/report.dto';
 import { ReportSchemasService } from './report-schemas.service';
@@ -28,6 +31,12 @@ export class ReportsController {
     private readonly schemas: ReportSchemasService,
     private readonly exports: ReportsExportService,
   ) {}
+
+  @Get('months')
+  @RequirePermission('reports:submit', 'reports:review', 'reports:manage')
+  getMonths() {
+    return this.service.getActiveReportingMonths();
+  }
 
   @Get('export/zone-csv')
   @RequirePermission('reports:review')
@@ -177,5 +186,52 @@ export class ReportsController {
     @Body() dto: ReplyReportQueryDto,
   ) {
     return reportDto(await this.service.replyQuery(ctx.access, id, queryId, dto.reply));
+  }
+
+  @Post(':id/reset')
+  @RequirePermission('reports:manage', 'reports:review', 'reports:score')
+  async reset(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+    @Body() dto: ResetReportDto,
+  ) {
+    return reportDto(await this.service.reset(ctx.access, id, dto));
+  }
+
+  @Delete(':id')
+  @RequirePermission('reports:manage', 'reports:score')
+  async delete(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+    @Query('reason') reason?: string,
+  ) {
+    return this.service.delete(ctx.access, id, reason);
+  }
+
+  @Post(':id/flags')
+  @RequirePermission('reports:manage', 'reports:review', 'reports:score')
+  async setFlags(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+    @Body() dto: CreateReportFlagsDto,
+  ) {
+    return reportDto(await this.service.setFlags(ctx.access, id, dto));
+  }
+
+  @Patch(':id/flags/:flagId/resolve')
+  @RequirePermission('reports:submit', 'reports:review', 'reports:manage')
+  async resolveFlag(
+    @CurrentUser() ctx: RequestContext,
+    @Param('id') id: string,
+    @Param('flagId') flagId: string,
+    @Body() dto: ResolveReportFlagDto,
+  ) {
+    return reportDto(await this.service.resolveFlag(ctx.access, id, flagId, dto.reply));
+  }
+
+  @Get(':id/audit')
+  @RequirePermission('reports:submit', 'reports:review', 'reports:manage')
+  async getAudit(@CurrentUser() ctx: RequestContext, @Param('id') id: string) {
+    return this.service.getAuditHistory(ctx.access, id);
   }
 }

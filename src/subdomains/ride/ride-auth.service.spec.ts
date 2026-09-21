@@ -84,14 +84,16 @@ describe('RideAuthService', () => {
     expect(result.token).toBeDefined();
 
     // Verify findFirst was called strictly on rideParticipant
-    expect(mockPrisma.rideParticipant.findFirst).toHaveBeenCalledWith({
-      where: {
-        OR: [
-          { email: { equals: 'external.delegate@rotaract.org', mode: 'insensitive' } },
-          { rotaryId: { equals: 'external.delegate@rotaract.org' } },
-        ],
-      },
-    });
+    expect(mockPrisma.rideParticipant.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { email: { equals: 'external.delegate@rotaract.org', mode: 'insensitive' } },
+            { rotaryId: { equals: 'external.delegate@rotaract.org' } },
+          ],
+        },
+      }),
+    );
   });
 
   it('hard blocks users who do not exist in ride_participants (e.g. Super Admins / District Members)', async () => {

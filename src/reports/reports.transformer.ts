@@ -25,6 +25,7 @@ export function reportDto(row: ReportWithRelations) {
     status: row.status,
     values: row.values,
     notes: row.notes,
+    flags: row.flags ?? null,
     submittedById: row.submittedById,
     submittedAt: row.submittedAt ? row.submittedAt.toISOString() : null,
     filedOnTime: row.filedOnTime,

@@ -6,6 +6,7 @@ export const PERMISSION_KEYS = [
   'reports:submit',
   'reports:review',
   'reports:score',
+  'reports:manage',
   'requests:manage',
   'members:approve',
   'members:import',

@@ -74,6 +74,7 @@ model Report {
   filedOnTime   Boolean?         @map("filed_on_time")
   scoredAt      DateTime?        @map("scored_at")
   legacyId      String?          @unique @map("legacy_id")
+  flags         Json?
   queries       ReportQuery[]
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")

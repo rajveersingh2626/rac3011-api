@@ -25,6 +25,7 @@ const ZRR = [...MEMBER, 'reports:review', 'members:view', 'clubs:view', 'showcas
 const DSC = [
   ...ZRR,
   'reports:score',
+  'reports:manage',
   'requests:manage',
   'members:approve',
   'members:import',

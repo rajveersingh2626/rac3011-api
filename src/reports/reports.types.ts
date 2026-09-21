@@ -43,6 +43,33 @@ export interface ReportSchemaWithFields extends ReportSchemaRow {
   fields: ReportFieldRow[];
 }
 
+export interface ReportReviewFlag {
+  id: string;
+  targetType: 'field' | 'activity' | 'general';
+  fieldKey?: string;
+  activityIndex?: number;
+  activityFieldKey?: string;
+  section?: string;
+  comment: string;
+  status: 'flagged' | 'resolved';
+  flaggedById: string;
+  flaggedByName?: string;
+  flaggedAt: string;
+  resolvedAt?: string;
+  resolvedById?: string;
+  reply?: string;
+}
+
+export interface ReportingMonthInfo {
+  key: string;
+  label: string;
+  ryYear: number;
+  isPast: boolean;
+  isCurrent: boolean;
+  isFuture: boolean;
+  isLocked: boolean;
+}
+
 export interface ReportRow {
   id: string;
   clubId: string;
@@ -52,6 +79,7 @@ export interface ReportRow {
   status: ReportStatus;
   values: unknown;
   notes: string | null;
+  flags: unknown | null;
   submittedById: string | null;
   submittedAt: Date | null;
   filedOnTime: boolean | null;

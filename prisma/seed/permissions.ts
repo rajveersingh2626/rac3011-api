@@ -6,6 +6,7 @@ export const PERMISSIONS: Record<string, string> = {
   'reports:submit': 'Create and submit monthly reports',
   'reports:review': 'Review reports and raise queries',
   'reports:score': 'Score reports and award judged points',
+  'reports:manage': 'Reset, delete, and manage reporting compliance',
   'requests:manage': 'Manage report form schemas and report requests',
   'members:approve': 'Approve, reject and suspend members',
   'members:import': 'Import members from CSV',

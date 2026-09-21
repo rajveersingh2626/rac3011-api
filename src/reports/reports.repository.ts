@@ -20,6 +20,7 @@ const REPORT_SELECT = {
   status: true,
   values: true,
   notes: true,
+  flags: true,
   submittedById: true,
   submittedAt: true,
   filedOnTime: true,
@@ -114,6 +115,7 @@ export class ReportsRepository {
     data: Partial<{
       values: unknown;
       notes: string | null;
+      flags: unknown | null;
       status: ReportRow['status'];
       submittedById: string | null;
       submittedAt: Date | null;
@@ -123,9 +125,17 @@ export class ReportsRepository {
   ): Promise<ReportRow> {
     return this.prisma.report.update({
       where: { id },
-      data: { ...data, values: data.values as Prisma.InputJsonValue | undefined },
+      data: {
+        ...data,
+        values: data.values !== undefined ? (data.values as Prisma.InputJsonValue) : undefined,
+        flags: data.flags !== undefined ? (data.flags as Prisma.InputJsonValue) : undefined,
+      },
       select: REPORT_SELECT,
     });
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.report.delete({ where: { id } });
   }
 
   async findExistingClubIds(ids: string[]): Promise<Set<string>> {
@@ -155,6 +165,13 @@ export class ReportsRepository {
     return this.prisma.reportQuery.update({
       where: { id: queryId },
       data: { reply, repliedById, repliedAt: new Date() },
+    });
+  }
+
+  async findAuditLogs(reportId: string) {
+    return this.prisma.auditLog.findMany({
+      where: { resourceType: 'report', resourceId: reportId },
+      orderBy: { at: 'desc' },
     });
   }
 }

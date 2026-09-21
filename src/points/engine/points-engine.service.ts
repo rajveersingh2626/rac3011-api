@@ -11,7 +11,14 @@ import {
   POINTS_RECOMPUTED_EVENT,
   type ClubFactsUpdatedEvent,
 } from '../points.events';
-import { REPORT_SUBMITTED_EVENT, type ReportSubmittedEvent } from '../../reports/report.events';
+import {
+  REPORT_DELETED_EVENT,
+  REPORT_RESET_EVENT,
+  REPORT_SUBMITTED_EVENT,
+  type ReportDeletedEvent,
+  type ReportResetEvent,
+  type ReportSubmittedEvent,
+} from '../../reports/report.events';
 import { evaluateRule } from './evaluate-rule';
 import type { EvalRule, Trace } from './rule-eval.types';
 
@@ -107,6 +114,60 @@ export class PointsEngineService {
     } catch (err) {
       this.logger.error(
         `recompute after ${REPORT_SUBMITTED_EVENT} failed: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  @OnEvent(REPORT_RESET_EVENT)
+  async onReportReset(event: ReportResetEvent): Promise<void> {
+    try {
+      const periodKey = event.month.slice(0, 7);
+      const activeRules = await this.rules.listRules(event.ryYear, true);
+      const reportRuleIds = activeRules
+        .filter((r) => r.sourceType === 'report_field' || r.sourceType === 'project_collaboration')
+        .map((r) => r.id);
+
+      await this.entries.transaction(async (tx) => {
+        for (const ruleId of reportRuleIds) {
+          await this.entries.deleteComputedEntry(tx, event.clubId, ruleId, periodKey);
+        }
+      });
+
+      await this.recompute({
+        clubId: event.clubId,
+        ryYear: event.ryYear,
+        trigger: REPORT_RESET_EVENT,
+      });
+    } catch (err) {
+      this.logger.error(
+        `recompute after ${REPORT_RESET_EVENT} failed: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  @OnEvent(REPORT_DELETED_EVENT)
+  async onReportDeleted(event: ReportDeletedEvent): Promise<void> {
+    try {
+      const periodKey = event.month.slice(0, 7);
+      const activeRules = await this.rules.listRules(event.ryYear, true);
+      const reportRuleIds = activeRules
+        .filter((r) => r.sourceType === 'report_field' || r.sourceType === 'project_collaboration')
+        .map((r) => r.id);
+
+      await this.entries.transaction(async (tx) => {
+        for (const ruleId of reportRuleIds) {
+          await this.entries.deleteComputedEntry(tx, event.clubId, ruleId, periodKey);
+        }
+      });
+
+      await this.recompute({
+        clubId: event.clubId,
+        ryYear: event.ryYear,
+        trigger: REPORT_DELETED_EVENT,
+      });
+    } catch (err) {
+      this.logger.error(
+        `recompute after ${REPORT_DELETED_EVENT} failed: ${(err as Error).message}`,
       );
     }
   }
