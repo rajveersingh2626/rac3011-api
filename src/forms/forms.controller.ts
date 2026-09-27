@@ -42,6 +42,12 @@ export class FormsController {
     return this.formsService.getDashboardActiveForms(ctx);
   }
 
+  @Get('dmj-active')
+  @Authenticated()
+  async getDmjActiveForms(@CurrentUser() ctx: RequestContext) {
+    return this.formsService.getDmjActiveForms(ctx);
+  }
+
   @Get(':id')
   @RequirePermission('forms:manage', 'forms:responses:view', 'roles:manage')
   async getForm(@Param('id') id: string) {

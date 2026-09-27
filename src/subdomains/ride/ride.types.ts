@@ -54,11 +54,13 @@ export type DelegationRow = {
   contactEmail: string | null;
   status: DelegationStatusKind;
   hosts: DelegationHostRow[];
+  participants?: any[];
+  approvedParticipantsCount?: number;
   createdAt: Date;
   updatedAt: Date;
 };
 
-export type DelegationListFilter = { status?: DelegationStatusKind; ryYear?: number };
+export type DelegationListFilter = { status?: DelegationStatusKind; ryYear?: number; approvedOnly?: boolean };
 
 export type DelegationCreate = {
   ryYear: number;
@@ -83,7 +85,14 @@ export type DelegationUpdate = Partial<{
   status: DelegationStatusKind;
 }>;
 
-export type HostAssignmentInput = { clubId: string; daysHosted: number; membersSent: number };
+export type HostAssignmentInput = {
+  clubId: string;
+  daysHosted: number;
+  membersSent: number;
+  hostFamilyName?: string;
+  hostFamilyPhone?: string;
+  hostAddress?: string;
+};
 
 export type GalleryItemListFilter = { year?: number };
 

@@ -12,7 +12,7 @@ import { delegationDto } from './ride.transformer';
 import type { DelegationStatusKind } from './ride.types';
 import { RIDE_MANAGE_PERMISSIONS } from './ride-base.service';
 
-const FILTERS = ['status', 'ryYear'] as const;
+const FILTERS = ['status', 'ryYear', 'approvedOnly'] as const;
 
 @ApiTags('ride')
 @Controller('ride/delegations')
@@ -24,8 +24,9 @@ export class RideDelegationsController {
   async list(@Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     const ryYear = q.filter.ryYear ? Number(q.filter.ryYear) : undefined;
+    const approvedOnly = q.filter.approvedOnly === 'true';
     const { items, total } = await this.service.list(
-      { status: q.filter.status as DelegationStatusKind | undefined, ryYear },
+      { status: q.filter.status as DelegationStatusKind | undefined, ryYear, approvedOnly },
       q.page,
       q.pageSize,
     );
@@ -36,6 +37,12 @@ export class RideDelegationsController {
   @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
   async create(@CurrentUser() ctx: RequestContext, @Body() dto: CreateDelegationDto) {
     return delegationDto(await this.service.create(ctx, dto));
+  }
+
+  @Get('approved-hosts')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
+  async getApprovedHosts() {
+    return this.service.getApprovedHostClubs();
   }
 
   @Get(':id')

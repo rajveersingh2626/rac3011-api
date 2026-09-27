@@ -36,6 +36,24 @@ export function delegationDto(row: DelegationRow) {
       daysHosted: h.daysHosted,
       membersSent: h.membersSent,
     })),
+    participants: (row.participants ?? []).map((p: any) => ({
+      id: p.id,
+      fullName: p.fullName,
+      email: p.email,
+      rotaryId: p.rotaryId ?? null,
+      homeDistrict: p.homeDistrict,
+      status: p.status,
+      approvalStatus: p.approvalStatus,
+      hostClubId: p.hostClubId ?? null,
+      hostFamilyName: p.hostFamilyName ?? null,
+      hostFamilyPhone: p.hostFamilyPhone ?? null,
+      hostAddress: p.hostAddress ?? null,
+    })),
+    approvedParticipantsCount:
+      row.approvedParticipantsCount ??
+      (row.participants
+        ? row.participants.filter((p: any) => p.approvalStatus === 'approved').length
+        : 0),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

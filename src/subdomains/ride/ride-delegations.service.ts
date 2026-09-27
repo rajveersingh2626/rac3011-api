@@ -106,6 +106,31 @@ export class RideDelegationsService extends RideBaseManagerService {
 
     const { affectedClubIds } = await this.repo.replaceHosts(id, input.hosts, ctx.user.id);
 
+    // Cross-portal synchronization: Propagate host assignment to DMJ participants
+    const primaryHost = input.hosts[0];
+    let targetPids: string[] = [];
+    if (input.participantIds && input.participantIds.length > 0) {
+      targetPids = input.participantIds;
+    } else {
+      targetPids = await this.repo.findParticipantIdsByDistrict(existing.visitingDistrict);
+    }
+
+    if (targetPids.length > 0 && primaryHost) {
+      await this.repo.updateParticipantsHost(targetPids, {
+        hostClubId: primaryHost.clubId,
+        hostFamilyName: primaryHost.hostFamilyName || undefined,
+        hostFamilyPhone: primaryHost.hostFamilyPhone || undefined,
+        hostAddress: primaryHost.hostAddress || undefined,
+        status: 'confirmed',
+        approvalStatus: 'approved',
+      });
+    }
+
+    // Automatically confirm delegation status if planned
+    if (existing.status === 'planned' && input.hosts.length > 0) {
+      await this.repo.update(id, { status: 'confirmed' });
+    }
+
     await this.audit.record({
       actorId: ctx.user.id,
       action: 'ride.delegation.hosts_assigned',
@@ -145,6 +170,10 @@ export class RideDelegationsService extends RideBaseManagerService {
     }
 
     return this.get(id);
+  }
+
+  getApprovedHostClubs(): Promise<any[]> {
+    return this.repo.findApprovedHostClubs();
   }
 
   async delete(ctx: RequestContext, id: string): Promise<void> {

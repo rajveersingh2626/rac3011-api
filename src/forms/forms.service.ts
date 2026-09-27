@@ -213,6 +213,9 @@ export class FormsService implements OnModuleInit {
   async deleteForm(ctx: RequestContext, id: string) {
     const form = await this.customForm.findUnique({ where: { id } });
     if (!form) throw new NotFoundException('Form not found');
+    await this.customFormSubmission.deleteMany({
+      where: { OR: [{ formId: id }, { formId: form.slug }] },
+    });
     return this.customForm.delete({ where: { id } });
   }
 
@@ -301,6 +304,40 @@ export class FormsService implements OnModuleInit {
     }));
   }
 
+  /**
+   * Get active intake forms targeted to DMJ participants
+   */
+  async getDmjActiveForms(ctx: RequestContext) {
+    const forms: any[] = await this.customForm.findMany({
+      where: {
+        status: 'published',
+        targetSurface: 'dmj',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const userSubmissions: any[] = await this.customFormSubmission.findMany({
+      where: {
+        formId: { in: forms.map((f: any) => f.id) },
+        userId: ctx.user.id,
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    const submissionByFormId = new Map<string, any>();
+    for (const sub of userSubmissions) {
+      if (!submissionByFormId.has(sub.formId)) {
+        submissionByFormId.set(sub.formId, sub);
+      }
+    }
+
+    return forms.map((form: any) => ({
+      ...form,
+      mySubmission: submissionByFormId.get(form.id) || null,
+      hasSubmitted: submissionByFormId.has(form.id),
+    }));
+  }
+
   async submitForm(ctx: RequestContext, formIdOrSlug: string, dto: SubmitFormInput) {
     const form = await this.getForm(formIdOrSlug);
 
@@ -315,6 +352,31 @@ export class FormsService implements OnModuleInit {
     const applicantPhone = dto.applicantPhone || profile?.phone || '';
     const clubId = dto.clubId || profile?.clubId || null;
     const clubName = dto.clubName || profile?.club?.name || null;
+
+    // Enforce 1-per-club limit for Host Club Application unless overrideLimit is permitted for superadmin
+    const isHostClubForm =
+      form.slug === CANONICAL_HOST_CLUB_SLUG ||
+      form.slug.includes('host-club') ||
+      (form.title && form.title.toLowerCase().includes('host club application'));
+
+    if (isHostClubForm && !(dto as any).overrideLimit) {
+      const existing = await this.customFormSubmission.findFirst({
+        where: {
+          formId: form.id,
+          OR: [
+            ...(clubId ? [{ clubId }] : []),
+            ...(clubName ? [{ clubName: { equals: clubName, mode: 'insensitive' } }] : []),
+            { userId: ctx.user.id },
+          ],
+        },
+      });
+
+      if (existing) {
+        throw new BadRequestException(
+          `An application has already been registered for ${clubName || 'your club'}. Only one host club application is permitted per club.`,
+        );
+      }
+    }
 
     // Create submission
     return this.customFormSubmission.create({
@@ -397,7 +459,7 @@ export class FormsService implements OnModuleInit {
     });
     if (!submission) throw new NotFoundException('Submission not found');
 
-    return this.customFormSubmission.update({
+    const updated = await this.customFormSubmission.update({
       where: { id: submissionId },
       data: {
         status: dto.status,
@@ -406,5 +468,59 @@ export class FormsService implements OnModuleInit {
         reviewedAt: new Date(),
       },
     });
+
+    // Auto-sync approved host club application with ride_support_clubs
+    const isHostClubForm =
+      form?.slug === CANONICAL_HOST_CLUB_SLUG ||
+      form?.slug?.includes('host-club') ||
+      (form?.title && form.title.toLowerCase().includes('host club application'));
+
+    if (dto.status === 'approved' && isHostClubForm) {
+      const vals = (submission.values as any) || {};
+      let targetClubId = submission.clubId;
+      if (!targetClubId && (submission.clubName || vals.clubName)) {
+        const nameToMatch = submission.clubName || vals.clubName;
+        const matched = await this.prisma.club.findFirst({
+          where: {
+            OR: [
+              { name: { equals: nameToMatch, mode: 'insensitive' } },
+              { name: { contains: nameToMatch, mode: 'insensitive' } },
+            ],
+          },
+          select: { id: true },
+        });
+        if (matched) targetClubId = matched.id;
+      }
+
+      if (targetClubId) {
+        const notes = `Google Drive Proposal: ${vals.proposalDriveUrl || ''} | Position: ${vals.position || ''} | Zone: ${vals.zone || ''} | Motivation: ${vals.motivation || ''}`;
+        await (this.prisma as any).rideSupportClub.upsert({
+          where: {
+            ryYear_clubId: {
+              ryYear: 2026,
+              clubId: targetClubId,
+            },
+          },
+          create: {
+            ryYear: 2026,
+            clubId: targetClubId,
+            capacityDelegates: Number(vals.capacityDelegates || vals.expectedDelegatesCount || 10),
+            homestayAvailable: vals.homestayAvailable !== false,
+            preferredMonths: [],
+            contactPhone: submission.applicantPhone || vals.phone || '',
+            notes,
+            createdById: submission.userId || ctx.user.id,
+          },
+          update: {
+            capacityDelegates: Number(vals.capacityDelegates || vals.expectedDelegatesCount || 10),
+            homestayAvailable: vals.homestayAvailable !== false,
+            contactPhone: submission.applicantPhone || vals.phone || '',
+            notes,
+          },
+        }).catch(() => undefined);
+      }
+    }
+
+    return updated;
   }
 }
