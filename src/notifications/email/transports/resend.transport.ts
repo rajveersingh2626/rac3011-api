@@ -40,6 +40,8 @@ export class ResendTransport implements EmailTransport {
           subject: message.subject,
           html: message.html,
           text: message.text,
+          cc: message.cc && message.cc.length > 0 ? message.cc : undefined,
+          replyTo: message.replyTo,
         });
 
         if (result.error) {
@@ -51,11 +53,13 @@ export class ResendTransport implements EmailTransport {
           if (statusCode === 403 || String(errMsg).includes('domain is not verified')) {
             console.warn(`[Resend] Domain ${message.from} not verified. Attempting fallback to onboarding@resend.dev...`);
             const devResult = await client.emails.send({
-                from: 'Rotaract District Organisation <onboarding@resend.dev>',
+              from: 'Rotaract District Organisation <onboarding@resend.dev>',
               to: [message.to],
               subject: message.subject,
               html: message.html,
               text: message.text,
+              cc: message.cc && message.cc.length > 0 ? message.cc : undefined,
+              replyTo: message.replyTo,
             });
 
             if (devResult.error) {

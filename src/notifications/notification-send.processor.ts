@@ -79,11 +79,19 @@ export class NotificationSendProcessor extends WorkerHost {
 
     try {
       const rendered = renderEmail(row.template as TemplateKey, row.payload);
+      const isRideTemplate = row.template === 'ride-host-assigned' || row.template.startsWith('ride');
+      const from = isRideTemplate ? 'Delhi Meri Jaan • The RIDE <delhimerijaan@rotaract3011.org>' : undefined;
+      const replyTo = isRideTemplate ? 'delhimerijaan@rotaract3011.org' : undefined;
+      const cc = isRideTemplate && Array.isArray((row.payload as any)?.cc) ? ((row.payload as any).cc as string[]) : undefined;
+
       const result = await this.pool.send({
         to: row.toAddress,
         subject: row.subject ?? rendered.subject,
         html: rendered.html,
         text: rendered.text,
+        from,
+        replyTo,
+        cc,
       });
       await this.outbox.markSent(row.id, result.provider);
     } catch (error) {

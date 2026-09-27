@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Authenticated, Public, RequirePermission } from '../../common/decorators/access.decorators';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -6,7 +6,7 @@ import type { RequestContext } from '../../common/types/access';
 import { paginate, parseListQuery } from '../../common/query/list-query';
 import { RideParticipantsService } from './ride-participants.service';
 import { UpdateParticipantStatusDto } from './dto/register-participant.dto';
-import { DispatchRideBroadcastDto } from './dto/dispatch-ride-broadcast.dto';
+import { DispatchRideBroadcastDto, UpdateRideEmailSettingsDto } from './dto/dispatch-ride-broadcast.dto';
 import { ParticipantAuthGuard } from './guards/participant-auth.guard';
 import { CurrentParticipant } from './decorators/current-participant.decorator';
 import { RIDE_MANAGE_PERMISSIONS } from './ride-base.service';
@@ -17,6 +17,20 @@ const FILTERS = ['status', 'homeDistrict'] as const;
 @Controller('ride/participants')
 export class RideParticipantsController {
   constructor(private readonly service: RideParticipantsService) {}
+
+  @Get('settings/email')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
+  async getEmailSettings() {
+    const defaultCc = await this.service.getDefaultCc();
+    return { defaultCc };
+  }
+
+  @Put('settings/email')
+  @RequirePermission(...RIDE_MANAGE_PERMISSIONS)
+  async updateEmailSettings(@Body() dto: UpdateRideEmailSettingsDto) {
+    const defaultCc = await this.service.setDefaultCc(dto.defaultCc);
+    return { defaultCc };
+  }
 
   @Post('broadcast')
   @RequirePermission(...RIDE_MANAGE_PERMISSIONS)

@@ -216,6 +216,17 @@ export class RideParticipantsService {
       return { recipientCount: 0, dispatchedCount: 0 };
     }
 
+    // Determine CC addresses (explicitly passed or falling back to saved default CC)
+    let effectiveCc: string[] = [];
+    if (dto.cc !== undefined) {
+      effectiveCc = dto.cc.map((e) => e.trim().toLowerCase()).filter((e) => e.includes('@'));
+      if (dto.saveCcAsDefault) {
+        await this.setDefaultCc(effectiveCc);
+      }
+    } else {
+      effectiveCc = await this.getDefaultCc();
+    }
+
     // Trigger async email dispatch
     const sendBatch = async () => {
       for (const r of recipients) {
@@ -236,6 +247,9 @@ export class RideParticipantsService {
               subject: interpolatedSubject,
               html,
               text: interpolatedBody,
+              from: 'Delhi Meri Jaan • The RIDE <delhimerijaan@rotaract3011.org>',
+              replyTo: 'delhimerijaan@rotaract3011.org',
+              cc: effectiveCc && effectiveCc.length > 0 ? effectiveCc : undefined,
             });
           }
         } catch {
@@ -250,6 +264,36 @@ export class RideParticipantsService {
       recipientCount: recipients.length,
       dispatchedCount: recipients.length,
     };
+  }
+
+  async getDefaultCc(): Promise<string[]> {
+    try {
+      const setting = await this.prisma.setting.findUnique({
+        where: { key: 'ride.default_cc' },
+      });
+      if (setting && Array.isArray(setting.value)) {
+        return (setting.value as string[]).filter((e) => typeof e === 'string' && e.includes('@'));
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  }
+
+  async setDefaultCc(emails: string[]): Promise<string[]> {
+    const cleanEmails = Array.from(
+      new Set(
+        emails
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => e.includes('@')),
+      ),
+    );
+    await this.prisma.setting.upsert({
+      where: { key: 'ride.default_cc' },
+      create: { key: 'ride.default_cc', value: cleanEmails },
+      update: { value: cleanEmails },
+    });
+    return cleanEmails;
   }
 
   async listAnnouncementsForParticipant(district?: string, email?: string) {

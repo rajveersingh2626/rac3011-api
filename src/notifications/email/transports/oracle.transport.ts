@@ -20,6 +20,8 @@ export class OracleTransport implements EmailTransport {
       subject: message.subject,
       html: message.html,
       text: message.text,
+      cc: message.cc && message.cc.length > 0 ? message.cc : undefined,
+      replyTo: message.replyTo,
     });
   }
 

@@ -12,13 +12,16 @@ export class MailgunTransport implements EmailTransport {
 
   async send(message: EmailMessage): Promise<void> {
     if (!this.isConfigured()) throw new Error('mailgun transport is not configured');
-    const body = new URLSearchParams({
+    const params: Record<string, string> = {
       from: message.from,
       to: message.to,
       subject: message.subject,
       html: message.html,
       text: message.text,
-    });
+    };
+    if (message.replyTo) params['h:Reply-To'] = message.replyTo;
+    if (message.cc && message.cc.length > 0) params['cc'] = message.cc.join(', ');
+    const body = new URLSearchParams(params);
     const auth = Buffer.from(`api:${env.MAILGUN_API_KEY ?? ''}`).toString('base64');
     const response = await fetch(
       `https://api.mailgun.net/v3/${env.MAILGUN_DOMAIN ?? ''}/messages`,

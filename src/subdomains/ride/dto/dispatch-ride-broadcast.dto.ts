@@ -8,6 +8,8 @@ export const dispatchRideBroadcastSchema = z.object({
   hostClubsOnly: z.boolean().optional(),
   all: z.boolean().optional(),
   customEmails: z.array(z.string().trim().email()).optional(),
+  cc: z.array(z.string().trim().email()).optional(),
+  saveCcAsDefault: z.boolean().optional(),
   publishAsAnnouncement: z.boolean().optional(),
   ctaLabel: z.string().trim().optional(),
   ctaUrl: z.string().trim().optional(),
@@ -15,3 +17,10 @@ export const dispatchRideBroadcastSchema = z.object({
 
 export type DispatchRideBroadcastInput = z.infer<typeof dispatchRideBroadcastSchema>;
 export class DispatchRideBroadcastDto extends createZodDto(dispatchRideBroadcastSchema) {}
+
+export const updateRideEmailSettingsSchema = z.object({
+  defaultCc: z.array(z.string().trim().email()),
+});
+
+export class UpdateRideEmailSettingsDto extends createZodDto(updateRideEmailSettingsSchema) {}
+

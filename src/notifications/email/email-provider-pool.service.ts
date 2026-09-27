@@ -12,7 +12,15 @@ import { ResendTransport } from './transports/resend.transport';
 
 const FAILURE_COOLDOWN_MS = 10 * 60 * 1000;
 
-export type EmailPoolMessage = { to: string; subject: string; html: string; text: string };
+export type EmailPoolMessage = {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  from?: string;
+  replyTo?: string;
+  cc?: string[];
+};
 export type EmailPoolResult = { provider: EmailProviderName };
 export type EmailPoolConfig = {
   caps: Record<EmailProviderName, number>;
@@ -65,7 +73,9 @@ export class EmailProviderPool {
           subject: rewritten.subject,
           html: message.html,
           text: message.text,
-          from: env.MAIL_FROM,
+          from: message.from || env.MAIL_FROM,
+          replyTo: message.replyTo,
+          cc: message.cc,
         });
         return { provider: name };
       } catch (error) {

@@ -13,6 +13,8 @@ export type EmailMessage = {
   html: string;
   text: string;
   from: string;
+  replyTo?: string;
+  cc?: string[];
 };
 
 export interface EmailTransport {
