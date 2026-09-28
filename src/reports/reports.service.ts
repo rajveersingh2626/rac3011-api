@@ -9,7 +9,7 @@ import { AuditService } from '../audit/audit.service';
 import { NotificationPort } from '../notifications/notification.port';
 import { ScopeService } from '../common/scope/scope.service';
 import type { ResolvedAccess } from '../common/types/access';
-import { currentRyYear, firstOfCurrentMonth, getRyMonths, ryYearOf } from '../common/ry-year';
+import { currentMonthKey, currentRyYear, firstOfCurrentMonth, getRyMonths, ryYearOf } from '../common/ry-year';
 import type {
   CreateReportFlagsInput,
   CreateReportInput,
@@ -36,7 +36,7 @@ import type {
 } from './reports.types';
 import { collectClubIdsInValues, validateReportValues } from './report-values.validator';
 
-const READ_PERMISSIONS = ['reports:submit', 'reports:review', 'reports:manage'] as const;
+const READ_PERMISSIONS = ['reports:submit', 'reports:review', 'reports:manage', 'reports:score'] as const;
 
 @Injectable()
 export class ReportsService {
@@ -74,10 +74,22 @@ export class ReportsService {
     return report;
   }
 
-  getActiveReportingMonths(): ReportingMonthInfo[] {
+  getActiveReportingMonths(ryYear?: number): {
+    ryYear: number;
+    currentMonth: string;
+    months: ReportingMonthInfo[];
+  } {
     const now = new Date();
-    const activeRy = currentRyYear(now);
-    return getRyMonths(activeRy, now);
+    const activeRy = ryYear ?? currentRyYear(now);
+    const months = getRyMonths(activeRy, now);
+    const currentMonth =
+      months.find((m) => m.isCurrent)?.key ||
+      currentMonthKey(now);
+    return {
+      ryYear: activeRy,
+      currentMonth,
+      months,
+    };
   }
 
   async create(access: ResolvedAccess, input: CreateReportInput): Promise<ReportWithRelations> {
@@ -380,7 +392,7 @@ export class ReportsService {
     return withRelations;
   }
 
-  async delete(access: ResolvedAccess, id: string, reason?: string): Promise<{ success: boolean }> {
+  async delete(access: ResolvedAccess, id: string, reason?: string): Promise<{ success: boolean; deleted: boolean; id: string }> {
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundException();
     await this.scope.assertCanAccessClubAny(
@@ -419,7 +431,7 @@ export class ReportsService {
       reason,
     });
 
-    return { success: true };
+    return { success: true, deleted: true, id };
   }
 
   async setFlags(

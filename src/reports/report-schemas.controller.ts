@@ -18,7 +18,7 @@ export class ReportSchemasController {
   constructor(private readonly service: ReportSchemasService) {}
 
   @Get()
-  @RequirePermission('reports:submit', 'requests:manage')
+  @RequirePermission('reports:submit', 'reports:review', 'reports:manage', 'reports:score', 'requests:manage')
   async list(@CurrentUser() ctx: RequestContext, @Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS, includes: INCLUDES });
     const withFields = q.include.includes('fields');

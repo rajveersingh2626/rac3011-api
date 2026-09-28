@@ -69,11 +69,13 @@ describe('ReportsService - Production Features', () => {
 
   describe('Time-Bound Month Selection & Access Control', () => {
     it('returns 12 months for the active Rotary Year with future months locked', () => {
-      const months = service.getActiveReportingMonths();
-      expect(months).toHaveLength(12);
-      expect(months[0].key).toContain('-07');
-      expect(months[11].key).toContain('-06');
-      const lockedCount = months.filter((m) => m.isLocked).length;
+      const result = service.getActiveReportingMonths();
+      expect(result.ryYear).toBeGreaterThanOrEqual(2025);
+      expect(result.currentMonth).toBeDefined();
+      expect(result.months).toHaveLength(12);
+      expect(result.months[0].key).toContain('-07');
+      expect(result.months[11].key).toContain('-06');
+      const lockedCount = result.months.filter((m) => m.isLocked).length;
       expect(lockedCount).toBeGreaterThanOrEqual(0);
     });
 
@@ -157,7 +159,7 @@ describe('ReportsService - Production Features', () => {
       repo.findById.mockResolvedValue(existing);
 
       const result = await service.delete(mockAccess, 'rep-2', 'Duplicate test entry');
-      expect(result).toEqual({ success: true });
+      expect(result).toEqual({ success: true, deleted: true, id: 'rep-2' });
       expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
         action: 'report.deleted',
         resourceType: 'report',

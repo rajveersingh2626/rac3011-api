@@ -33,13 +33,13 @@ export class ReportsController {
   ) {}
 
   @Get('months')
-  @RequirePermission('reports:submit', 'reports:review', 'reports:manage')
+  @RequirePermission('reports:submit', 'reports:review', 'reports:manage', 'reports:score')
   getMonths() {
     return this.service.getActiveReportingMonths();
   }
 
   @Get('export/zone-csv')
-  @RequirePermission('reports:review')
+  @RequirePermission('reports:review', 'reports:manage', 'reports:score')
   async exportZoneCsv(
     @CurrentUser() ctx: RequestContext,
     @Query('month') month: string | undefined,
@@ -59,7 +59,7 @@ export class ReportsController {
   }
 
   @Get('export/district-csv')
-  @RequirePermission('reports:score')
+  @RequirePermission('reports:score', 'reports:manage')
   async exportDistrictCsv(
     @CurrentUser() ctx: RequestContext,
     @Query('month') month: string | undefined,
@@ -79,7 +79,7 @@ export class ReportsController {
   }
 
   @Get(':id/export/csv')
-  @RequirePermission('reports:submit', 'reports:review')
+  @RequirePermission('reports:submit', 'reports:review', 'reports:manage', 'reports:score')
   async exportCsv(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,
@@ -95,7 +95,7 @@ export class ReportsController {
   }
 
   @Get(':id/export/pdf')
-  @RequirePermission('reports:submit', 'reports:review')
+  @RequirePermission('reports:submit', 'reports:review', 'reports:manage', 'reports:score')
   async exportPdf(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,
@@ -111,7 +111,7 @@ export class ReportsController {
   }
 
   @Get()
-  @RequirePermission('reports:submit', 'reports:review')
+  @RequirePermission('reports:submit', 'reports:review', 'reports:manage', 'reports:score')
   async list(@CurrentUser() ctx: RequestContext, @Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS, includes: INCLUDES });
     const { items, total } = await this.service.list(
@@ -136,7 +136,7 @@ export class ReportsController {
   }
 
   @Get(':id')
-  @RequirePermission('reports:submit', 'reports:review')
+  @RequirePermission('reports:submit', 'reports:review', 'reports:manage', 'reports:score')
   async get(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,
@@ -203,8 +203,10 @@ export class ReportsController {
   async delete(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,
-    @Query('reason') reason?: string,
+    @Query('reason') queryReason?: string,
+    @Body() body?: { reason?: string },
   ) {
+    const reason = body?.reason || queryReason;
     return this.service.delete(ctx.access, id, reason);
   }
 
