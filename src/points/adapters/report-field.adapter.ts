@@ -26,8 +26,10 @@ function inputFor(report: ReportForAdapterRow, ctx: AdapterContext): RuleInput {
     report.values as ReportValuesForDerivation,
     report.filedOnTime,
   );
-  const value =
-    (derived as unknown as Record<string, number>)[`report_field:${rule.sourceKey}`] ?? 0;
+  const derivedRecord = derived as unknown as Record<string, number>;
+  const derivedKey = `${rule.sourceType}:${rule.sourceKey}`;
+  const fallbackKey = `report_field:${rule.sourceKey}`;
+  const value = derivedRecord[derivedKey] ?? derivedRecord[fallbackKey] ?? 0;
   return { value, count: value };
 }
 

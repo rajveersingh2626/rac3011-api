@@ -25,7 +25,7 @@ export class PointRulesController {
   constructor(private readonly service: PointRulesService) {}
 
   @Get()
-  @RequirePermission('point_rules:manage')
+  @RequirePermission('point_rules:manage', 'reports:manage')
   async list(@Query('ryYear') ryYear: string) {
     const year = ryYear ? Number(ryYear) : new Date().getUTCFullYear();
     const items = await this.service.listRules(year);
@@ -33,13 +33,13 @@ export class PointRulesController {
   }
 
   @Post()
-  @RequirePermission('point_rules:manage')
+  @RequirePermission('point_rules:manage', 'reports:manage')
   async create(@CurrentUser() ctx: RequestContext, @Body() dto: CreatePointRuleDto) {
     return ruleDto(await this.service.createRule(ctx.access, dto));
   }
 
   @Patch(':id')
-  @RequirePermission('point_rules:manage')
+  @RequirePermission('point_rules:manage', 'reports:manage')
   async update(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,

@@ -59,7 +59,7 @@ import type { SourceTypeKey } from './points.types';
         report_field: reportField,
         club_fact: clubFact,
         event_attendance: eventAttendance,
-        project_collaboration: deferred,
+        project_collaboration: reportField,
         ride_hosting: rideHosting,
         club_events: deferred,
       }),
