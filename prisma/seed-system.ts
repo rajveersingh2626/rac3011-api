@@ -51,9 +51,9 @@ async function seedPermissionsAndRoles(prisma: PrismaClient): Promise<void> {
       if (!id) throw new Error(`role ${role.key} references unknown permission ${k}`);
       return id;
     });
-    await prisma.rolePermission.deleteMany({
-      where: { roleId: saved.id, permissionId: { notIn: wanted } },
-    });
+    // Non-destructive role-permission synchronization:
+    // Ensure default system permissions exist, but DO NOT delete custom permissions
+    // assigned to roles via the Admin Portal in production or testing environments.
     await prisma.rolePermission.createMany({
       data: wanted.map((permissionId) => ({ roleId: saved.id, permissionId })),
       skipDuplicates: true,

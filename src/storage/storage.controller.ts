@@ -35,7 +35,13 @@ export class StorageController {
 
   @Post('files/upload/:grantId')
   @Public()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: 25 * 1024 * 1024,
+      },
+    }),
+  )
   uploadDirect(
     @Param('grantId') grantId: string,
     @UploadedFile() file?: UploadedBinaryFile,

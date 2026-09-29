@@ -10,7 +10,7 @@ import { env } from '../config/env';
 import { ScopeService } from '../common/scope/scope.service';
 import type { RequestContext } from '../common/types/access';
 import { CodedConflictException } from '../common/errors/conflict.error';
-import { assertUploadAllowed } from './mime';
+import { assertUploadAllowed, validateBufferMagicBytes } from './mime';
 import type { StoredFileRecord } from './storage.repository';
 import { StorageRepository } from './storage.repository';
 import type { StoredFile, UploadedBinaryFile } from './storage.port';
@@ -37,32 +37,32 @@ export class StorageService {
     input: CreateGrantInput,
   ): Promise<{ grantId: string; uploadUrl: string; fields?: Record<string, string> }> {
     const target = resolveUploadTarget(input.resourceType);
-    if (target.tier !== input.tier) {
-      throw new BadRequestException(
-        `resourceType ${input.resourceType} uses the ${target.tier} tier, not ${input.tier}`,
-      );
+    const effectiveTier = target.tier;
+    assertUploadAllowed(effectiveTier, input.mimeType, input.size);
+    let resourceId = input.resourceId;
+    if (target.ownership === 'own_member_row' && !resourceId) {
+      resourceId = (await this.repo.findProfileIdForUser(ctx.user.id)) ?? undefined;
     }
-    assertUploadAllowed(target.tier, input.mimeType, input.size);
-    await this.assertCanUpload(ctx, target, input.resourceId);
+    await this.assertCanUpload(ctx, target, resourceId);
 
     const grant = await this.port.createUploadGrant({
-      tier: target.tier,
+      tier: effectiveTier,
       mimeType: input.mimeType,
       size: input.size,
       resourceType: input.resourceType,
-      resourceId: input.resourceId,
+      resourceId,
       userId: ctx.user.id,
     });
     await this.repo.createGrant({
       id: grant.grantId,
-      tier: target.tier,
-      provider: this.providerNameFor(target.tier),
+      tier: effectiveTier,
+      provider: this.providerNameFor(effectiveTier),
       mimeType: input.mimeType,
       size: input.size,
       name: input.name ?? input.resourceType,
       resourceType: input.resourceType,
-      resourceId: input.resourceId,
-      clubId: target.ownership === 'own_club' ? input.resourceId : undefined,
+      resourceId,
+      clubId: target.ownership === 'own_club' ? resourceId : undefined,
       userId: ctx.user.id,
       uploadUrl: grant.uploadUrl,
       expiresAt: new Date(Date.now() + GRANT_TTL_MS),
@@ -83,6 +83,11 @@ export class StorageService {
       throw new CodedConflictException('INVALID_TRANSITION', 'Grant already used');
     if (grant.expiresAt.getTime() < Date.now())
       throw new CodedConflictException('INVALID_TRANSITION', 'Grant expired');
+
+    assertUploadAllowed(grant.tier, file.mimetype, file.size);
+    if (!validateBufferMagicBytes(file.buffer, file.mimetype)) {
+      throw new BadRequestException('File binary signature does not match declared MIME type');
+    }
 
     if (this.port.handleUpload) {
       const result = await this.port.handleUpload(
