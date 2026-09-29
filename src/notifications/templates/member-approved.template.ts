@@ -2,7 +2,7 @@ import { defineTemplate } from './layout';
 import { link } from './links';
 
 export const memberApprovedTemplate = defineTemplate({
-  subject: () => 'Your Rotaract District Organisation membership is approved',
+  subject: () => 'Your Rotaract District Organisation 3011 membership is approved',
   body: () => ({
     heading: 'Welcome to the district portal',
     paragraphs: [

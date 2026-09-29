@@ -8,7 +8,7 @@ export function generateBespokeRideEmailHtml(
     .filter((p) => p.trim());
 
   const ctaLabel = cta?.label?.trim() || 'Join the RIDE';
-  const ctaUrl = cta?.url?.trim() || 'https://ride.rotar3011.org';
+  const ctaUrl = cta?.url?.trim() || 'https://ride.rotaract3011.org';
   const ctaBlock =
     cta !== null
       ? `

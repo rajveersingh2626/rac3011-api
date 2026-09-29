@@ -7,13 +7,13 @@ function nameOf(data: Record<string, unknown>): string {
 
 export const passwordResetRequiredTemplate: NotificationTemplate = {
   subject() {
-    return 'Set your Rotaract District Organisation password';
+    return 'Set your Rotaract District Organisation 3011 password';
   },
   html(data) {
     const name = escapeHtml(nameOf(data));
     return `
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h1 style="font-size: 18px;">Rotaract District Organisation</h1>
+        <h1 style="font-size: 18px;">Rotaract District Organisation 3011</h1>
         <hr style="border: none; border-top: 3px solid #D81B60;" />
         <p>Hi ${name},</p>
         <p>Your member profile has been created. Please set a password before you sign in.</p>
@@ -23,7 +23,7 @@ export const passwordResetRequiredTemplate: NotificationTemplate = {
   text(data) {
     const name = nameOf(data);
     return [
-      'Rotaract District Organisation',
+      'Rotaract District Organisation 3011',
       '',
       `Hi ${name},`,
       '',
@@ -32,7 +32,7 @@ export const passwordResetRequiredTemplate: NotificationTemplate = {
   },
   push() {
     return {
-      title: 'Rotaract District Organisation',
+      title: 'Rotaract District Organisation 3011',
       body: 'Set your password to sign in',
       url: '/set-password',
     };

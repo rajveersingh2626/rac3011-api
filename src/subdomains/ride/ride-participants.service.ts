@@ -238,7 +238,7 @@ export class RideParticipantsService {
             interpolatedBody,
             dto.ctaLabel || dto.ctaUrl
               ? { label: dto.ctaLabel, url: dto.ctaUrl }
-              : { label: 'Join the RIDE', url: 'https://ride.rotar3011.org' },
+              : { label: 'Join the RIDE', url: 'https://ride.rotaract3011.org' },
           );
 
           if (this.emailPool) {

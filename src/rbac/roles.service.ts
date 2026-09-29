@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { hashPassword } from '../auth/legacy-password';
+import { env } from '../config/env';
 import { AuditService } from '../audit/audit.service';
 import { CodedConflictException } from '../common/errors/conflict.error';
 import type { ScopeKind } from '../common/types/access';
@@ -325,15 +326,17 @@ export class RolesService {
       if (this.emailPool && targetUserEmail) {
         const recipientName = targetUserName || 'Rotaractor';
         const scopeDesc = scopeType === 'none' ? 'District-Wide' : `${scopeType.toUpperCase()}${scopeId ? ` (${scopeId})` : ''}`;
-        const plainText = `Hello ${recipientName},\n\nYou have been assigned the ${roleName} role with ${scopeDesc} scope by the District Administrator.\n\nSign in to the District Portal: https://rac3011.org/portal\n\nRotaract District Organisation`;
+        const baseOrigin = env.WEB_ORIGINS.find((o) => o.includes('testing')) || env.WEB_ORIGINS.find((o) => !o.includes('ride') && !o.includes('rcl')) || 'https://rotaract3011.org';
+        const portalUrl = `${baseOrigin}/portal`;
+        const plainText = `Hello ${recipientName},\n\nYou have been assigned the ${roleName} role with ${scopeDesc} scope by the District Administrator.\n\nSign in to the District Portal: ${portalUrl}\n\nRotaract District Organisation 3011`;
         await this.emailPool.send({
           to: targetUserEmail,
-          subject: `Access Update: ${roleName} role assigned on RAC 3011`,
+          subject: `Access Update: ${roleName} role assigned on Rotaract District Organisation 3011`,
           text: plainText,
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; background-color: #ffffff; color: #1e293b; border: 1px solid #e2e8f0; border-radius: 12px;">
               <div style="margin-bottom: 24px; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px;">
-                <span style="font-size: 20px; font-weight: 800; color: #d946ef; letter-spacing: -0.5px;">ROTARACT 3011</span>
+                <span style="font-size: 20px; font-weight: 800; color: #d946ef; letter-spacing: -0.5px;">ROTARACT DISTRICT ORGANISATION 3011</span>
                 <span style="font-size: 13px; color: #64748b; margin-left: 8px; font-weight: 600;">PORTAL NOTIFICATION</span>
               </div>
               <h2 style="margin-top: 0; margin-bottom: 12px; font-size: 22px; font-weight: 700; color: #0f172a;">New Role & Access Granted</h2>
@@ -352,13 +355,13 @@ export class RolesService {
                 Your portal permissions have been updated automatically. You can sign in immediately to access your updated workspace and tools.
               </p>
               <div style="text-align: center; margin-bottom: 28px;">
-                <a href="https://rac3011.org/portal" style="display: inline-block; background-color: #d946ef; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 2px 4px rgba(217, 70, 239, 0.2);">
+                <a href="${portalUrl}" style="display: inline-block; background-color: #d946ef; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 2px 4px rgba(217, 70, 239, 0.2);">
                   Open District Portal &rarr;
                 </a>
               </div>
               <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
               <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">
-                Rotaract District Organisation &bull; Delhi & National Capital Region &bull; Rotary International
+                Rotaract District Organisation 3011 &bull; Delhi & National Capital Region &bull; Rotary International
               </p>
             </div>
           `,

@@ -1,7 +1,7 @@
 {
   "name": "rac3011-api",
   "version": "0.1.0",
-  "description": "Rotaract District 3011 platform API",
+  "description": "Rotaract District Organisation 3011 platform API",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

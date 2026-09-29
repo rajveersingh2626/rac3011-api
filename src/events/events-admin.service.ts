@@ -618,7 +618,7 @@ export class EventsAdminService {
           email: clean,
           fullName: existingProfile?.fullName || 'Distinguished Rotaractor / Guest',
           memberId: existingProfile?.id,
-          clubName: existingProfile?.club?.name || 'Rotaract District 3011',
+          clubName: existingProfile?.club?.name || 'Rotaract District Organisation 3011',
         });
       }
     } else if (dto.audience === 'presidents') {
@@ -741,11 +741,11 @@ export class EventsAdminService {
           const { token } = signCheckinToken(event.id, pseudoMid);
           const ticketUrl = `${baseUrl}/pass/${token}`;
 
-          const subject = `Your Official Entry Ticket: ${event.title} • Rotaract District 3011`;
+          const subject = `Your Official Entry Ticket: ${event.title} • Rotaract District Organisation 3011`;
           const html = `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; border: 1.5px solid #F1F5F9; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.06);">
               <div style="background: linear-gradient(135deg, #123499 0%, #0C2470 100%); padding: 32px 24px; text-align: center; color: #FFFFFF;">
-                <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.8);">ROTARACT DISTRICT 3011 • OFFICIAL EVENT PASS</p>
+                <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.8);">ROTARACT DISTRICT ORGANISATION 3011 • OFFICIAL EVENT PASS</p>
                 <h1 style="margin: 0; font-size: 24px; font-weight: 900; line-height: 1.25; color: #FFFFFF;">${event.title}</h1>
               </div>
               <div style="padding: 28px 24px;">
@@ -782,13 +782,13 @@ export class EventsAdminService {
                 </div>
               </div>
               <div style="background: #F8FAFC; padding: 16px; text-align: center; font-size: 11px; color: #94A3B8; border-top: 1px solid #E2E8F0;">
-                Rotaract District Organization 3011 • Delhi NCR & Surrounding Areas<br/>
+                Rotaract District Organisation 3011 • Delhi NCR & Surrounding Areas<br/>
                 This is an automated system notification.
               </div>
             </div>
           `;
 
-          const text = `Rotaract District 3011 Entry Pass\nEvent: ${event.title}\nDate: ${eventDate}\nAttendee: ${r.fullName}\nPass Link: ${ticketUrl}`;
+          const text = `Rotaract District Organisation 3011 Entry Pass\nEvent: ${event.title}\nDate: ${eventDate}\nAttendee: ${r.fullName}\nPass Link: ${ticketUrl}`;
 
           if (this.emailPool) {
             await this.emailPool.send({
