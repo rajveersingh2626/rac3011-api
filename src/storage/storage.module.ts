@@ -1,5 +1,6 @@
-import { Injectable, Module } from '@nestjs/common';
+import { Injectable, Module, Optional } from '@nestjs/common';
 import { env } from '../config/env';
+import { LimitAlertService } from '../notifications/limit-alert.service';
 import { R2Adapter } from './adapters/r2.adapter';
 import { StubStorageAdapter } from './adapters/stub-storage.adapter';
 import { UploadThingAdapter } from './adapters/uploadthing.adapter';
@@ -18,6 +19,7 @@ class TieredStoragePort extends StoragePort {
   constructor(
     private readonly uploadThing: UploadThingAdapter,
     private readonly r2: R2Adapter,
+    @Optional() private readonly limitAlert?: LimitAlertService,
   ) {
     super();
   }
@@ -25,32 +27,56 @@ class TieredStoragePort extends StoragePort {
   async createUploadGrant(
     input: Parameters<StoragePort['createUploadGrant']>[0],
   ): Promise<{ grantId: string; uploadUrl: string; fields?: Record<string, string> }> {
-    const result = await this.forTier(input.tier).createUploadGrant(input);
-    this.grantTiers.set(result.grantId, input.tier);
-    return result;
+    const adapter = this.forTier(input.tier);
+    const adapterName = input.tier === 'private' ? 'r2' : 'uploadthing';
+    try {
+      const result = await adapter.createUploadGrant(input);
+      this.grantTiers.set(result.grantId, input.tier);
+      return result;
+    } catch (err: unknown) {
+      void this.limitAlert?.onStorageError(adapterName, 'createUploadGrant', err as Error);
+      throw err;
+    }
   }
 
-  finalise(grantId: string, providerKey: string): Promise<StoredFile> {
+  async finalise(grantId: string, providerKey: string): Promise<StoredFile> {
     const tier = this.grantTiers.get(grantId);
     if (!tier) throw new Error(`storage: unknown grant ${grantId}`);
     this.grantTiers.delete(grantId);
-    return this.forTier(tier).finalise(grantId, providerKey);
+    const adapterName = tier === 'private' ? 'r2' : 'uploadthing';
+    try {
+      return await this.forTier(tier).finalise(grantId, providerKey);
+    } catch (err: unknown) {
+      void this.limitAlert?.onStorageError(adapterName, 'finalise', err as Error);
+      throw err;
+    }
   }
 
-  getPrivateStream(
+  async getPrivateStream(
     fileId: string,
   ): Promise<{ stream: NodeJS.ReadableStream; mimeType: string; name: string }> {
-    return this.r2.getPrivateStream(fileId);
+    try {
+      return await this.r2.getPrivateStream(fileId);
+    } catch (err: unknown) {
+      void this.limitAlert?.onStorageError('r2', 'getPrivateStream', err as Error);
+      throw err;
+    }
   }
 
-  delete(fileId: string): Promise<void> {
+  async delete(fileId: string): Promise<void> {
     const isUploadThing =
       fileId.includes(':') ||
       fileId.includes('/f/') ||
       fileId.includes('ufs.sh') ||
       fileId.includes('utfs.io') ||
       fileId.startsWith('dhfz');
-    return isUploadThing ? this.uploadThing.delete(fileId) : this.r2.delete(fileId);
+    const adapterName = isUploadThing ? 'uploadthing' : 'r2';
+    try {
+      return isUploadThing ? await this.uploadThing.delete(fileId) : await this.r2.delete(fileId);
+    } catch (err: unknown) {
+      void this.limitAlert?.onStorageError(adapterName, 'delete', err as Error);
+      throw err;
+    }
   }
 
   override async handleUpload(
@@ -61,7 +87,13 @@ class TieredStoragePort extends StoragePort {
     const tier = this.grantTiers.get(grantId) ?? tierHint ?? 'permanent';
     const adapter = this.forTier(tier);
     if (adapter.handleUpload) {
-      return adapter.handleUpload(grantId, file, tier);
+      try {
+        return await adapter.handleUpload(grantId, file, tier);
+      } catch (err: unknown) {
+        const adapterName = tier === 'private' ? 'r2' : 'uploadthing';
+        void this.limitAlert?.onStorageError(adapterName, 'handleUpload', err as Error);
+        throw err;
+      }
     }
     throw new Error(`Adapter for tier ${tier} does not support direct upload`);
   }

@@ -422,7 +422,7 @@ export class EventsAdminService {
     }
 
     let attendeeName = 'Guest Attendee';
-    let clubName = 'Rotary International District 3011';
+    let clubName = 'Rotaract District Organisation 3011';
     let district = '3011';
 
     if (!payload.mid.startsWith('guest_')) {

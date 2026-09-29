@@ -14,6 +14,7 @@ import { GmailTransport } from './email/transports/gmail.transport';
 import { MailgunTransport } from './email/transports/mailgun.transport';
 import { OracleTransport } from './email/transports/oracle.transport';
 import { ResendTransport } from './email/transports/resend.transport';
+import { LimitAlertService } from './limit-alert.service';
 import { NotificationDispatchService } from './notification-dispatch.service';
 import { NotificationOutboxRepository } from './notification-outbox.repository';
 import { NotificationSendProcessor } from './notification-send.processor';
@@ -41,10 +42,11 @@ import { NOTIFICATIONS_QUEUE } from './notifications.constants';
     emailTransportsProvider,
     emailPoolConfigProvider,
     EmailProviderPool,
+    LimitAlertService,
     NotificationOutboxRepository,
     NotificationSendProcessor,
     NotificationSweepScheduler,
   ],
-  exports: [NotificationPort, ConsoleNotificationAdapter, EmailProviderPool],
+  exports: [NotificationPort, ConsoleNotificationAdapter, EmailProviderPool, LimitAlertService],
 })
 export class NotificationsModule {}

@@ -1,5 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { env } from '../../config/env';
+import { LimitAlertService } from '../limit-alert.service';
 import { EmailUsageRepository } from '../email-usage.repository';
 import { ClockPort } from './clock.port';
 import { PROVIDER_ORDER, type EmailProviderName, type EmailTransport } from './email-provider';
@@ -46,6 +47,7 @@ export class EmailProviderPool {
     @Inject(ClockPort) private readonly clock: ClockPort,
     @Inject(EMAIL_TRANSPORTS) private readonly transports: readonly EmailTransport[],
     @Inject(EMAIL_POOL_CONFIG) private readonly config: EmailPoolConfig,
+    @Optional() private readonly limitAlert?: LimitAlertService,
   ) {}
 
   async send(message: EmailPoolMessage): Promise<EmailPoolResult> {
@@ -63,7 +65,14 @@ export class EmailProviderPool {
     for (const name of PROVIDER_ORDER) {
       const transport = this.transports.find((t) => t.name === name);
       if (!transport || !transport.isConfigured()) continue;
-      if ((usage.get(name) ?? 0) >= this.config.caps[name]) continue;
+
+      const currentUsage = usage.get(name) ?? 0;
+      const cap = this.config.caps[name];
+      if (currentUsage >= cap) {
+        // Fire a one-shot alert (subject to 10-min cooldown) when a cap is reached
+        void this.limitAlert?.onEmailCapHit(name, currentUsage, cap);
+        continue;
+      }
       if (this.isCoolingDown(name)) continue;
 
       await this.usage.increment(name, day);
@@ -84,6 +93,9 @@ export class EmailProviderPool {
         this.failedAt.set(name, this.clock.now().getTime());
       }
     }
+
+    // All providers exhausted — fire a critical alert before throwing
+    void this.limitAlert?.onEmailPoolExhausted(rewritten.to);
     throw new NoEmailProviderAvailableError();
   }
 
