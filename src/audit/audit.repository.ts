@@ -15,6 +15,7 @@ export type AuditFilter = {
   resourceType?: string;
   resourceId?: string;
   actorId?: string;
+  actorName?: string;
   from?: Date;
   to?: Date;
 };
@@ -57,10 +58,40 @@ export class AuditRepository {
     page: number,
     pageSize: number,
   ): Promise<{ items: AuditRow[]; total: number }> {
+    let matchedActorIds: string[] | undefined;
+    if (filter.actorName?.trim()) {
+      const search = filter.actorName.trim();
+      const users = await this.prisma.user.findMany({
+        where: {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+          ],
+        },
+        select: { id: true },
+      });
+      matchedActorIds = users.map((u) => u.id);
+      if (matchedActorIds.length === 0) {
+        return { items: [], total: 0 };
+      }
+    }
+
+    let actorIdFilter: Prisma.StringNullableFilter | string | undefined = filter.actorId;
+    if (matchedActorIds !== undefined) {
+      if (filter.actorId) {
+        if (!matchedActorIds.includes(filter.actorId)) {
+          return { items: [], total: 0 };
+        }
+        actorIdFilter = filter.actorId;
+      } else {
+        actorIdFilter = { in: matchedActorIds };
+      }
+    }
+
     const where: Prisma.AuditLogWhereInput = {
       resourceType: filter.resourceType,
       resourceId: filter.resourceId,
-      actorId: filter.actorId,
+      actorId: actorIdFilter,
       at: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
     };
     const [rawItems, total] = await this.prisma.$transaction([

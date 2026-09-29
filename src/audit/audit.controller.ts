@@ -4,7 +4,7 @@ import { RequirePermission } from '../common/decorators/access.decorators';
 import { paginate, parseListQuery } from '../common/query/list-query';
 import { AuditService } from './audit.service';
 
-const FILTERS = ['resourceType', 'resourceId', 'actorId', 'from', 'to'] as const;
+const FILTERS = ['resourceType', 'resourceId', 'actorId', 'actorName', 'from', 'to'] as const;
 
 function parseDate(value: string | undefined, name: string): Date | undefined {
   if (!value) return undefined;
@@ -27,6 +27,7 @@ export class AuditController {
         resourceType: q.filter.resourceType,
         resourceId: q.filter.resourceId,
         actorId: q.filter.actorId,
+        actorName: q.filter.actorName,
         from: parseDate(q.filter.from, 'from'),
         to: parseDate(q.filter.to, 'to'),
       },
