@@ -32,16 +32,71 @@ function linkAllowsMultiple(options: unknown): boolean {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const URL_RE = /^https?:\/\//i;
 
+export const AVENUE_MAP: Record<string, string> = {
+  club: 'club',
+  'club services': 'club',
+  'club service': 'club',
+  'club meetings': 'club',
+  'club meeting': 'club',
+  meetings: 'club',
+  meeting: 'club',
+
+  community: 'community',
+  'community services': 'community',
+  'community service': 'community',
+
+  international: 'international',
+  'international services': 'international',
+  'international service': 'international',
+
+  vocational: 'vocational',
+  'vocational services': 'vocational',
+  'vocational service': 'vocational',
+
+  district: 'district',
+  'district projects': 'district',
+  'district project': 'district',
+  'district service': 'district',
+
+  flagship: 'flagship',
+  'flagship projects': 'flagship',
+  'flagship project': 'flagship',
+  'flagship initiatives': 'flagship',
+};
+
+export function normalizeAvenue(val: unknown): string {
+  if (typeof val !== 'string') return '';
+  const trimmed = val.trim().toLowerCase();
+  return AVENUE_MAP[trimmed] || trimmed;
+}
+
+export function normalizeReportValues(values: unknown): unknown {
+  if (!values || typeof values !== 'object' || Array.isArray(values)) return values;
+  const obj = { ...(values as Record<string, unknown>) };
+  if (Array.isArray(obj.activities)) {
+    obj.activities = obj.activities.map((act) => {
+      if (!act || typeof act !== 'object' || Array.isArray(act)) return act;
+      const actObj = { ...(act as Record<string, unknown>) };
+      if (typeof actObj.avenue === 'string') {
+        actObj.avenue = normalizeAvenue(actObj.avenue);
+      }
+      return actObj;
+    });
+  }
+  return obj;
+}
+
 function validateScalar(
   field: ReportFieldRow,
   value: unknown,
   path: string,
   validClubIds: ReadonlySet<string>,
   errors: ValidationError[],
+  isSubmitting: boolean = true,
 ): void {
   const missing = value === undefined || value === null || value === '';
   if (missing) {
-    if (field.required) errors.push({ path, message: `${field.label} is required` });
+    if (field.required && isSubmitting) errors.push({ path, message: `${field.label} is required` });
     return;
   }
   switch (field.type) {
@@ -63,7 +118,11 @@ function validateScalar(
       break;
     case 'select': {
       const choices = selectChoices(field.options);
-      if (typeof value !== 'string' || !choices.includes(value))
+      let testVal = value;
+      if (field.fieldKey === 'avenue' || choices.includes('community')) {
+        testVal = normalizeAvenue(value);
+      }
+      if (typeof testVal !== 'string' || !choices.includes(testVal))
         errors.push({ path, message: `${field.label} must be one of ${choices.join(', ')}` });
       break;
     }
@@ -100,6 +159,7 @@ export function validateReportValues(
   fields: ReportFieldRow[],
   values: unknown,
   validClubIds: ReadonlySet<string>,
+  isSubmitting: boolean = true,
 ): ValidateResult {
   const errors: ValidationError[] = [];
   if (typeof values !== 'object' || values === null || Array.isArray(values)) {
@@ -114,7 +174,7 @@ export function validateReportValues(
     if (!knownTopKeys.has(key)) errors.push({ path: key, message: `Unknown field "${key}"` });
   }
   for (const field of topFields) {
-    validateScalar(field, obj[field.fieldKey], field.fieldKey, validClubIds, errors);
+    validateScalar(field, obj[field.fieldKey], field.fieldKey, validClubIds, errors, isSubmitting);
   }
 
   const activities = obj.activities;
@@ -140,6 +200,7 @@ export function validateReportValues(
           `activities[${index}].${field.fieldKey}`,
           validClubIds,
           errors,
+          isSubmitting,
         );
       }
     });

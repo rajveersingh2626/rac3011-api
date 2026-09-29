@@ -34,7 +34,11 @@ import type {
   ReportReviewFlag,
   ReportWithRelations,
 } from './reports.types';
-import { collectClubIdsInValues, validateReportValues } from './report-values.validator';
+import {
+  collectClubIdsInValues,
+  normalizeReportValues,
+  validateReportValues,
+} from './report-values.validator';
 
 const READ_PERMISSIONS = ['reports:submit', 'reports:review', 'reports:manage', 'reports:score'] as const;
 
@@ -176,16 +180,17 @@ export class ReportsService {
       });
     }
 
+    const isSubmitting = input.status === 'submitted';
     const nextValues =
       input.values !== undefined
-        ? { ...(existing.values as object), ...input.values }
-        : existing.values;
+        ? normalizeReportValues({ ...(existing.values as object), ...input.values })
+        : normalizeReportValues(existing.values);
 
-    if (input.values !== undefined || input.status === 'submitted') {
+    if (input.values !== undefined || isSubmitting) {
       const schema = await this.schemas.getByVersion(existing.schemaVersion);
       const clubIds = collectClubIdsInValues(schema.fields, nextValues);
       const validClubIds = await this.repo.findExistingClubIds(clubIds);
-      const result = validateReportValues(schema.fields, nextValues, validClubIds);
+      const result = validateReportValues(schema.fields, nextValues, validClubIds, isSubmitting);
       if (!result.valid)
         throw new BadRequestException({
           statusCode: 400,
@@ -194,18 +199,18 @@ export class ReportsService {
         });
     }
 
-    const submittedAt = input.status === 'submitted' ? new Date() : undefined;
+    const submittedAt = isSubmitting ? new Date() : undefined;
     let filedOnTime: boolean | null | undefined;
-    if (input.status === 'submitted') {
+    if (isSubmitting) {
       const deadlineDay = await this.repo.getReportDeadlineDay();
       filedOnTime = isFiledOnTime(existing.month, submittedAt as Date, deadlineDay);
     }
 
     const updated = await this.repo.update(id, {
-      values: input.values !== undefined ? nextValues : undefined,
+      values: input.values !== undefined || isSubmitting ? nextValues : undefined,
       notes: input.notes !== undefined ? input.notes : undefined,
       status: input.status,
-      submittedById: input.status === 'submitted' ? access.userId : undefined,
+      submittedById: isSubmitting ? access.userId : undefined,
       submittedAt,
       filedOnTime,
     });

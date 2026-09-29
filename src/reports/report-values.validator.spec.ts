@@ -74,10 +74,30 @@ describe('validateReportValues', () => {
     expect(result.valid).toBe(true);
   });
 
-  it('rejects a missing required top-level field', () => {
-    const result = validateReportValues(ALL_FIELDS, { activities: [] }, VALID_CLUBS);
+  it('rejects a missing required top-level field when submitting', () => {
+    const result = validateReportValues(ALL_FIELDS, { activities: [] }, VALID_CLUBS, true);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.path === 'physical_meetings')).toBe(true);
+  });
+
+  it('allows a missing required top-level field when saving draft', () => {
+    const result = validateReportValues(ALL_FIELDS, { activities: [] }, VALID_CLUBS, false);
+    expect(result.valid).toBe(true);
+  });
+
+  it('normalizes human avenue titles like "Community Services" to "community"', () => {
+    const result = validateReportValues(
+      ALL_FIELDS,
+      {
+        physical_meetings: 2,
+        activities: [
+          { activity_title: 'Health Camp', avenue: 'Community Services' },
+        ],
+      },
+      VALID_CLUBS,
+      true,
+    );
+    expect(result.valid).toBe(true);
   });
 
   it('rejects a clubs-type field value that is not a real club id', () => {
