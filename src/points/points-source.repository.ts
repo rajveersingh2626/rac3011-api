@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { ClubFactsForAdapterRow, ReportForAdapterRow } from './points.types';
 
-const SCORED_STATUS = ['scored'] as const;
+const NOT_DRAFT = ['submitted', 'queried', 'scored'] as const;
 
 @Injectable()
 export class PointsSourceRepository {
@@ -40,14 +40,14 @@ export class PointsSourceRepository {
 
   async findReportForMonth(clubId: string, month: Date): Promise<ReportForAdapterRow | null> {
     return this.prisma.report.findFirst({
-      where: { clubId, month, status: { in: [...SCORED_STATUS] } },
+      where: { clubId, month, status: { in: [...NOT_DRAFT] } },
       select: { month: true, values: true, filedOnTime: true },
     });
   }
 
   async findReportsInRange(clubId: string, from: Date, to: Date): Promise<ReportForAdapterRow[]> {
     return this.prisma.report.findMany({
-      where: { clubId, month: { gte: from, lte: to }, status: { in: [...SCORED_STATUS] } },
+      where: { clubId, month: { gte: from, lte: to }, status: { in: [...NOT_DRAFT] } },
       select: { month: true, values: true, filedOnTime: true },
       orderBy: { month: 'asc' },
     });
@@ -55,7 +55,7 @@ export class PointsSourceRepository {
 
   async findLatestReport(clubId: string): Promise<ReportForAdapterRow | null> {
     return this.prisma.report.findFirst({
-      where: { clubId, status: { in: [...SCORED_STATUS] } },
+      where: { clubId, status: { in: [...NOT_DRAFT] } },
       select: { month: true, values: true, filedOnTime: true },
       orderBy: { month: 'desc' },
     });

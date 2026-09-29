@@ -17,13 +17,14 @@ describe('ReportsService - Production Features', () => {
 
   const mockAccess: ResolvedAccess = {
     userId: 'user-001',
-    roles: [{ roleKey: 'super_admin', scopeType: 'none', scopeId: null }],
-    grants: [
-      { key: 'reports:submit', scopeType: 'none', scopeId: null },
-      { key: 'reports:review', scopeType: 'none', scopeId: null },
-      { key: 'reports:manage', scopeType: 'none', scopeId: null },
-      { key: 'reports:score', scopeType: 'none', scopeId: null },
-    ],
+    isSuperAdmin: true,
+    roles: [{ roleKey: 'super_admin', scope: { type: 'none' } }],
+    grants: {
+      'reports:submit': [{ type: 'none' }],
+      'reports:review': [{ type: 'none' }],
+      'reports:manage': [{ type: 'none' }],
+      'reports:score': [{ type: 'none' }],
+    },
   };
 
   beforeEach(() => {

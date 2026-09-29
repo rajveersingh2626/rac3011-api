@@ -30,6 +30,7 @@ const DSC = [
   'members:approve',
   'members:import',
   'club_facts:edit',
+  'point_rules:manage',
   'effort:log',
   'effort:approve',
   'events:manage',

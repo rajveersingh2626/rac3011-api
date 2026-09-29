@@ -125,6 +125,7 @@ export class PointsEngineService {
     }
   }
 
+  @OnEvent(REPORT_SUBMITTED_EVENT)
   async onReportSubmitted(event: ReportSubmittedEvent): Promise<void> {
     try {
       const monthStr = event.month.slice(0, 7);
