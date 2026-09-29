@@ -75,6 +75,7 @@ export class PointsEngineService {
         month: params.month,
         rule: {
           ...evalRule,
+          sourceType: rule.sourceType,
           numeratorKey: rule.numeratorKey,
           denominatorKey: rule.denominatorKey,
           sourceKey: rule.sourceKey,

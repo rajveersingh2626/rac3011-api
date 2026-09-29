@@ -5,6 +5,7 @@ export type AdapterContext = {
   ryYear: number;
   month?: Date;
   rule: EvalRule & {
+    sourceType?: string;
     numeratorKey: string | null;
     denominatorKey: string | null;
     sourceKey: string;
