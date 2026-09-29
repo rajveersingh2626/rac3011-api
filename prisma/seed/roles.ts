@@ -52,6 +52,7 @@ export const ROLES: RoleSeed[] = [
   { key: 'president', name: 'Club President', description: 'Club president', scopeType: 'club', permissions: unique(PRESIDENT) },
   { key: 'secretary', name: 'Club Secretary', description: 'Club secretary', scopeType: 'club', permissions: unique(PRESIDENT) },
   { key: 'zrr', name: 'Zonal Rotaract Representative', description: 'Zone-level reviewer', scopeType: 'zone', permissions: unique(ZRR) },
+  { key: 'zrs', name: 'Zonal Rotaract Secretary', description: 'Zone-level secretary', scopeType: 'zone', permissions: unique(ZRR) },
   { key: 'dsc', name: 'District Secretariat / Council', description: 'District officer', scopeType: 'none', permissions: unique(DSC) },
   {
     key: 'drr',

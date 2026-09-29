@@ -205,6 +205,7 @@ export class RolesService {
       phone: input.phone,
       roleKey: input.roleKey,
       grantedById: actorId,
+      scopeId: input.scopeId,
     });
 
     await this.audit.record({

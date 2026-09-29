@@ -254,6 +254,7 @@ export class RbacRepository {
     phone?: string;
     roleKey: string;
     grantedById: string;
+    scopeId?: string;
   }) {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.user.findUnique({ where: { email: data.email } });
@@ -306,7 +307,12 @@ export class RbacRepository {
         },
       });
 
-      const scopeId = role.scopeType === 'club' ? data.clubId : null;
+      const scopeId =
+        role.scopeType === 'club'
+          ? data.clubId
+          : role.scopeType === 'zone'
+            ? (data.scopeId ?? null)
+            : null;
       const userRole = await tx.userRole.create({
         data: {
           id: 'c' + randomUUID().replace(/-/g, '').slice(0, 24),

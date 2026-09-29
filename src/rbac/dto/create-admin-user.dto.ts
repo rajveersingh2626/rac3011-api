@@ -8,6 +8,7 @@ export const createAdminUserSchema = z.object({
   clubId: z.string().min(1, 'Club is required'),
   phone: z.string().trim().max(32).optional(),
   roleKey: z.string().min(1, 'Role is required'),
+  scopeId: z.string().optional(),
 });
 
 export class CreateAdminUserDto extends createZodDto(createAdminUserSchema) {}
