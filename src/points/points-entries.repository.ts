@@ -90,6 +90,14 @@ export class PointsEntriesRepository {
     return row?.id ?? null;
   }
 
+  async findById(id: string): Promise<ClubPointEntryRow | null> {
+    const row = await this.prisma.clubPointEntry.findUnique({
+      where: { id },
+      select: ENTRY_SELECT,
+    });
+    return row ? toRow(row) : null;
+  }
+
   async upsertComputedEntry(
     tx: Tx,
     input: {
@@ -102,12 +110,27 @@ export class PointsEntriesRepository {
       trace: unknown;
     },
   ): Promise<void> {
-    const existingId = await this.findComputedEntryId(
-      input.clubId,
-      input.ruleId,
-      input.periodKey,
-      tx,
-    );
+    const existing = await tx.clubPointEntry.findFirst({
+      where: {
+        clubId: input.clubId,
+        ruleId: input.ruleId,
+        periodKey: input.periodKey,
+        kind: 'computed',
+      },
+      select: { id: true, points: true, trace: true },
+    });
+
+    const existingTrace = existing?.trace as Record<string, unknown> | null;
+    const isOverridden = Boolean(existingTrace?.overridden);
+    const traceData = isOverridden
+      ? {
+          ...((input.trace as Record<string, unknown>) ?? {}),
+          overridden: true,
+          originalPoints: input.points,
+        }
+      : (input.trace as Prisma.InputJsonValue);
+    const pointsValue = isOverridden ? existing!.points : input.points;
+
     const data = {
       clubId: input.clubId,
       ryYear: input.ryYear,
@@ -115,11 +138,59 @@ export class PointsEntriesRepository {
       categoryId: input.categoryId,
       periodKey: input.periodKey,
       kind: 'computed' as EntryKind,
-      points: input.points,
-      trace: input.trace as Prisma.InputJsonValue,
+      points: pointsValue,
+      trace: traceData as Prisma.InputJsonValue,
     };
-    if (existingId) await tx.clubPointEntry.update({ where: { id: existingId }, data });
+    if (existing) await tx.clubPointEntry.update({ where: { id: existing.id }, data });
     else await tx.clubPointEntry.create({ data });
+  }
+
+  async updateEntry(
+    id: string,
+    data: { points: number; reason?: string | null; trace?: unknown },
+  ): Promise<ClubPointEntryRow> {
+    const updateData: Prisma.ClubPointEntryUpdateInput = {
+      points: data.points,
+      ...(data.reason !== undefined ? { reason: data.reason } : {}),
+      ...(data.trace !== undefined ? { trace: data.trace as Prisma.InputJsonValue } : {}),
+    };
+    const row = await this.prisma.clubPointEntry.update({
+      where: { id },
+      data: updateData,
+      select: ENTRY_SELECT,
+    });
+    return toRow(row);
+  }
+
+  async createCustomEntry(input: {
+    clubId: string;
+    ryYear: number;
+    periodKey: string;
+    categoryId: string;
+    points: number;
+    reason: string;
+    createdById: string;
+  }): Promise<ClubPointEntryRow> {
+    const data: Prisma.ClubPointEntryCreateInput = {
+      club: { connect: { id: input.clubId } },
+      category: { connect: { id: input.categoryId } },
+      ryYear: input.ryYear,
+      periodKey: input.periodKey,
+      kind: 'judged',
+      sourceType: 'manual_adjustment',
+      points: input.points,
+      reason: input.reason,
+      createdById: input.createdById,
+    };
+    const row = await this.prisma.clubPointEntry.create({
+      data,
+      select: ENTRY_SELECT,
+    });
+    return toRow(row);
+  }
+
+  async deleteEntry(id: string): Promise<void> {
+    await this.prisma.clubPointEntry.delete({ where: { id } });
   }
 
   async deleteComputedEntry(

@@ -7,6 +7,7 @@ import { PointsEntriesRepository } from './points-entries.repository';
 import { PointsRepository } from './points.repository';
 import { clubPointsDto, type ClubPointsSummary } from './points.transformer';
 import type { JudgedPointsInput } from './dto/judged-points.dto';
+import type { CreatePointEntryInput, UpdatePointEntryInput } from './dto/point-entry.dto';
 
 const READ_PERMISSIONS = [
   'clubs:view',
@@ -80,5 +81,128 @@ export class ClubPointsService {
 
     const entries = await this.entries.findForYear(clubId, ryYear);
     return clubPointsDto({ clubId, ryYear, month, entries });
+  }
+
+  async updatePointEntry(
+    access: ResolvedAccess,
+    clubId: string,
+    entryId: string,
+    input: UpdatePointEntryInput,
+  ): Promise<ClubPointsSummary> {
+    await this.scope.assertCanAccessClub(access, 'reports:score', clubId);
+    const before = await this.entries.findById(entryId);
+    if (!before || before.clubId !== clubId) {
+      throw new NotFoundException('point entry not found');
+    }
+
+    let updatedTrace = before.trace;
+    if (before.kind === 'computed') {
+      const traceObj = (before.trace as Record<string, unknown>) ?? {};
+      updatedTrace = {
+        ...traceObj,
+        overridden: true,
+        originalPoints: typeof traceObj.originalPoints === 'number' ? traceObj.originalPoints : before.points,
+      };
+    }
+
+    const after = await this.entries.updateEntry(entryId, {
+      points: input.points,
+      reason: input.reason !== undefined ? input.reason : before.reason,
+      trace: updatedTrace,
+    });
+
+    await this.audit.record({
+      actorId: access.userId,
+      action: 'points.entry_updated',
+      resourceType: 'club_point_entry',
+      resourceId: entryId,
+      before,
+      after,
+    });
+
+    const entries = await this.entries.findForYear(clubId, before.ryYear);
+    return clubPointsDto({ clubId, ryYear: before.ryYear, month: before.periodKey, entries });
+  }
+
+  async createCustomEntry(
+    access: ResolvedAccess,
+    clubId: string,
+    input: CreatePointEntryInput,
+  ): Promise<ClubPointsSummary> {
+    await this.scope.assertCanAccessClub(access, 'reports:score', clubId);
+    const category = await this.rules.findCategoryById(input.categoryId);
+    if (!category) {
+      throw new NotFoundException('category not found');
+    }
+
+    const ryYear = ryYearOf(new Date(`${input.month}-01T00:00:00Z`));
+    const fullReason = input.reason ? `${input.label} — ${input.reason}` : input.label;
+
+    const after = await this.entries.createCustomEntry({
+      clubId,
+      ryYear,
+      periodKey: input.month,
+      categoryId: input.categoryId,
+      points: input.points,
+      reason: fullReason,
+      createdById: access.userId,
+    });
+
+    await this.audit.record({
+      actorId: access.userId,
+      action: 'points.entry_created',
+      resourceType: 'club_point_entry',
+      resourceId: after.id,
+      after,
+    });
+
+    const entries = await this.entries.findForYear(clubId, ryYear);
+    return clubPointsDto({ clubId, ryYear, month: input.month, entries });
+  }
+
+  async deletePointEntry(
+    access: ResolvedAccess,
+    clubId: string,
+    entryId: string,
+  ): Promise<ClubPointsSummary> {
+    await this.scope.assertCanAccessClub(access, 'reports:score', clubId);
+    const before = await this.entries.findById(entryId);
+    if (!before || before.clubId !== clubId) {
+      throw new NotFoundException('point entry not found');
+    }
+
+    if (before.kind === 'computed') {
+      const traceObj = (before.trace as Record<string, unknown>) ?? {};
+      const originalPoints = typeof traceObj.originalPoints === 'number' ? (traceObj.originalPoints as number) : before.points;
+      const resetTrace = { ...traceObj };
+      delete resetTrace.overridden;
+      delete resetTrace.originalPoints;
+
+      await this.entries.updateEntry(entryId, {
+        points: originalPoints,
+        reason: null,
+        trace: resetTrace,
+      });
+
+      await this.audit.record({
+        actorId: access.userId,
+        action: 'points.entry_reset',
+        resourceType: 'club_point_entry',
+        resourceId: entryId,
+        before,
+      });
+    } else {
+      await this.entries.deleteEntry(entryId);
+      await this.audit.record({
+        actorId: access.userId,
+        action: 'points.entry_deleted',
+        resourceType: 'club_point_entry',
+        resourceId: entryId,
+        before,
+      });
+    }
+
+    const entries = await this.entries.findForYear(clubId, before.ryYear);
+    return clubPointsDto({ clubId, ryYear: before.ryYear, month: before.periodKey, entries });
   }
 }

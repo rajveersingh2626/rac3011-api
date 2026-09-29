@@ -72,6 +72,13 @@ export class PointsRepository {
     });
   }
 
+  async findCategoryById(id: string): Promise<PointCategoryRow | null> {
+    return this.prisma.pointCategory.findUnique({
+      where: { id },
+      select: { id: true, key: true, name: true, order: true },
+    });
+  }
+
   async listRules(ryYear: number, activeOnly = false): Promise<PointRuleRow[]> {
     const rows = await this.prisma.pointRule.findMany({
       where: { ryYear, isActive: activeOnly ? true : undefined },

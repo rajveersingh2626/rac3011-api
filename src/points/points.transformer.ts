@@ -28,11 +28,12 @@ export function ruleDto(row: PointRuleRow) {
 }
 
 function entryDto(row: ClubPointEntryRow) {
+  const trace = row.trace as Record<string, unknown> | null;
   return {
     id: row.id,
     ruleId: row.ruleId,
     ruleKey: row.ruleKey,
-    ruleLabel: row.ruleLabel,
+    ruleLabel: row.ruleLabel ?? row.reason ?? 'Custom Entry',
     ruleType: row.ruleType,
     rulePeriod: row.rulePeriod,
     categoryId: row.categoryId,
@@ -40,6 +41,10 @@ function entryDto(row: ClubPointEntryRow) {
     categoryName: row.categoryName,
     periodKey: row.periodKey,
     points: row.points,
+    kind: row.kind,
+    reason: row.reason,
+    isOverridden: Boolean(trace?.overridden),
+    originalPoints: typeof trace?.originalPoints === 'number' ? (trace.originalPoints as number) : null,
     trace: row.trace,
   };
 }
@@ -87,10 +92,14 @@ export function clubPointsDto(input: {
   }
 
   const monthEntries = input.month
-    ? input.entries.filter((e) => e.kind === 'computed' && e.periodKey === input.month)
+    ? input.entries.filter(
+        (e) =>
+          e.periodKey === input.month &&
+          (e.kind === 'computed' || (e.kind === 'judged' && e.sourceType === 'manual_adjustment')),
+      )
     : [];
   const judged = input.month
-    ? (input.entries.find((e) => e.kind === 'judged' && e.periodKey === input.month) ?? null)
+    ? (input.entries.find((e) => e.kind === 'judged' && e.periodKey === input.month && !e.sourceType) ?? null)
     : null;
 
   return {
