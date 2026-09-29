@@ -167,6 +167,18 @@ export class ReportsController {
     return this.service.assist(ctx.access, id);
   }
 
+  @Get(':id/score-preview')
+  @RequirePermission('reports:submit', 'reports:review', 'reports:manage', 'reports:score')
+  async scorePreview(@CurrentUser() ctx: RequestContext, @Param('id') id: string) {
+    return this.service.previewScore(ctx.access, id);
+  }
+
+  @Post(':id/score')
+  @RequirePermission('reports:score', 'reports:manage')
+  async score(@CurrentUser() ctx: RequestContext, @Param('id') id: string) {
+    return reportDto(await this.service.score(ctx.access, id));
+  }
+
   @Post(':id/queries')
   @RequirePermission('reports:review')
   async addQuery(

@@ -13,6 +13,7 @@ import { ReportsController } from './reports.controller';
 import { ReportsRepository } from './reports.repository';
 import { ReportsService } from './reports.service';
 
+import { PointsModule } from '../points/points.module';
 import { ReportsExportService } from './reports-export.service';
 
 const assistProvider =
@@ -21,6 +22,7 @@ const assistProvider =
     : { provide: AssistPort, useExisting: StubAssistAdapter };
 
 @Module({
+  imports: [PointsModule],
   controllers: [ReportSchemasController, ReportsController, ReportRequestsController],
   providers: [
     ReportSchemasRepository,

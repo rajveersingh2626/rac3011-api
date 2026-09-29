@@ -13,6 +13,7 @@ describe('ReportsService - Production Features', () => {
   let notifications: any;
   let events: any;
   let assistPort: any;
+  let pointsEngine: any;
 
   const mockAccess: ResolvedAccess = {
     userId: 'user-001',
@@ -55,6 +56,10 @@ describe('ReportsService - Production Features', () => {
     assistPort = {
       assist: vi.fn(),
     };
+    pointsEngine = {
+      previewReportPoints: vi.fn().mockResolvedValue({ total: 30, entries: [] }),
+      recompute: vi.fn().mockResolvedValue(undefined),
+    };
 
     service = new ReportsService(
       repo,
@@ -64,6 +69,7 @@ describe('ReportsService - Production Features', () => {
       notifications,
       events,
       assistPort,
+      pointsEngine,
     );
   });
 
@@ -254,6 +260,67 @@ describe('ReportsService - Production Features', () => {
       expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
         action: 'report.flag_resolved',
       }));
+    });
+  });
+
+  describe('Scoring & Preliminary Scores', () => {
+    it('previews score for a report without saving', async () => {
+      const report = {
+        id: 'rep-score-1',
+        clubId: 'c1',
+        ryYear: 2026,
+        month: new Date('2026-08-01T00:00:00Z'),
+        values: { activities: [] },
+        filedOnTime: true,
+      };
+      repo.findById.mockResolvedValue(report);
+
+      const preview = await service.previewScore(mockAccess, 'rep-score-1');
+      expect(preview.total).toBe(30);
+      expect(pointsEngine.previewReportPoints).toHaveBeenCalledWith(expect.objectContaining({
+        clubId: 'c1',
+        ryYear: 2026,
+      }));
+    });
+
+    it('transitions report to scored status and emits submit event', async () => {
+      const report = {
+        id: 'rep-score-2',
+        clubId: 'c1',
+        ryYear: 2026,
+        month: new Date('2026-08-01T00:00:00Z'),
+        status: 'submitted',
+        schemaVersion: 1,
+        values: {},
+        submittedById: 'user-001',
+        submittedAt: new Date(),
+        filedOnTime: true,
+      };
+      repo.findById.mockResolvedValue(report);
+
+      await service.score(mockAccess, 'rep-score-2');
+
+      expect(repo.update).toHaveBeenCalledWith('rep-score-2', expect.objectContaining({
+        status: 'scored',
+        scoredAt: expect.any(Date),
+      }));
+      expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'report.scored',
+      }));
+      expect(events.emit).toHaveBeenCalledWith('report.submitted', expect.objectContaining({
+        reportId: 'rep-score-2',
+      }));
+    });
+
+    it('rejects scoring a draft report', async () => {
+      const report = {
+        id: 'rep-score-3',
+        clubId: 'c1',
+        status: 'draft',
+      };
+      repo.findById.mockResolvedValue(report);
+
+      await expect(service.score(mockAccess, 'rep-score-3')).rejects.toThrow(ConflictException);
     });
   });
 });

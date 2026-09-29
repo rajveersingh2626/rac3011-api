@@ -8,7 +8,13 @@ import { PointsRepository } from './points.repository';
 import { clubPointsDto, type ClubPointsSummary } from './points.transformer';
 import type { JudgedPointsInput } from './dto/judged-points.dto';
 
-const READ_PERMISSIONS = ['clubs:view', 'reports:review'] as const;
+const READ_PERMISSIONS = [
+  'clubs:view',
+  'reports:review',
+  'reports:submit',
+  'reports:score',
+  'reports:manage',
+] as const;
 
 @Injectable()
 export class ClubPointsService {

@@ -38,7 +38,10 @@ function harness(
   const staleDeletes: unknown[] = [];
   const onceAwarded = new Set<string>();
 
-  const repo = { listRules: vi.fn().mockResolvedValue(rules) } as unknown as PointsRepository;
+  const repo = {
+    listRules: vi.fn().mockResolvedValue(rules),
+    listCategories: vi.fn().mockResolvedValue([{ id: 'cat-1', key: 'community_services', name: 'Community Service' }]),
+  } as unknown as PointsRepository;
 
   const entries = {
     findOnceAwardedRuleIds: vi.fn().mockResolvedValue(onceAwarded),
@@ -154,5 +157,57 @@ describe('PointsEngineService.recompute', () => {
     });
     await service.recompute({ clubId: 'CLUB-A', ryYear: 2026, trigger: 'test' });
     expect(upserts).toHaveLength(2);
+  });
+
+  it('handles onReportSubmitted with YYYY-MM-DD format correctly without invalid dates', async () => {
+    const r = rule({ id: 'rule-1', key: 'test_rule' });
+    const { service, upserts } = harness([r], {
+      test_rule: [{ periodKey: '2026-08', input: { value: 1 } }],
+    });
+    await service.onReportSubmitted({
+      reportId: 'rep-1',
+      clubId: 'CLUB-A',
+      ryYear: 2026,
+      month: '2026-08-01',
+      schemaVersion: 1,
+      submittedById: 'user-1',
+      submittedAt: '2026-08-15T00:00:00.000Z',
+      filedOnTime: true,
+    });
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0]).toMatchObject({ clubId: 'CLUB-A', periodKey: '2026-08', points: 20 });
+  });
+
+  it('previews report points based on report field values', async () => {
+    const r = rule({
+      id: 'rule-1',
+      key: 'projects_initiated',
+      sourceType: 'report_field',
+      sourceKey: 'projects_initiated',
+      points: 15,
+    });
+    const { service } = harness([r], {});
+    const preview = await service.previewReportPoints({
+      clubId: 'CLUB-A',
+      ryYear: 2026,
+      month: new Date('2026-08-01T00:00:00Z'),
+      values: {
+        activities: [
+          {
+            activity_title: 'Tree Plantation',
+            initiated_by: 'Your Club',
+            avenue: 'community',
+          },
+        ],
+      },
+      filedOnTime: true,
+    });
+    expect(preview.total).toBe(15);
+    expect(preview.entries).toHaveLength(1);
+    expect(preview.entries[0]).toMatchObject({
+      ruleId: 'rule-1',
+      points: 15,
+      categoryName: 'Community Service',
+    });
   });
 });

@@ -19,8 +19,12 @@ import {
   type ReportResetEvent,
   type ReportSubmittedEvent,
 } from '../../reports/report.events';
+import {
+  deriveReportPointSources,
+  type ReportValuesForDerivation,
+} from '../adapters/report-field.derive';
 import { evaluateRule } from './evaluate-rule';
-import type { EvalRule, Trace } from './rule-eval.types';
+import type { EvalRule, RuleInput, Trace } from './rule-eval.types';
 
 export type RecomputeParams = { clubId: string; ryYear: number; month?: Date; trigger: string };
 
@@ -105,10 +109,11 @@ export class PointsEngineService {
   @OnEvent(REPORT_SUBMITTED_EVENT)
   async onReportSubmitted(event: ReportSubmittedEvent): Promise<void> {
     try {
+      const monthStr = event.month.slice(0, 7);
       await this.recompute({
         clubId: event.clubId,
         ryYear: event.ryYear,
-        month: new Date(`${event.month}-01T00:00:00Z`),
+        month: new Date(`${monthStr}-01T00:00:00Z`),
         trigger: REPORT_SUBMITTED_EVENT,
       });
     } catch (err) {
@@ -116,6 +121,99 @@ export class PointsEngineService {
         `recompute after ${REPORT_SUBMITTED_EVENT} failed: ${(err as Error).message}`,
       );
     }
+  }
+
+  async previewReportPoints(params: {
+    clubId: string;
+    ryYear: number;
+    month: Date;
+    values: unknown;
+    filedOnTime?: boolean | null;
+  }): Promise<{
+    total: number;
+    entries: Array<{
+      ruleId: string;
+      ruleKey: string;
+      ruleLabel: string;
+      ruleType: string;
+      categoryKey: string;
+      categoryName: string;
+      points: number;
+      trace: Trace;
+    }>;
+  }> {
+    const activeRules = await this.rules.listRules(params.ryYear, true);
+    const categories = await this.rules.listCategories();
+    const catMap = new Map(categories.map((c) => [c.id, c.name]));
+
+    const derived = deriveReportPointSources(
+      params.values as ReportValuesForDerivation,
+      params.filedOnTime ?? true,
+    );
+
+    const entries: Array<{
+      ruleId: string;
+      ruleKey: string;
+      ruleLabel: string;
+      ruleType: string;
+      categoryKey: string;
+      categoryName: string;
+      points: number;
+      trace: Trace;
+    }> = [];
+    let total = 0;
+
+    for (const rule of activeRules) {
+      if (rule.sourceType !== 'report_field' && rule.sourceType !== 'project_collaboration') {
+        continue;
+      }
+      if (rule.period !== 'monthly') {
+        continue;
+      }
+
+      const evalRule = toEvalRule(rule);
+      let input: RuleInput;
+      if (rule.numeratorKey && rule.denominatorKey) {
+        const values = (params.values as Record<string, unknown>) || {};
+        const numVal = values[rule.numeratorKey];
+        const denVal = values[rule.denominatorKey];
+        input = {
+          numerator:
+            typeof numVal === 'number'
+              ? numVal
+              : Array.isArray(numVal)
+                ? numVal.length
+                : 0,
+          denominator:
+            typeof denVal === 'number'
+              ? denVal
+              : Array.isArray(denVal)
+                ? denVal.length
+                : 0,
+        };
+      } else {
+        const key = `${rule.sourceType}:${rule.sourceKey}`;
+        const val = (derived as unknown as Record<string, number>)[key] ?? 0;
+        input = { value: val, count: val };
+      }
+
+      const trace = evaluateRule(evalRule, input, false);
+      if (trace && trace.points > 0) {
+        entries.push({
+          ruleId: rule.id,
+          ruleKey: rule.key,
+          ruleLabel: rule.label,
+          ruleType: rule.ruleType,
+          categoryKey: rule.categoryKey,
+          categoryName: catMap.get(rule.categoryId) ?? rule.categoryKey,
+          points: trace.points,
+          trace,
+        });
+        total += trace.points;
+      }
+    }
+
+    return { total, entries };
   }
 
   @OnEvent(REPORT_RESET_EVENT)

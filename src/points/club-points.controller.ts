@@ -13,7 +13,13 @@ export class ClubPointsController {
   constructor(private readonly service: ClubPointsService) {}
 
   @Get()
-  @RequirePermission('clubs:view', 'reports:review')
+  @RequirePermission(
+    'clubs:view',
+    'reports:review',
+    'reports:submit',
+    'reports:score',
+    'reports:manage',
+  )
   async get(
     @CurrentUser() ctx: RequestContext,
     @Param('clubId') clubId: string,

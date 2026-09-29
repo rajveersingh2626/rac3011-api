@@ -20,6 +20,7 @@ import { isFiledOnTime } from './report-deadline';
 import { ReportSchemasService } from './report-schemas.service';
 import type { AssistResult } from './assist/assist.port';
 import { AssistPort } from './assist/assist.port';
+import { PointsEngineService } from '../points/engine/points-engine.service';
 import type { ReportIncludes } from './reports.repository';
 import { ReportsRepository } from './reports.repository';
 import {
@@ -52,6 +53,7 @@ export class ReportsService {
     private readonly notifications: NotificationPort,
     private readonly events: EventEmitter2,
     private readonly assistPort: AssistPort,
+    private readonly pointsEngine: PointsEngineService,
   ) {}
 
   async list(
@@ -563,5 +565,62 @@ export class ReportsService {
       report.clubId,
     );
     return this.repo.findAuditLogs(id);
+  }
+
+  async previewScore(access: ResolvedAccess, id: string) {
+    const report = await this.repo.findById(id);
+    if (!report) throw new NotFoundException();
+    await this.scope.assertCanAccessClubAny(access, [...READ_PERMISSIONS], report.clubId);
+
+    return this.pointsEngine.previewReportPoints({
+      clubId: report.clubId,
+      ryYear: report.ryYear,
+      month: report.month,
+      values: report.values,
+      filedOnTime: report.filedOnTime ?? true,
+    });
+  }
+
+  async score(access: ResolvedAccess, id: string): Promise<ReportWithRelations> {
+    const report = await this.repo.findById(id);
+    if (!report) throw new NotFoundException();
+    await this.scope.assertCanAccessClub(access, 'reports:score', report.clubId);
+
+    if (report.status !== 'submitted' && report.status !== 'scored') {
+      throw new ConflictException({
+        code: 'INVALID_TRANSITION',
+        message: `Cannot score a ${report.status} report`,
+      });
+    }
+
+    const scoredAt = new Date();
+    await this.repo.update(id, {
+      status: 'scored',
+      scoredAt,
+    });
+
+    await this.audit.record({
+      actorId: access.userId,
+      action: 'report.scored',
+      resourceType: 'report',
+      resourceId: id,
+    });
+
+    // Recompute points to persist final scores
+    const monthStr = report.month.toISOString().slice(0, 7);
+    this.events.emit(REPORT_SUBMITTED_EVENT, {
+      reportId: report.id,
+      clubId: report.clubId,
+      ryYear: report.ryYear,
+      month: monthStr,
+      schemaVersion: report.schemaVersion,
+      submittedById: report.submittedById,
+      submittedAt: report.submittedAt?.toISOString(),
+      filedOnTime: report.filedOnTime,
+    });
+
+    const withRelations = await this.repo.findById(id, { club: true, queries: true });
+    if (!withRelations) throw new NotFoundException();
+    return withRelations;
   }
 }
