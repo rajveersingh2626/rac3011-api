@@ -14,9 +14,11 @@ import {
 import {
   REPORT_DELETED_EVENT,
   REPORT_RESET_EVENT,
+  REPORT_SCORED_EVENT,
   REPORT_SUBMITTED_EVENT,
   type ReportDeletedEvent,
   type ReportResetEvent,
+  type ReportScoredEvent,
   type ReportSubmittedEvent,
 } from '../../reports/report.events';
 import {
@@ -106,7 +108,23 @@ export class PointsEngineService {
     this.events.emit(POINTS_RECOMPUTED_EVENT, { clubId: params.clubId, ryYear: params.ryYear });
   }
 
-  @OnEvent(REPORT_SUBMITTED_EVENT)
+  @OnEvent(REPORT_SCORED_EVENT)
+  async onReportScored(event: ReportScoredEvent): Promise<void> {
+    try {
+      const monthStr = event.month.slice(0, 7);
+      await this.recompute({
+        clubId: event.clubId,
+        ryYear: event.ryYear,
+        month: new Date(`${monthStr}-01T00:00:00Z`),
+        trigger: REPORT_SCORED_EVENT,
+      });
+    } catch (err) {
+      this.logger.error(
+        `recompute after ${REPORT_SCORED_EVENT} failed: ${(err as Error).message}`,
+      );
+    }
+  }
+
   async onReportSubmitted(event: ReportSubmittedEvent): Promise<void> {
     try {
       const monthStr = event.month.slice(0, 7);

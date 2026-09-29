@@ -1,7 +1,15 @@
 export const REPORT_SUBMITTED_EVENT = 'report.submitted';
+export const REPORT_SCORED_EVENT = 'report.scored';
 export const REPORT_QUERIED_EVENT = 'report.queried';
 export const REPORT_RESET_EVENT = 'report.reset';
 export const REPORT_DELETED_EVENT = 'report.deleted';
+
+export interface ReportScoredEvent {
+  reportId: string;
+  clubId: string;
+  ryYear: number;
+  month: string;
+}
 
 export interface ReportSubmittedEvent {
   reportId: string;

@@ -174,7 +174,7 @@ export class ReportsController {
   }
 
   @Post(':id/score')
-  @RequirePermission('reports:score', 'reports:manage')
+  @RequirePermission('reports:score')
   async score(@CurrentUser() ctx: RequestContext, @Param('id') id: string) {
     return reportDto(await this.service.score(ctx.access, id));
   }

@@ -32,7 +32,7 @@ export class HeritageService {
 
   async create(actorId: string, input: CreatePastDrrInput): Promise<PastDrrRow> {
     if (await this.repo.findBySlug(input.slug)) {
-      throw new CodedConflictException('ALREADY_EXISTS', 'A past DRR with this slug exists');
+      throw new CodedConflictException('ALREADY_EXISTS', 'A DRR with this slug exists');
     }
     const row = await this.repo.create(input);
     await this.audit.record({
@@ -48,7 +48,7 @@ export class HeritageService {
   async update(actorId: string, id: string, input: UpdatePastDrrInput): Promise<PastDrrRow> {
     const before = await this.get(id);
     if (input.slug && input.slug !== before.slug && (await this.repo.findBySlug(input.slug))) {
-      throw new CodedConflictException('ALREADY_EXISTS', 'A past DRR with this slug exists');
+      throw new CodedConflictException('ALREADY_EXISTS', 'A DRR with this slug exists');
     }
     const row = await this.repo.update(id, input);
     if (input.photoUrl !== undefined && input.photoUrl !== before.photoUrl && before.photoUrl) {

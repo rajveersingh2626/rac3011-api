@@ -73,12 +73,22 @@ export function normalizeAvenue(val: unknown): string {
 export function normalizeReportValues(values: unknown): unknown {
   if (!values || typeof values !== 'object' || Array.isArray(values)) return values;
   const obj = { ...(values as Record<string, unknown>) };
+  for (const [k, v] of Object.entries(obj)) {
+    if (typeof v === 'number' && v < 0) {
+      obj[k] = Math.max(0, v);
+    }
+  }
   if (Array.isArray(obj.activities)) {
     obj.activities = obj.activities.map((act) => {
       if (!act || typeof act !== 'object' || Array.isArray(act)) return act;
       const actObj = { ...(act as Record<string, unknown>) };
       if (typeof actObj.avenue === 'string') {
         actObj.avenue = normalizeAvenue(actObj.avenue);
+      }
+      for (const [k, v] of Object.entries(actObj)) {
+        if (typeof v === 'number' && v < 0) {
+          actObj[k] = Math.max(0, v);
+        }
       }
       return actObj;
     });
@@ -105,8 +115,11 @@ function validateScalar(
       if (typeof value !== 'string') errors.push({ path, message: `${field.label} must be text` });
       break;
     case 'number':
-      if (typeof value !== 'number' || !Number.isFinite(value))
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
         errors.push({ path, message: `${field.label} must be a number` });
+      } else if (value < 0) {
+        errors.push({ path, message: `${field.label} cannot be negative` });
+      }
       break;
     case 'boolean':
       if (typeof value !== 'boolean')

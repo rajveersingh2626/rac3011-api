@@ -27,6 +27,7 @@ import {
   REPORT_DELETED_EVENT,
   REPORT_QUERIED_EVENT,
   REPORT_RESET_EVENT,
+  REPORT_SCORED_EVENT,
   REPORT_SUBMITTED_EVENT,
 } from './report.events';
 import type {
@@ -608,6 +609,12 @@ export class ReportsService {
 
     // Recompute points to persist final scores
     const monthStr = report.month.toISOString().slice(0, 7);
+    this.events.emit(REPORT_SCORED_EVENT, {
+      reportId: report.id,
+      clubId: report.clubId,
+      ryYear: report.ryYear,
+      month: monthStr,
+    });
     this.events.emit(REPORT_SUBMITTED_EVENT, {
       reportId: report.id,
       clubId: report.clubId,
