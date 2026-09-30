@@ -30,34 +30,30 @@ async function seedPermissionsAndRoles(prisma: PrismaClient): Promise<void> {
   const permissions = await prisma.permission.findMany();
   const idByKey = new Map(permissions.map((p) => [p.key, p.id]));
   for (const role of ROLES) {
-    const saved = await prisma.role.upsert({
-      where: { key: role.key },
-      create: {
-        key: role.key,
-        name: role.name,
-        description: role.description,
-        scopeType: role.scopeType,
-        isSystem: true,
-      },
-      update: {
-        name: role.name,
-        description: role.description,
-        scopeType: role.scopeType,
-        isSystem: true,
-      },
-    });
-    const wanted = role.permissions.map((k) => {
-      const id = idByKey.get(k);
-      if (!id) throw new Error(`role ${role.key} references unknown permission ${k}`);
-      return id;
-    });
-    // Non-destructive role-permission synchronization:
-    // Ensure default system permissions exist, but DO NOT delete custom permissions
-    // assigned to roles via the Admin Portal in production or testing environments.
-    await prisma.rolePermission.createMany({
-      data: wanted.map((permissionId) => ({ roleId: saved.id, permissionId })),
-      skipDuplicates: true,
-    });
+    const existing = await prisma.role.findUnique({ where: { key: role.key } });
+    if (!existing) {
+      const saved = await prisma.role.create({
+        data: {
+          key: role.key,
+          name: role.name,
+          description: role.description,
+          scopeType: role.scopeType,
+          isSystem: true,
+        },
+      });
+      const wanted = role.permissions.map((k) => {
+        const id = idByKey.get(k);
+        if (!id) throw new Error(`role ${role.key} references unknown permission ${k}`);
+        return id;
+      });
+      await prisma.rolePermission.createMany({
+        data: wanted.map((permissionId) => ({ roleId: saved.id, permissionId })),
+        skipDuplicates: true,
+      });
+    }
+    // Live-state preservation:
+    // If the role already exists in the database, DO NOT overwrite its metadata or re-inject
+    // permissions that an administrator may have intentionally unassigned in the Admin Portal.
   }
 }
 
@@ -67,7 +63,7 @@ async function seedPoints(prisma: PrismaClient): Promise<void> {
     await prisma.pointCategory.upsert({
       where: { key },
       create: { key, name, order },
-      update: { name, order },
+      update: {},
     });
   }
   const categories = await prisma.pointCategory.findMany();
@@ -75,28 +71,30 @@ async function seedPoints(prisma: PrismaClient): Promise<void> {
   for (const rule of POINT_RULES_2026) {
     const cid = categoryId.get(rule.category);
     if (!cid) throw new Error(`rule ${rule.key} references unknown category ${rule.category}`);
-    const data = {
-      label: rule.label,
-      categoryId: cid,
-      ruleType: rule.ruleType,
-      period: rule.period,
-      sourceType: rule.sourceType,
-      sourceKey: rule.sourceKey,
-      points: rule.points ?? null,
-      perUnitCap: rule.perUnitCap ?? null,
-      ryYear: POINT_RULES_RY_YEAR,
-    };
-    const saved = await prisma.pointRule.upsert({
-      where: { key: rule.key },
-      create: { key: rule.key, ...data },
-      update: data,
-    });
-    await prisma.pointRuleTier.deleteMany({ where: { ruleId: saved.id } });
-    if (rule.tiers?.length) {
-      await prisma.pointRuleTier.createMany({
-        data: rule.tiers.map((t) => ({ ruleId: saved.id, ...t })),
+    const existing = await prisma.pointRule.findUnique({ where: { key: rule.key } });
+    if (!existing) {
+      const data = {
+        label: rule.label,
+        categoryId: cid,
+        ruleType: rule.ruleType,
+        period: rule.period,
+        sourceType: rule.sourceType,
+        sourceKey: rule.sourceKey,
+        points: rule.points ?? null,
+        perUnitCap: rule.perUnitCap ?? null,
+        ryYear: POINT_RULES_RY_YEAR,
+      };
+      const saved = await prisma.pointRule.create({
+        data: { key: rule.key, ...data },
       });
+      if (rule.tiers?.length) {
+        await prisma.pointRuleTier.createMany({
+          data: rule.tiers.map((t) => ({ ruleId: saved.id, ...t })),
+        });
+      }
     }
+    // Live-state preservation:
+    // If point rule exists, do not overwrite points or delete configured tiers!
   }
 }
 
@@ -199,7 +197,7 @@ async function seedTagsAndBadges(prisma: PrismaClient): Promise<void> {
       update: { kind: 'interest' },
     });
   for (const b of BADGES)
-    await prisma.badge.upsert({ where: { key: b.key }, create: b, update: { ...b } });
+    await prisma.badge.upsert({ where: { key: b.key }, create: b, update: {} });
 }
 
 async function seedLegacyReportSchema(prisma: PrismaClient): Promise<void> {
@@ -219,7 +217,7 @@ async function seedLegacyReportSchema(prisma: PrismaClient): Promise<void> {
         type: 'textarea',
         order: i,
       },
-      update: { label, order: i },
+      update: {},
     });
   }
 }
@@ -246,16 +244,7 @@ async function seedActiveReportSchema(prisma: PrismaClient): Promise<void> {
         perActivity: field.perActivity ?? false,
         pointSourceKey: field.pointSourceKey ?? null,
       },
-      update: {
-        label: field.label,
-        type: field.type,
-        options: field.options as never,
-        required: field.required ?? false,
-        order: i,
-        helpText: field.helpText ?? null,
-        perActivity: field.perActivity ?? false,
-        pointSourceKey: field.pointSourceKey ?? null,
-      },
+      update: {},
     });
   }
 }

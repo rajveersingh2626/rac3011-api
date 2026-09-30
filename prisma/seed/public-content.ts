@@ -589,7 +589,7 @@ export async function seedPastDrrs(prisma: PrismaClient): Promise<void> {
     await prisma.pastDrr.upsert({
       where: { slug },
       create: { slug, name: drr.name, terms: drr.terms, homeClubId, order: i },
-      update: { name: drr.name, terms: drr.terms, homeClubId, order: i },
+      update: {}, // Live-state preservation: never overwrite existing past DRR records
     });
   }
 }
@@ -628,8 +628,8 @@ export async function seedDistrictTeam(
       photoUrl: member.photoUrl,
       ryYear: CURRENT_RY_YEAR,
     };
-    if (existing) await prisma.districtTeamMember.update({ where: { id: existing.id }, data });
-    else await prisma.districtTeamMember.create({ data });
+    // Live-state preservation: Only create if missing. Never overwrite live admin edits!
+    if (!existing) await prisma.districtTeamMember.create({ data });
   }
 }
 
@@ -667,8 +667,8 @@ export async function seedAchievements(
       date: new Date(`${a.date}T00:00:00Z`),
       order: a.order,
     };
-    if (existing) await prisma.achievement.update({ where: { id: existing.id }, data });
-    else await prisma.achievement.create({ data });
+    // Live-state preservation: Only create if missing. Never overwrite live admin edits!
+    if (!existing) await prisma.achievement.create({ data });
   }
 }
 
