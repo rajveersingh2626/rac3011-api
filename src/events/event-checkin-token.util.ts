@@ -90,14 +90,14 @@ export function buildGoogleWalletPass(
       contentDescription: {
         defaultValue: {
           language: 'en-US',
-          value: 'Rotaract District Organisation 3011 Logo',
+          value: 'Rotaract District Organization 3011 Logo',
         },
       },
     },
     cardTitle: {
       defaultValue: {
         language: 'en-US',
-        value: 'Rotaract District Organisation 3011',
+        value: 'Rotaract District Organization 3011',
       },
     },
     subheader: {

@@ -328,15 +328,15 @@ export class RolesService {
         const scopeDesc = scopeType === 'none' ? 'District-Wide' : `${scopeType.toUpperCase()}${scopeId ? ` (${scopeId})` : ''}`;
         const baseOrigin = env.WEB_ORIGINS.find((o) => o.includes('testing')) || env.WEB_ORIGINS.find((o) => !o.includes('ride') && !o.includes('rcl')) || 'https://rotaract3011.org';
         const portalUrl = `${baseOrigin}/portal`;
-        const plainText = `Hello ${recipientName},\n\nYou have been assigned the ${roleName} role with ${scopeDesc} scope by the District Administrator.\n\nSign in to the District Portal: ${portalUrl}\n\nRotaract District Organisation 3011`;
+        const plainText = `Hello ${recipientName},\n\nYou have been assigned the ${roleName} role with ${scopeDesc} scope by the District Administrator.\n\nSign in to the District Portal: ${portalUrl}\n\nRotaract District Organization 3011`;
         await this.emailPool.send({
           to: targetUserEmail,
-          subject: `Access Update: ${roleName} role assigned on Rotaract District Organisation 3011`,
+          subject: `Access Update: ${roleName} role assigned on Rotaract District Organization 3011`,
           text: plainText,
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; background-color: #ffffff; color: #1e293b; border: 1px solid #e2e8f0; border-radius: 12px;">
               <div style="margin-bottom: 24px; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px;">
-                <span style="font-size: 20px; font-weight: 800; color: #d946ef; letter-spacing: -0.5px;">ROTARACT DISTRICT ORGANISATION 3011</span>
+                <span style="font-size: 20px; font-weight: 800; color: #d946ef; letter-spacing: -0.5px;">ROTARACT DISTRICT ORGANIZATION 3011</span>
                 <span style="font-size: 13px; color: #64748b; margin-left: 8px; font-weight: 600;">PORTAL NOTIFICATION</span>
               </div>
               <h2 style="margin-top: 0; margin-bottom: 12px; font-size: 22px; font-weight: 700; color: #0f172a;">New Role & Access Granted</h2>
@@ -361,7 +361,7 @@ export class RolesService {
               </div>
               <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
               <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">
-                Rotaract District Organisation 3011 &bull; Delhi & National Capital Region &bull; Rotary International
+                Rotaract District Organization 3011 &bull; Delhi & National Capital Region &bull; Rotary International
               </p>
             </div>
           `,

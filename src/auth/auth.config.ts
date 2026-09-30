@@ -126,7 +126,7 @@ export function createAuthInstance(deps: AuthConfigDeps) {
         expiresIn: 600,
         sendVerificationOTP: ({ email, otp, type }) => deps.sendOtpEmail({ email, otp, type }),
       }),
-      twoFactor({ issuer: 'Rotaract District Organisation' }),
+      twoFactor({ issuer: 'Rotaract District Organization' }),
     ],
   });
 }

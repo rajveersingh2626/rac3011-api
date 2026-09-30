@@ -74,7 +74,7 @@ export function generateBespokeRideEmailHtml(
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 24px; padding-top: 16px; border-top: 2px dashed #E5E7EB; text-align: center;">
                 <tr>
                   <td style="font-size: 11px; color: #6B7280; line-height: 1.5;">
-                    Rotaract District Organisation 3011 &bull; Delhi Meri Jaan 2026<br/>
+                    Rotaract District Organization 3011 &bull; Delhi Meri Jaan 2026<br/>
                     Delivered securely via the RIDE Operations Console.
                   </td>
                 </tr>

@@ -112,7 +112,7 @@ A storage error occurred in the <strong>${adapter}</strong> adapter during <stro
 <html>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1e293b;">
   <div style="border-left:4px solid #ef4444;padding:12px 16px;background:#fef2f2;margin-bottom:20px;border-radius:4px;">
-    <strong style="color:#b91c1c;font-size:13px;text-transform:uppercase;letter-spacing:.05em;">Rotaract District Organisation 3011 — System Alert</strong>
+    <strong style="color:#b91c1c;font-size:13px;text-transform:uppercase;letter-spacing:.05em;">Rotaract District Organization 3011 — System Alert</strong>
   </div>
   <h2 style="margin:0 0 16px;font-size:18px;color:#0f172a;">${subject.replace('[Portal Alert] ', '')}</h2>
   ${bodyHtml}
@@ -121,7 +121,7 @@ A storage error occurred in the <strong>${adapter}</strong> adapter during <stro
 </body>
 </html>`;
 
-    const text = `Rotaract District Organisation 3011 — System Alert\n\n${subject}\n\n${plainSummary}\n\nThis is an automated alert from the District Portal API.`;
+    const text = `Rotaract District Organization 3011 — System Alert\n\n${subject}\n\n${plainSummary}\n\nThis is an automated alert from the District Portal API.`;
 
     if (!key) {
       this.logger.warn(`[LimitAlert] Resend not configured — alert dropped: ${subject}`);

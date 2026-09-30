@@ -40,7 +40,7 @@ export const envSchema = z.object({
     .enum(['0', '1'])
     .default('0')
     .transform((v) => v === '1'),
-  MAIL_FROM: z.string().default('Rotaract District Organisation <no-reply@rotaract3011.org>'),
+  MAIL_FROM: z.string().default('Rotaract District Organization <no-reply@rotaract3011.org>'),
   MAIL_ALLOWLIST: csv,
   ORACLE_SMTP_HOST: optionalString,
   ORACLE_SMTP_PORT: intWithDefault(587),
