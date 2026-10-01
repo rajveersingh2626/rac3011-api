@@ -3,7 +3,9 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { StorageService } from '../storage/storage.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuditService } from '../audit/audit.service';
 import { NotificationPort } from '../notifications/notification.port';
@@ -55,6 +57,7 @@ export class ReportsService {
     private readonly events: EventEmitter2,
     private readonly assistPort: AssistPort,
     private readonly pointsEngine: PointsEngineService,
+    @Optional() private readonly storage?: StorageService,
   ) {}
 
   async list(
@@ -430,6 +433,14 @@ export class ReportsService {
 
     await this.repo.delete(id);
 
+    // Purge associated uploaded files from online storage (UploadThing, R2, local)
+    if (this.storage && existing.values && typeof existing.values === 'object') {
+      const urls = this.extractFileUrls(existing.values);
+      for (const url of urls) {
+        await this.storage.purgeAssetByUrl(url).catch(() => {});
+      }
+    }
+
     this.events.emit(REPORT_DELETED_EVENT, {
       reportId: id,
       clubId: existing.clubId,
@@ -619,5 +630,39 @@ export class ReportsService {
     const withRelations = await this.repo.findById(id, { club: true, queries: true });
     if (!withRelations) throw new NotFoundException();
     return withRelations;
+  }
+
+  private extractFileUrls(obj: unknown): string[] {
+    const urls: string[] = [];
+    const seen = new Set<string>();
+
+    const traverse = (val: unknown) => {
+      if (!val) return;
+      if (typeof val === 'string') {
+        if (
+          val.includes('/f/') ||
+          val.includes('/files/') ||
+          val.startsWith('http://') ||
+          val.startsWith('https://') ||
+          val.startsWith('permanent:') ||
+          val.startsWith('dynamic:') ||
+          val.startsWith('private:')
+        ) {
+          if (!seen.has(val)) {
+            seen.add(val);
+            urls.push(val);
+          }
+        }
+      } else if (Array.isArray(val)) {
+        for (const item of val) traverse(item);
+      } else if (typeof val === 'object') {
+        for (const v of Object.values(val as Record<string, unknown>)) {
+          traverse(v);
+        }
+      }
+    };
+
+    traverse(obj);
+    return urls;
   }
 }
