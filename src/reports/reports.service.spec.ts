@@ -308,7 +308,7 @@ describe('ReportsService - Production Features', () => {
       expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({
         action: 'report.scored',
       }));
-      expect(events.emit).toHaveBeenCalledWith('report.submitted', expect.objectContaining({
+      expect(events.emit).toHaveBeenCalledWith('report.scored', expect.objectContaining({
         reportId: 'rep-score-2',
       }));
     });

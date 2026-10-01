@@ -85,7 +85,9 @@ describe('ClubFactAdapter', () => {
 
   it('dues_paid_bracket returns null (no entry) when unpaid and before the cutoff', async () => {
     const adapter = new ClubFactAdapter(repo(emptyFacts));
-    const result = await adapter.inputs(ctx('dues_paid_bracket', 'yearly'));
+    const result = await adapter.inputs(
+      ctx('dues_paid_bracket', 'yearly', { month: new Date('2026-08-01') }),
+    );
     expect(result).toEqual([]);
   });
 

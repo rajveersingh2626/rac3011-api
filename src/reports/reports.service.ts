@@ -615,16 +615,6 @@ export class ReportsService {
       ryYear: report.ryYear,
       month: monthStr,
     });
-    this.events.emit(REPORT_SUBMITTED_EVENT, {
-      reportId: report.id,
-      clubId: report.clubId,
-      ryYear: report.ryYear,
-      month: monthStr,
-      schemaVersion: report.schemaVersion,
-      submittedById: report.submittedById,
-      submittedAt: report.submittedAt?.toISOString(),
-      filedOnTime: report.filedOnTime,
-    });
 
     const withRelations = await this.repo.findById(id, { club: true, queries: true });
     if (!withRelations) throw new NotFoundException();

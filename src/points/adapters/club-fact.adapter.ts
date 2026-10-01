@@ -29,7 +29,8 @@ export class ClubFactAdapter implements PointSourceAdapter {
 
     switch (ctx.rule.sourceKey) {
       case 'dues_paid_bracket': {
-        const bracket = duesBracket(facts?.duesPaidOn ?? null, ctx.ryYear, new Date());
+        const now = ctx.month ?? new Date();
+        const bracket = duesBracket(facts?.duesPaidOn ?? null, ctx.ryYear, now);
         return bracket === null ? null : { value: bracket };
       }
       case 'ri_citation_completed':

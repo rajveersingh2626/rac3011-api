@@ -110,7 +110,7 @@ export class PointsEntriesRepository {
       trace: unknown;
     },
   ): Promise<void> {
-    const existing = await tx.clubPointEntry.findFirst({
+    const existing = await tx.clubPointEntry.findMany({
       where: {
         clubId: input.clubId,
         ruleId: input.ruleId,
@@ -118,9 +118,18 @@ export class PointsEntriesRepository {
         kind: 'computed',
       },
       select: { id: true, points: true, trace: true },
+      orderBy: { createdAt: 'asc' },
     });
 
-    const existingTrace = existing?.trace as Record<string, unknown> | null;
+    if (existing.length > 1) {
+      const extraIds = existing.slice(1).map((e) => e.id);
+      await tx.clubPointEntry.deleteMany({
+        where: { id: { in: extraIds } },
+      });
+    }
+
+    const first = existing[0];
+    const existingTrace = first?.trace as Record<string, unknown> | null;
     const isOverridden = Boolean(existingTrace?.overridden);
     const traceData = isOverridden
       ? {
@@ -129,7 +138,7 @@ export class PointsEntriesRepository {
           originalPoints: input.points,
         }
       : (input.trace as Prisma.InputJsonValue);
-    const pointsValue = isOverridden ? existing!.points : input.points;
+    const pointsValue = isOverridden ? first!.points : input.points;
 
     const data = {
       clubId: input.clubId,
@@ -141,7 +150,7 @@ export class PointsEntriesRepository {
       points: pointsValue,
       trace: traceData as Prisma.InputJsonValue,
     };
-    if (existing) await tx.clubPointEntry.update({ where: { id: existing.id }, data });
+    if (first) await tx.clubPointEntry.update({ where: { id: first.id }, data });
     else await tx.clubPointEntry.create({ data });
   }
 
