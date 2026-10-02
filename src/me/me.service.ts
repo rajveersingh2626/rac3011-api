@@ -56,8 +56,15 @@ export class MeService {
 
   async getClub(ctx: RequestContext): Promise<ClubWithRelations> {
     const profile = await this.repo.findProfileByUserId(ctx.user.id);
-    if (!profile) throw new NotFoundException('No member profile for this account');
-    return this.clubs.get(ctx.access, profile.clubId, { board: true, facts: false });
+    let clubId = profile?.clubId;
+    if (!clubId) {
+      const clubGrants = Object.values(ctx.access.grants).flat().filter((g) => g.type === 'club');
+      if (clubGrants.length > 0) {
+        clubId = clubGrants[0].id;
+      }
+    }
+    if (!clubId) throw new NotFoundException('No member profile or club affiliation for this account');
+    return this.clubs.get(ctx.access, clubId, { board: true, facts: false });
   }
 
   async getQrToken(ctx: RequestContext): Promise<string> {

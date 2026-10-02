@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { ClubScopeFilter } from '../common/scope/scope.service';
-import type { BoardMemberInput, ClubUpdate, ClubWithRelations, ZoneRow } from './clubs.types';
+import type { BoardMemberInput, BoardMemberRow, ClubUpdate, ClubWithRelations, ZoneRow } from './clubs.types';
 
 const CLUB_SELECT = {
   id: true,
@@ -83,6 +83,75 @@ export class ClubsRepository {
         facts: include.facts ? true : undefined,
       },
     });
+    if (row && include.board && (!row.board || row.board.length === 0)) {
+      const synthesized: BoardMemberRow[] = [];
+      const officerGrants = await this.prisma.userRole.findMany({
+        where: {
+          scopeType: 'club',
+          scopeId: id,
+          role: { key: { in: ['president', 'secretary'] } },
+        },
+        include: {
+          user: { include: { profile: true } },
+          role: true,
+        },
+      });
+
+      for (const g of officerGrants) {
+        const isPres = g.role.key === 'president';
+        synthesized.push({
+          id: `bm_${g.id}`,
+          clubId: id,
+          memberId: g.user.profile?.id ?? null,
+          name: g.user.name,
+          position: isPres ? 'President' : 'Secretary',
+          bloodGroup: null,
+          phone: g.user.profile?.phone ?? null,
+          email: g.user.email,
+          ryYear: 2026,
+          order: isPres ? 0 : 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as unknown as (typeof row.board)[number]);
+      }
+
+      if (!synthesized.some((b) => b.position.toLowerCase() === 'president') && row.president) {
+        synthesized.unshift({
+          id: `bm_pres_${id}`,
+          clubId: id,
+          memberId: null,
+          name: row.president,
+          position: 'President',
+          bloodGroup: null,
+          phone: row.phone,
+          email: row.email,
+          ryYear: 2026,
+          order: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as unknown as (typeof row.board)[number]);
+      }
+      if (!synthesized.some((b) => b.position.toLowerCase() === 'secretary') && row.secretary) {
+        synthesized.push({
+          id: `bm_sec_${id}`,
+          clubId: id,
+          memberId: null,
+          name: row.secretary,
+          position: 'Secretary',
+          bloodGroup: null,
+          phone: row.secretaryPhone,
+          email: row.secretaryEmail,
+          ryYear: 2026,
+          order: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as unknown as (typeof row.board)[number]);
+      }
+
+      if (synthesized.length > 0) {
+        row.board = synthesized as unknown as typeof row.board;
+      }
+    }
     return row;
   }
 

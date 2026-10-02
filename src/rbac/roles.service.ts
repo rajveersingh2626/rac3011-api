@@ -171,6 +171,99 @@ export class RolesService {
       },
     });
 
+    // Role & Club Affiliation Sync:
+    if (this.prisma && input.scopeType === 'club' && scopeId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: input.userId },
+        include: { profile: true },
+      });
+      if (user) {
+        if (user.profile) {
+          await this.prisma.memberProfile.update({
+            where: { id: user.profile.id },
+            data: { clubId: scopeId, status: 'approved' },
+          });
+        } else {
+          await this.prisma.memberProfile.create({
+            data: {
+              userId: user.id,
+              fullName: user.name,
+              email: user.email,
+              clubId: scopeId,
+              status: 'approved',
+            },
+          });
+        }
+
+        const ryYear = 2026;
+        if (role.key === 'president') {
+          await this.prisma.club.update({
+            where: { id: scopeId },
+            data: {
+              president: user.name,
+              email: user.email,
+              phone: user.profile?.phone ?? undefined,
+            },
+          }).catch(() => {});
+
+          const existingBoard = await this.prisma.clubBoardMember.findFirst({
+            where: { clubId: scopeId, ryYear, position: { equals: 'President', mode: 'insensitive' } },
+          });
+          if (existingBoard) {
+            await this.prisma.clubBoardMember.update({
+              where: { id: existingBoard.id },
+              data: { name: user.name, email: user.email, phone: user.profile?.phone ?? null, memberId: user.profile?.id ?? null },
+            });
+          } else {
+            await this.prisma.clubBoardMember.create({
+              data: {
+                clubId: scopeId,
+                name: user.name,
+                position: 'President',
+                email: user.email,
+                phone: user.profile?.phone ?? null,
+                memberId: user.profile?.id ?? null,
+                ryYear,
+                order: 0,
+              },
+            });
+          }
+        } else if (role.key === 'secretary') {
+          await this.prisma.club.update({
+            where: { id: scopeId },
+            data: {
+              secretary: user.name,
+              secretaryEmail: user.email,
+              secretaryPhone: user.profile?.phone ?? undefined,
+            },
+          }).catch(() => {});
+
+          const existingBoard = await this.prisma.clubBoardMember.findFirst({
+            where: { clubId: scopeId, ryYear, position: { equals: 'Secretary', mode: 'insensitive' } },
+          });
+          if (existingBoard) {
+            await this.prisma.clubBoardMember.update({
+              where: { id: existingBoard.id },
+              data: { name: user.name, email: user.email, phone: user.profile?.phone ?? null, memberId: user.profile?.id ?? null },
+            });
+          } else {
+            await this.prisma.clubBoardMember.create({
+              data: {
+                clubId: scopeId,
+                name: user.name,
+                position: 'Secretary',
+                email: user.email,
+                phone: user.profile?.phone ?? null,
+                memberId: user.profile?.id ?? null,
+                ryYear,
+                order: 1,
+              },
+            });
+          }
+        }
+      }
+    }
+
     // Send in-portal notification and email notification
     await this.notifyAccessGranted(actorId, input.userId, role.name, input.scopeType, scopeId);
 
@@ -180,6 +273,45 @@ export class RolesService {
   async revokeUserRole(actorId: string, id: string): Promise<void> {
     const grant = await this.repo.findUserRole(id);
     if (!grant) throw new NotFoundException('Grant not found');
+
+    if (this.prisma && grant.scopeType === 'club' && grant.scopeId) {
+      const role = await this.repo.findRole(grant.roleId);
+      const user = await this.prisma.user.findUnique({
+        where: { id: grant.userId },
+        include: { profile: true },
+      });
+      if (user && role) {
+        const ryYear = 2026;
+        if (role.key === 'president') {
+          await this.prisma.clubBoardMember.deleteMany({
+            where: {
+              clubId: grant.scopeId,
+              ryYear,
+              position: { equals: 'President', mode: 'insensitive' },
+              OR: [{ name: user.name }, { email: user.email }, { memberId: user.profile?.id ?? undefined }],
+            },
+          }).catch(() => {});
+          await this.prisma.club.updateMany({
+            where: { id: grant.scopeId, president: user.name },
+            data: { president: null },
+          }).catch(() => {});
+        } else if (role.key === 'secretary') {
+          await this.prisma.clubBoardMember.deleteMany({
+            where: {
+              clubId: grant.scopeId,
+              ryYear,
+              position: { equals: 'Secretary', mode: 'insensitive' },
+              OR: [{ name: user.name }, { email: user.email }, { memberId: user.profile?.id ?? undefined }],
+            },
+          }).catch(() => {});
+          await this.prisma.club.updateMany({
+            where: { id: grant.scopeId, secretary: user.name },
+            data: { secretary: null, secretaryEmail: null, secretaryPhone: null },
+          }).catch(() => {});
+        }
+      }
+    }
+
     await this.repo.deleteUserRole(id);
     await this.audit.record({
       actorId,

@@ -48,7 +48,11 @@ function collectFilters<F extends string>(
   if (nested && typeof nested === 'object') pairs.push(...Object.entries(nested as RawQuery));
   for (const [k, v] of Object.entries(raw)) {
     const m = /^filter\[(.+)\]$/.exec(k);
-    if (m) pairs.push([m[1], v]);
+    if (m) {
+      pairs.push([m[1], v]);
+    } else if ((allowed as readonly string[]).includes(k)) {
+      pairs.push([k, v]);
+    }
   }
   for (const [key, value] of pairs) {
     if (!(allowed as readonly string[]).includes(key)) {

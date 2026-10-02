@@ -17,7 +17,7 @@ export class ShowcaseAdminController {
   constructor(private readonly service: ShowcaseAdminService) {}
 
   @Get()
-  @RequirePermission('showcase:submit', 'showcase:publish')
+  @RequirePermission('showcase:submit', 'showcase:publish', 'content:publish', 'public_content:manage')
   async list(@CurrentUser() ctx: RequestContext, @Query() raw: Record<string, unknown>) {
     const q = parseListQuery(raw, { filters: FILTERS });
     const { items, total } = await this.service.list(
@@ -41,13 +41,13 @@ export class ShowcaseAdminController {
   }
 
   @Get(':id')
-  @RequirePermission('showcase:submit', 'showcase:publish')
+  @RequirePermission('showcase:submit', 'showcase:publish', 'content:publish', 'public_content:manage')
   async get(@CurrentUser() ctx: RequestContext, @Param('id') id: string) {
     return projectDto(await this.service.get(ctx, id));
   }
 
   @Patch(':id')
-  @RequirePermission('showcase:submit', 'showcase:publish')
+  @RequirePermission('showcase:submit', 'showcase:publish', 'content:publish', 'public_content:manage')
   async update(
     @CurrentUser() ctx: RequestContext,
     @Param('id') id: string,
@@ -58,7 +58,7 @@ export class ShowcaseAdminController {
 
   @Delete(':id')
   @HttpCode(204)
-  @RequirePermission('showcase:submit', 'showcase:publish')
+  @RequirePermission('showcase:submit', 'showcase:publish', 'content:publish', 'public_content:manage')
   async remove(@CurrentUser() ctx: RequestContext, @Param('id') id: string): Promise<void> {
     await this.service.remove(ctx, id);
   }

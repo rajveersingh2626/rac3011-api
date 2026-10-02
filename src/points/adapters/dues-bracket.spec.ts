@@ -19,8 +19,8 @@ describe('duesBracket', () => {
     expect(duesBracket(new Date('2026-12-25T00:00:00Z'), 2026, now)).toBe(2);
   });
 
-  it('bracket 2 when never paid and the cutoff has passed', () => {
-    expect(duesBracket(null, 2026, new Date('2026-10-05T00:00:00Z'))).toBe(2);
+  it('null when never paid, avoiding premature negative baseline penalty', () => {
+    expect(duesBracket(null, 2026, new Date('2026-10-05T00:00:00Z'))).toBeNull();
   });
 
   it('null when never paid and the cutoff has not passed yet', () => {

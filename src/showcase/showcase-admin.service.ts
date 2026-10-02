@@ -371,7 +371,12 @@ export class ShowcaseAdminService {
   }
 
   private hasPublishGrant(access: ResolvedAccess): boolean {
-    return access.isSuperAdmin || (access.grants['showcase:publish'] ?? []).length > 0;
+    return (
+      access.isSuperAdmin ||
+      (access.grants['showcase:publish'] ?? []).length > 0 ||
+      (access.grants['content:publish'] ?? []).length > 0 ||
+      (access.grants['public_content:manage'] ?? []).length > 0
+    );
   }
 
   private leadClubId(project: ProjectRow): string {
