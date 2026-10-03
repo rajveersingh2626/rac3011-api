@@ -189,7 +189,7 @@ export class PointsEntriesRepository {
       sourceType: 'manual_adjustment',
       points: input.points,
       reason: input.reason,
-      createdById: input.createdById,
+      createdBy: input.createdById ? { connect: { id: input.createdById } } : undefined,
     };
     const row = await this.prisma.clubPointEntry.create({
       data,
@@ -256,7 +256,7 @@ export class PointsEntriesRepository {
       kind: 'judged' as EntryKind,
       points: input.points,
       reason: input.reason,
-      createdById: input.createdById,
+      createdBy: input.createdById ? { connect: { id: input.createdById } } : undefined,
     };
     const row = existing
       ? await this.prisma.clubPointEntry.update({
