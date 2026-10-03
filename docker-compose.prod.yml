@@ -61,7 +61,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-rac3011}:${POSTGRES_PASSWORD:-Mt33%40raman33}@postgres:5432/${POSTGRES_DB:-rac3011}?connection_limit=30&pool_timeout=10
       REDIS_URL: redis://redis:6379
     ports:
-      - '3000:3000'
+      - '127.0.0.1:3000:3000'
 
   worker:
     build:

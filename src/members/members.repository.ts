@@ -161,7 +161,16 @@ export class MembersRepository {
           status: input.status,
         },
       });
-      if (input.status === 'approved') await this.grantMemberRole(tx, userId, input.clubId);
+      if (input.status === 'approved') {
+        await this.grantMemberRole(tx, userId, input.clubId);
+        const count = await tx.memberProfile.count({
+          where: { clubId: input.clubId, status: 'approved' },
+        });
+        await tx.club.update({
+          where: { id: input.clubId },
+          data: { memberCount: count },
+        });
+      }
     });
     const created = await this.prisma.memberProfile.findUnique({
       where: { userId },
@@ -218,6 +227,14 @@ export class MembersRepository {
       });
       if (update.status === 'approved') await this.grantMemberRole(tx, memberUserId, clubId);
       else await this.revokeMemberRole(tx, memberUserId, clubId);
+
+      const count = await tx.memberProfile.count({
+        where: { clubId, status: 'approved' },
+      });
+      await tx.club.update({
+        where: { id: clubId },
+        data: { memberCount: count },
+      });
     });
     const updated = await this.prisma.memberProfile.findUnique({
       where: { id },

@@ -178,6 +178,7 @@ export class ClubsRepository {
 
   async delete(id: string): Promise<void> {
     await this.prisma.$transaction([
+      this.prisma.userRole.deleteMany({ where: { scopeType: 'club', scopeId: id } }),
       this.prisma.clubBoardMember.deleteMany({ where: { clubId: id } }),
       this.prisma.clubFacts.deleteMany({ where: { clubId: id } }),
       this.prisma.club.delete({ where: { id } }),
