@@ -180,16 +180,16 @@ export class PointsEntriesRepository {
     reason: string;
     createdById: string;
   }): Promise<ClubPointEntryRow> {
-    const data: Prisma.ClubPointEntryCreateInput = {
-      club: { connect: { id: input.clubId } },
-      category: { connect: { id: input.categoryId } },
+    const data: Prisma.ClubPointEntryUncheckedCreateInput = {
+      clubId: input.clubId,
+      categoryId: input.categoryId,
       ryYear: input.ryYear,
       periodKey: input.periodKey,
       kind: 'judged',
       sourceType: 'manual_adjustment',
       points: input.points,
       reason: input.reason,
-      createdBy: input.createdById ? { connect: { id: input.createdById } } : undefined,
+      createdById: input.createdById,
     };
     const row = await this.prisma.clubPointEntry.create({
       data,
@@ -248,7 +248,7 @@ export class PointsEntriesRepository {
       where: { clubId: input.clubId, periodKey: input.periodKey, kind: 'judged', sourceType: null },
       select: { id: true },
     });
-    const data = {
+    const data: Prisma.ClubPointEntryUncheckedCreateInput = {
       clubId: input.clubId,
       ryYear: input.ryYear,
       periodKey: input.periodKey,
@@ -256,7 +256,7 @@ export class PointsEntriesRepository {
       kind: 'judged' as EntryKind,
       points: input.points,
       reason: input.reason,
-      createdBy: input.createdById ? { connect: { id: input.createdById } } : undefined,
+      createdById: input.createdById,
     };
     const row = existing
       ? await this.prisma.clubPointEntry.update({
