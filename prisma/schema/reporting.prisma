@@ -92,8 +92,8 @@ model ReportQuery {
   id          String    @id @default(cuid())
   reportId    String    @map("report_id")
   report      Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  askedById   String?   @map("asked_by_id")
-  askedBy     User?     @relation("reportQueryAskedBy", fields: [askedById], references: [id], onDelete: SetNull)
+  askedById   String    @map("asked_by_id")
+  askedBy     User      @relation("reportQueryAskedBy", fields: [askedById], references: [id])
   question    String
   reply       String?
   repliedById String?   @map("replied_by_id")
