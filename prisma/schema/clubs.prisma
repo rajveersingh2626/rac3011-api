@@ -106,9 +106,11 @@ model ClubFacts {
   clubWebsiteUrl       String?   @map("club_website_url")
   priorYearMemberCount Int?      @map("prior_year_member_count")
   updatedById          String?   @map("updated_by_id")
+  updatedBy            User?     @relation("clubFactsUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
   @@unique([clubId, ryYear])
+  @@index([updatedById])
   @@map("club_facts")
 }

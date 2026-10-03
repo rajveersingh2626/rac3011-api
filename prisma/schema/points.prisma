@@ -95,11 +95,13 @@ model ClubPointEntry {
   sourceType  String?       @map("source_type")
   sourceId    String?       @map("source_id")
   createdById String?       @map("created_by_id")
+  createdBy   User?         @relation("pointEntryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
   @@index([clubId, ryYear])
   @@index([ruleId])
   @@index([categoryId])
+  @@index([createdById])
   @@map("club_point_entries")
 }

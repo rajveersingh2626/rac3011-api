@@ -16,6 +16,17 @@ model User {
   userRoles         UserRole[]
   announcementReads AnnouncementRead[]
   pushSubscriptions PushSubscription[]
+  submittedReports  Report[]
+  askedReportQueries   ReportQuery[]      @relation("reportQueryAskedBy")
+  repliedReportQueries ReportQuery[]      @relation("reportQueryRepliedBy")
+  createdPointEntries  ClubPointEntry[]   @relation("pointEntryCreatedBy")
+  updatedClubFacts     ClubFacts[]        @relation("clubFactsUpdatedBy")
+  submittedCamps       M3011Camp[]        @relation("campSubmittedBy")
+  reviewedCamps        M3011Camp[]        @relation("campReviewedBy")
+  createdDrishtiBeneficiaries DrishtiBeneficiary[] @relation("drishtiCreatedBy")
+  createdRclTeams      RclTeam[]          @relation("rclTeamCreatedBy")
+  createdRideSupportClubs RideSupportClub[] @relation("rideSupportCreatedBy")
+  auditLogs            AuditLog[]
 
   @@map("user")
 }

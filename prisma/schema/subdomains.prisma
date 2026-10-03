@@ -16,8 +16,10 @@ model M3011Camp {
   partnerBloodBank String?         @map("partner_blood_bank")
   photos           String[]        @default([])
   status           CampStatus      @default(submitted)
-  submittedById    String          @map("submitted_by_id")
+  submittedById    String?         @map("submitted_by_id")
+  submittedBy      User?           @relation("campSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
   reviewedById     String?         @map("reviewed_by_id")
+  reviewedBy       User?           @relation("campReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   reviewedAt       DateTime?       @map("reviewed_at")
   rejectionReason  String?         @map("rejection_reason")
   clubs            M3011CampClub[]
@@ -27,6 +29,8 @@ model M3011Camp {
   @@index([status])
   @@index([leadClubId])
   @@index([date])
+  @@index([submittedById])
+  @@index([reviewedById])
   @@map("m3011_camps")
 }
 
@@ -64,13 +68,15 @@ model DrishtiBeneficiary {
   campLocation   String?          @map("camp_location")
   stage          DrishtiStage     @default(screened)
   notes          String?
-  createdById    String           @map("created_by_id")
+  createdById    String?          @map("created_by_id")
+  createdBy      User?            @relation("drishtiCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   surgeries      DrishtiSurgery[]
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
 
   @@index([clubId])
   @@index([stage])
+  @@index([createdById])
   @@map("drishti_beneficiaries")
 }
 
@@ -107,13 +113,15 @@ model RclTeam {
   players      RclPlayer[]
   homeFixtures RclFixture[] @relation("homeTeam")
   awayFixtures RclFixture[] @relation("awayTeam")
-  createdById  String       @map("created_by_id")
+  createdById  String?      @map("created_by_id")
+  createdBy    User?        @relation("rclTeamCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
   @@unique([season, clubId])
   @@index([clubId])
   @@index([status])
+  @@index([createdById])
   @@map("rcl_teams")
 }
 
@@ -230,12 +238,14 @@ model RideSupportClub {
   contactMemberId   String?  @map("contact_member_id")
   contactPhone      String   @map("contact_phone")
   notes             String?
-  createdById       String   @map("created_by_id")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdById       String?        @map("created_by_id")
+  createdBy         User?          @relation("rideSupportCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
   @@unique([ryYear, clubId])
   @@index([clubId])
+  @@index([createdById])
   @@map("ride_support_clubs")
 }
 

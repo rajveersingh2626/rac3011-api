@@ -70,6 +70,7 @@ model Report {
   values        Json
   notes         String?
   submittedById String?          @map("submitted_by_id")
+  submittedBy   User?            @relation(fields: [submittedById], references: [id], onDelete: SetNull)
   submittedAt   DateTime?        @map("submitted_at")
   filedOnTime   Boolean?         @map("filed_on_time")
   scoredAt      DateTime?        @map("scored_at")
@@ -83,6 +84,7 @@ model Report {
   @@index([status])
   @@index([ryYear, month])
   @@index([schemaVersion])
+  @@index([submittedById])
   @@map("reports")
 }
 
@@ -90,15 +92,19 @@ model ReportQuery {
   id          String    @id @default(cuid())
   reportId    String    @map("report_id")
   report      Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  askedById   String    @map("asked_by_id")
+  askedById   String?   @map("asked_by_id")
+  askedBy     User?     @relation("reportQueryAskedBy", fields: [askedById], references: [id], onDelete: SetNull)
   question    String
   reply       String?
   repliedById String?   @map("replied_by_id")
+  repliedBy   User?     @relation("reportQueryRepliedBy", fields: [repliedById], references: [id], onDelete: SetNull)
   repliedAt   DateTime? @map("replied_at")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
   @@index([reportId])
+  @@index([askedById])
+  @@index([repliedById])
   @@map("report_queries")
 }
 

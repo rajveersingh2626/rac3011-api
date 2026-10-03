@@ -38,12 +38,18 @@ export class ClubsService {
     const id = input.id?.trim() || `c_${Date.now()}`;
     await this.scope.assertCanAccessClub(access, 'clubs:edit', id);
     const slug = input.slug?.trim() || input.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+    let resolvedZone = input.zone ?? null;
+    if (input.zoneId && !resolvedZone) {
+      const zones = await this.repo.listZones();
+      const matched = zones.find((z) => z.id === input.zoneId);
+      if (matched) resolvedZone = matched.name;
+    }
     return this.repo.create({
       id,
       name: input.name,
       shortName: input.shortName ?? null,
       slug,
-      zone: input.zone ?? null,
+      zone: resolvedZone,
       zoneRef: input.zoneId ? { connect: { id: input.zoneId } } : undefined,
       lat: input.lat ?? null,
       lng: input.lng ?? null,
@@ -71,7 +77,13 @@ export class ClubsService {
   ): Promise<ClubWithRelations> {
     await this.scope.assertCanAccessClub(access, 'clubs:edit', id);
     if (!(await this.repo.exists(id))) throw new NotFoundException();
-    return this.repo.update(id, toClubUpdate(input));
+    let resolvedZone = input.zone;
+    if (input.zoneId && resolvedZone === undefined) {
+      const zones = await this.repo.listZones();
+      const matched = zones.find((z) => z.id === input.zoneId);
+      if (matched) resolvedZone = matched.name;
+    }
+    return this.repo.update(id, toClubUpdate({ ...input, zone: resolvedZone }));
   }
 
   async delete(access: ResolvedAccess, id: string): Promise<void> {

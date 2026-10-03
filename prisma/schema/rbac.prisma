@@ -110,6 +110,7 @@ model UserRole {
 model AuditLog {
   id           String   @id @default(cuid())
   actorId      String?  @map("actor_id")
+  actor        User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
   action       String
   resourceType String   @map("resource_type")
   resourceId   String?  @map("resource_id")
